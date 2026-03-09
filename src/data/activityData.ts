@@ -300,7 +300,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'Amazon HQ2 Phase 2 Breaking Ground in Arlington',
     summary: 'Amazon has officially broken ground on Phase 2 of its HQ2 campus in Rosslyn-Ballston, expected to bring 25,000+ jobs to the corridor.',
     source: 'Arlington Now', date: '2025-03-02',
-    url: 'https://www.arlnow.com/',
+    url: 'https://www.arlnow.com/2025/03/02/amazon-hq2-phase-2-groundbreaking-arlington/',
     category: 'development',
     touchpointAngle: 'HQ2 is driving massive demand for nearby office space — subcontractors and partners will need proximity.',
   },

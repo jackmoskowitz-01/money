@@ -501,6 +501,9 @@ const Prospects = () => {
                               </div>
                             );
                           })}
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2 pt-1">
                             <Link to={`/building/${building.id}/tenant/${tenant.id}`}>
                               <Button size="sm" className="text-xs h-8">View Full Profile →</Button>
                             </Link>

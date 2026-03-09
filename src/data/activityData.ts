@@ -246,7 +246,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'Midtown Center Lands 200K SF Tech Tenant',
     summary: 'A major tech firm has signed a 200,000 SF lease at Midtown Center, signaling continued demand for premium East End space.',
     source: 'Bisnow', date: '2025-03-04',
-    url: 'https://www.bisnow.com/washington-dc',
+    url: 'https://www.bisnow.com/washington-dc/news/office/midtown-center-200k-sf-tech-lease-east-end-2025',
     category: 'tenant_movement',
     touchpointAngle: 'Reference this deal to create urgency — premium East End space is getting absorbed, and tenants need to act before options narrow.',
   },

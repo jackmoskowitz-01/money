@@ -9,7 +9,7 @@ import MapView from "./pages/MapView";
 import TenantDetail from "./pages/TenantDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
-import CompTracker from "./pages/CompTracker";
+
 
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";

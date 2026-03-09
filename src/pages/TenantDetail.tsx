@@ -42,7 +42,7 @@ const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate
 
 const TenantDetail = () => {
   const { buildingId, tenantId } = useParams();
-  const [currentStage, setCurrentStage] = useState<PipelineStage>('not_contacted');
+  const [currentStage, setCurrentStage] = useState<PipelineStage>('meeting_set');
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);

@@ -46,7 +46,7 @@ const TenantDetail = () => {
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  
   const [customReasonOpen, setCustomReasonOpen] = useState(false);
   const [customReasonText, setCustomReasonText] = useState('');
   const [customEmailKeys, setCustomEmailKeys] = useState<string[]>([]);

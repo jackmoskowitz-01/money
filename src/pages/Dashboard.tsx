@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X } from 'lucide-react';
 import { newsItems, buildings, getCategoryColor } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';

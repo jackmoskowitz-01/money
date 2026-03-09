@@ -14,7 +14,7 @@ const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'c
 
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
-
+  const [expandedStat, setExpandedStat] = useState<string | null>(null);
   // Personal analytics
   const pipeline = getPipeline();
   const activities = getActivities();

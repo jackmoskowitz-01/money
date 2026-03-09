@@ -12,6 +12,7 @@ import Pipeline from "./pages/Pipeline";
 import CompTracker from "./pages/CompTracker";
 import Alerts from "./pages/Alerts";
 import Tasks from "./pages/Tasks";
+import Prospects from "./pages/Prospects";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

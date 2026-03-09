@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, BarChart3, CalendarCheck, ClipboardList } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, ClipboardList } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },

@@ -74,7 +74,7 @@ export const addPipelineNote = (tenantId: string, buildingId: string, note: stri
     pipeline[idx].notes.push(note);
     pipeline[idx].lastActivity = new Date().toISOString();
   } else {
-    pipeline.push({ tenantId, buildingId, stage: 'not_contacted', notes: [note], lastActivity: new Date().toISOString() });
+    pipeline.push({ tenantId, buildingId, stage: 'meeting_set', notes: [note], lastActivity: new Date().toISOString() });
   }
   savePipeline(pipeline);
 };

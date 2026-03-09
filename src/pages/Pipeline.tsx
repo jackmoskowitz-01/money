@@ -28,7 +28,7 @@ const Pipeline = () => {
     let changed = false;
     allTenants.forEach(({ tenantId, buildingId }) => {
       if (!items.find(p => p.tenantId === tenantId && p.buildingId === buildingId)) {
-        items.push({ tenantId, buildingId, stage: 'not_contacted', notes: [], lastActivity: new Date().toISOString() });
+        items.push({ tenantId, buildingId, stage: 'meeting_set', notes: [], lastActivity: new Date().toISOString() });
         changed = true;
       }
     });

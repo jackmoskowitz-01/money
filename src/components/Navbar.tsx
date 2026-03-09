@@ -1,14 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, Bell, BarChart3 } from 'lucide-react';
+import { marketAlerts } from '@/data/pipelineData';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },
-  { path: '/map', label: 'Market Map', icon: Map },
-  { path: '/scoop', label: 'Scoop Board', icon: MessageSquare },
+  { path: '/map', label: 'Map', icon: Map },
+  { path: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { path: '/comps', label: 'Comps', icon: BarChart3 },
+  { path: '/alerts', label: 'Alerts', icon: Bell },
+  { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 
 const Navbar = () => {
   const location = useLocation();
+  const unreadAlerts = marketAlerts.filter(a => !a.read).length;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
@@ -29,14 +34,19 @@ const Navbar = () => {
               <Link
                 key={path}
                 to={path}
-                className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-primary/10 text-primary'
                     : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span className="hidden sm:inline">{label}</span>
+                <span className="hidden md:inline">{label}</span>
+                {label === 'Alerts' && unreadAlerts > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                    {unreadAlerts}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -8,6 +8,9 @@ import Dashboard from "./pages/Dashboard";
 import MapView from "./pages/MapView";
 import TenantDetail from "./pages/TenantDetail";
 import ScoopBoard from "./pages/ScoopBoard";
+import Pipeline from "./pages/Pipeline";
+import CompTracker from "./pages/CompTracker";
+import Alerts from "./pages/Alerts";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +27,9 @@ const App = () => (
           <Route path="/map" element={<MapView />} />
           <Route path="/building/:buildingId/tenant/:tenantId" element={<TenantDetail />} />
           <Route path="/scoop" element={<ScoopBoard />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/comps" element={<CompTracker />} />
+          <Route path="/alerts" element={<Alerts />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

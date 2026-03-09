@@ -117,6 +117,9 @@ const Prospects = () => {
           outreachReason: `${reason.title}: ${reason.description}`,
           vacancyRate: building.vacancyRate,
           headcount: tenant.headcount,
+          clientsInBuilding: building.tenants
+            .filter(t => t.isClient && t.id !== tenant.id)
+            .map(t => t.name),
         }),
       });
 

@@ -41,7 +41,7 @@ export type NewsItem = {
   summary: string;
   source: string;
   date: string;
-  category: 'lease' | 'sale' | 'expansion' | 'market' | 'vacancy';
+  category: 'lease' | 'sale' | 'expansion' | 'market' | 'vacancy' | 'contraction';
   relatedTenants?: string[];
   relatedBuildings?: string[];
 };

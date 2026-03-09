@@ -22,6 +22,8 @@ serve(async (req) => {
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
 
+CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the email body. This is a key credibility signal — reference that your firm already represents them in the same building, that you know the building well, and that this existing relationship gives you unique insight into the property. This is NOT optional — always include it when provided.
+
 Sign off with just "Best regards" (the broker will add their name).`;
 
     const userPrompt = `Write a personalized outreach email for the following prospect:

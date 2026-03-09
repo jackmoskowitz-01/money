@@ -22,7 +22,7 @@ serve(async (req) => {
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
 
-CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the email body. This is a key credibility signal — reference that your firm already represents them in the same building, that you know the building well, and that this existing relationship gives you unique insight into the property. This is NOT optional — always include it when provided.
+CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.
 
 Sign off with just "Best regards" (the broker will add their name).`;
 

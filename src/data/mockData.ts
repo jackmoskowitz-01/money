@@ -26,6 +26,7 @@ export type Tenant = {
   contactEmail: string;
   headcount: number;
   outreachReasons: OutreachReason[];
+  isClient?: boolean;
 };
 
 export type OutreachReason = {

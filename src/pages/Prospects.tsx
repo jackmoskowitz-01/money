@@ -60,6 +60,8 @@ const Prospects = () => {
     const all: ProspectEntry[] = [];
     buildings.forEach(building => {
       building.tenants.forEach(tenant => {
+        // Skip clients — they're already ours
+        if (tenant.isClient) return;
         const pipelineEntry = pipeline.find(p => p.tenantId === tenant.id);
         if (!pipelineEntry || !['won', 'lost'].includes(pipelineEntry.stage)) {
           all.push({ tenant, building, pipelineStage: pipelineEntry?.stage });

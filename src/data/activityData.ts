@@ -217,8 +217,9 @@ export type SubmarketNewsItem = {
   summary: string;
   source: string;
   date: string;
+  url?: string;
   category: 'development' | 'infrastructure' | 'policy' | 'tenant_movement' | 'investment' | 'amenity';
-  touchpointAngle: string; // suggested conversation angle for brokers
+  touchpointAngle: string;
 };
 
 export const submarketNews: SubmarketNewsItem[] = [

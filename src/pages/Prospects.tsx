@@ -329,25 +329,65 @@ const Prospects = () => {
                                       investment: 'bg-success/10 text-success',
                                       amenity: 'bg-accent/10 text-accent-foreground',
                                     };
+                                    const newsKey = `${tenant.id}-news-${item.id}`;
+                                    const isGeneratingNews = generatingKey === newsKey;
+                                    const hasNewsEmail = !!generatedEmails[newsKey];
                                     return (
-                                      <div key={item.id} className="rounded-md border border-border bg-secondary/20 p-2.5">
-                                        <div className="flex items-start gap-2">
-                                          <Newspaper className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
-                                          <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-0.5">
-                                              <p className="text-[11px] font-semibold text-foreground truncate">{item.title}</p>
-                                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${catColors[item.category] || ''}`}>
-                                                {item.category.replace('_', ' ')}
-                                              </Badge>
+                                      <div key={item.id} className="space-y-2">
+                                        <button
+                                          onClick={() => {
+                                            const newsReason: OutreachReason = {
+                                              type: 'market_news',
+                                              urgency: 'medium',
+                                              title: item.title,
+                                              description: `${item.summary} — Touchpoint angle: ${item.touchpointAngle}`,
+                                            };
+                                            generateEmail(tenant, building, newsReason, newsKey);
+                                          }}
+                                          disabled={isGeneratingNews}
+                                          className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+                                        >
+                                          <div className="flex items-start gap-2">
+                                            <Newspaper className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-0.5">
+                                                <p className="text-[11px] font-semibold text-foreground truncate">{item.title}</p>
+                                                <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${catColors[item.category] || ''}`}>
+                                                  {item.category.replace('_', ' ')}
+                                                </Badge>
+                                                {!hasNewsEmail && (
+                                                  <Mail className="h-3 w-3 shrink-0 text-primary/50" />
+                                                )}
+                                                {isGeneratingNews && (
+                                                  <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin" />
+                                                )}
+                                              </div>
+                                              <p className="text-[10px] text-muted-foreground leading-relaxed">{item.summary}</p>
+                                              <div className="mt-1.5 flex items-start gap-1.5">
+                                                <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                                                <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
+                                              </div>
+                                              <p className="mt-1 text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
                                             </div>
-                                            <p className="text-[10px] text-muted-foreground leading-relaxed">{item.summary}</p>
-                                            <div className="mt-1.5 flex items-start gap-1.5">
-                                              <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                                              <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
-                                            </div>
-                                            <p className="mt-1 text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
                                           </div>
-                                        </div>
+                                        </button>
+                                        {hasNewsEmail && activeEmailKey === newsKey && (
+                                          <div className="ml-5 rounded-md border border-primary/20 bg-primary/5 p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <span className="text-[10px] font-medium text-primary">Generated Email</span>
+                                              <div className="flex items-center gap-1">
+                                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => copyEmail(newsKey)}>
+                                                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copy
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}>
+                                                  <X className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                            <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[newsKey]}</pre>
+                                            {isGeneratingNews && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}

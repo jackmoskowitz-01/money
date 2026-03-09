@@ -1,34 +1,40 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import L from 'leaflet';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, Users, TrendingUp } from 'lucide-react';
+import { X, Users, TrendingUp } from 'lucide-react';
 import { buildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import 'leaflet/dist/leaflet.css';
 
-const markerIcon = new Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+// Fix default marker icons
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
 });
 
 const MapView = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const center = useMemo(() => [38.9010, -77.0340] as [number, number], []);
 
+  useEffect(() => {
+    // Delay render to ensure container has dimensions
+    const t = setTimeout(() => setMapReady(true), 50);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
-    <div className="relative h-screen pt-14">
-      <div className="absolute inset-0 top-14">
+    <div className="fixed inset-0 top-14" style={{ height: 'calc(100vh - 56px)' }}>
+      {mapReady && (
         <MapContainer
           center={center}
           zoom={15}
-          className="h-full w-full"
+          style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
           <TileLayer
@@ -39,7 +45,6 @@ const MapView = () => {
             <Marker
               key={building.id}
               position={[building.lat, building.lng]}
-              icon={markerIcon}
               eventHandlers={{
                 click: () => setSelectedBuilding(building),
               }}
@@ -56,10 +61,10 @@ const MapView = () => {
             </Marker>
           ))}
         </MapContainer>
-      </div>
+      )}
 
       {/* Building List Panel */}
-      <div className="absolute left-4 top-20 z-[1000] w-80 space-y-2">
+      <div className="absolute left-4 top-4 z-[1000] w-80 space-y-2">
         <Card className="border-border bg-card/95 p-3 backdrop-blur-lg">
           <h2 className="mb-2 font-display text-sm font-bold">DC Buildings ({buildings.length})</h2>
           <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
@@ -100,7 +105,7 @@ const MapView = () => {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 320, opacity: 0 }}
             transition={{ type: 'spring', damping: 25 }}
-            className="absolute right-4 top-20 z-[1000] w-96"
+            className="absolute right-4 top-4 z-[1000] w-96"
           >
             <Card className="border-border bg-card/95 p-4 backdrop-blur-lg">
               <div className="mb-3 flex items-start justify-between">
@@ -142,7 +147,7 @@ const MapView = () => {
               )}
 
               <h4 className="mb-2 text-sm font-semibold">Tenant List</h4>
-              <div className="space-y-2">
+              <div className="max-h-[40vh] space-y-2 overflow-y-auto">
                 {selectedBuilding.tenants.map(tenant => {
                   const urgentCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
                   return (

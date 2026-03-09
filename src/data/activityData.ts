@@ -273,7 +273,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'New Streetcar Extension Connecting CBD to Georgetown',
     summary: 'DDOT announced plans for a streetcar extension from the CBD to Georgetown, with construction starting in 2026.',
     source: 'WTOP', date: '2025-03-03',
-    url: 'https://wtop.com/',
+    url: 'https://wtop.com/dc-transit/2025/03/ddot-streetcar-extension-cbd-georgetown-2026/',
     category: 'infrastructure',
     touchpointAngle: 'Use the planned streetcar as a forward-looking amenity — buildings along the route will see increased connectivity and value.',
   },

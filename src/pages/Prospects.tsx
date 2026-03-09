@@ -6,6 +6,7 @@ import { buildings, getUrgencyColor, type Tenant, type Building, type OutreachRe
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';

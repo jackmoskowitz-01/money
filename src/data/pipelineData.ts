@@ -1,5 +1,5 @@
 // Pipeline types and helpers
-export type PipelineStage = 'not_contacted' | 'contacted' | 'meeting_set' | 'proposal_sent' | 'won' | 'lost';
+export type PipelineStage = 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
 
 export type PipelineItem = {
   tenantId: string;
@@ -10,20 +10,20 @@ export type PipelineItem = {
 };
 
 export const stageLabels: Record<PipelineStage, string> = {
-  not_contacted: 'Not Contacted',
-  contacted: 'Contacted',
   meeting_set: 'Meeting Set',
-  proposal_sent: 'Proposal Sent',
+  meeting_held: 'Meeting Held',
+  moving_forward: 'Moving Forward',
   won: 'Won',
+  closed: 'Closed',
   lost: 'Lost',
 };
 
 export const stageColors: Record<PipelineStage, string> = {
-  not_contacted: 'bg-muted text-muted-foreground',
-  contacted: 'bg-info/20 text-info',
-  meeting_set: 'bg-primary/20 text-primary',
-  proposal_sent: 'bg-warning/20 text-warning',
+  meeting_set: 'bg-info/20 text-info',
+  meeting_held: 'bg-primary/20 text-primary',
+  moving_forward: 'bg-warning/20 text-warning',
   won: 'bg-success/20 text-success',
+  closed: 'bg-muted text-muted-foreground',
   lost: 'bg-destructive/20 text-destructive',
 };
 
@@ -47,7 +47,7 @@ export const getOrCreatePipelineItem = (tenantId: string, buildingId: string): P
   const item: PipelineItem = {
     tenantId,
     buildingId,
-    stage: 'not_contacted',
+    stage: 'meeting_set',
     notes: [],
     lastActivity: new Date().toISOString(),
   };
@@ -74,7 +74,7 @@ export const addPipelineNote = (tenantId: string, buildingId: string, note: stri
     pipeline[idx].notes.push(note);
     pipeline[idx].lastActivity = new Date().toISOString();
   } else {
-    pipeline.push({ tenantId, buildingId, stage: 'not_contacted', notes: [note], lastActivity: new Date().toISOString() });
+    pipeline.push({ tenantId, buildingId, stage: 'meeting_set', notes: [note], lastActivity: new Date().toISOString() });
   }
   savePipeline(pipeline);
 };

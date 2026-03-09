@@ -16,7 +16,7 @@ import TenantEnrichmentCard from '@/components/TenantEnrichmentCard';
 import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 
-const stages: PipelineStage[] = ['not_contacted', 'contacted', 'meeting_set', 'proposal_sent', 'won', 'lost'];
+const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
 const urgencyOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -42,7 +42,7 @@ const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate
 
 const TenantDetail = () => {
   const { buildingId, tenantId } = useParams();
-  const [currentStage, setCurrentStage] = useState<PipelineStage>('not_contacted');
+  const [currentStage, setCurrentStage] = useState<PipelineStage>('meeting_set');
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-const stages: PipelineStage[] = ['not_contacted', 'contacted', 'meeting_set', 'proposal_sent', 'won', 'lost'];
+const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
 const Pipeline = () => {
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
@@ -28,7 +28,7 @@ const Pipeline = () => {
     let changed = false;
     allTenants.forEach(({ tenantId, buildingId }) => {
       if (!items.find(p => p.tenantId === tenantId && p.buildingId === buildingId)) {
-        items.push({ tenantId, buildingId, stage: 'not_contacted', notes: [], lastActivity: new Date().toISOString() });
+        items.push({ tenantId, buildingId, stage: 'meeting_set', notes: [], lastActivity: new Date().toISOString() });
         changed = true;
       }
     });

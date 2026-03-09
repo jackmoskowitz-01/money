@@ -42,11 +42,6 @@ const Navbar = () => {
               >
                 <Icon className="h-4 w-4" />
                 <span className="hidden md:inline">{label}</span>
-                {label === 'Alerts' && unreadAlerts > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-                    {unreadAlerts}
-                  </span>
-                )}
               </Link>
             );
           })}

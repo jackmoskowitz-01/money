@@ -32,7 +32,7 @@ const App = () => (
           <Route path="/scoop" element={<ScoopBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/comps" element={<CompTracker />} />
-          <Route path="/alerts" element={<Alerts />} />
+          
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/prospects" element={<Prospects />} />
           <Route path="/activities" element={<ActivityLogger />} />

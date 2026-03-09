@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink } from 'lucide-react';
+import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
@@ -47,7 +48,7 @@ const Prospects = () => {
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  
   // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');
@@ -170,10 +171,12 @@ const Prospects = () => {
 
   const copyEmail = (key: string) => {
     navigator.clipboard.writeText(generatedEmails[key] || '');
-    setCopied(true);
     toast.success('Email copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
   };
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   const generateCustomEmail = useCallback((tenant: Tenant, building: Building) => {
     if (!customReasonText.trim()) {
@@ -395,21 +398,14 @@ const Prospects = () => {
                                           </div>
                                         </button>
                                         {hasNewsEmail && activeEmailKey === newsKey && (
-                                          <div className="ml-5 rounded-md border border-primary/20 bg-primary/5 p-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                              <span className="text-[10px] font-medium text-primary">Generated Email</span>
-                                              <div className="flex items-center gap-1">
-                                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => copyEmail(newsKey)}>
-                                                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copy
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}>
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                            <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[newsKey]}</pre>
-                                            {isGeneratingNews && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
-                                          </div>
+                                          <EmailDisplay
+                                            emailKey={newsKey}
+                                            emailContent={generatedEmails[newsKey] || ''}
+                                            isGenerating={isGeneratingNews}
+                                            onClose={() => setActiveEmailKey(null)}
+                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
+                                            onUpdateEmail={updateEmail}
+                                          />
                                         )}
                                       </div>
                                     );
@@ -487,21 +483,14 @@ const Prospects = () => {
                                           </div>
                                         </button>
                                         {hasScoopEmail && activeEmailKey === scoopKey && (
-                                          <div className="ml-7 rounded-md border border-primary/20 bg-primary/5 p-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                              <span className="text-[10px] font-medium text-primary">Generated Email</span>
-                                              <div className="flex items-center gap-1">
-                                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => copyEmail(scoopKey)}>
-                                                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copy
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}>
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                            <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[scoopKey]}</pre>
-                                            {isGeneratingScoop && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
-                                          </div>
+                                          <EmailDisplay
+                                            emailKey={scoopKey}
+                                            emailContent={generatedEmails[scoopKey] || ''}
+                                            isGenerating={isGeneratingScoop}
+                                            onClose={() => setActiveEmailKey(null)}
+                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
+                                            onUpdateEmail={updateEmail}
+                                          />
                                         )}
                                       </div>
                                     );
@@ -572,42 +561,13 @@ const Prospects = () => {
                                       {/* Generated Email Display */}
                                       <AnimatePresence>
                                         {isShowingEmail && generatedEmails[key] !== undefined && (
-                                          <motion.div
-                                            initial={{ height: 0, opacity: 0 }}
-                                            animate={{ height: 'auto', opacity: 1 }}
-                                            exit={{ height: 0, opacity: 0 }}
-                                            transition={{ duration: 0.15 }}
-                                            className="overflow-hidden"
-                                          >
-                                            <div className="mt-1 rounded-md border border-primary/20 bg-card p-3">
-                                              <div className="flex items-center justify-between mb-2">
-                                                <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
-                                                  <Mail className="h-3 w-3" /> Generated Email
-                                                  {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
-                                                </p>
-                                                <div className="flex items-center gap-1">
-                                                  {!isGenerating && generatedEmails[key] && (
-                                                    <button
-                                                      onClick={(e) => { e.stopPropagation(); copyEmail(key); }}
-                                                      className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
-                                                    >
-                                                      {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                                                      {copied ? 'Copied' : 'Copy'}
-                                                    </button>
-                                                  )}
-                                                  <button
-                                                    onClick={(e) => { e.stopPropagation(); setActiveEmailKey(null); }}
-                                                    className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
-                                                  >
-                                                    <X className="h-3 w-3" />
-                                                  </button>
-                                                </div>
-                                              </div>
-                                              <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-                                                {generatedEmails[key] || (isGenerating ? 'Generating...' : '')}
-                                              </div>
-                                            </div>
-                                          </motion.div>
+                                          <EmailDisplay
+                                            emailKey={key}
+                                            emailContent={generatedEmails[key]}
+                                            isGenerating={isGenerating}
+                                            onClose={() => setActiveEmailKey(null)}
+                                            onUpdateEmail={updateEmail}
+                                          />
                                         )}
                                       </AnimatePresence>
                                     </div>
@@ -670,41 +630,28 @@ const Prospects = () => {
                             const emailContent = generatedEmails[key];
                             if (emailContent === undefined && !isGenerating) return null;
                             return (
-                              <div key={key} className="rounded-md border border-primary/20 bg-card p-3">
-                                <div className="flex items-center justify-between mb-2">
-                                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
-                                    <Mail className="h-3 w-3" /> Custom Email
-                                    {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
-                                  </p>
-                                  <div className="flex items-center gap-1">
-                                    {!isGenerating && emailContent && (
-                                      <button
-                                        onClick={() => copyEmail(key)}
-                                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
-                                      >
-                                        {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
-                                        {copied ? 'Copied' : 'Copy'}
-                                      </button>
-                                    )}
-                                    {!isGenerating && (
-                                      <button
-                                        onClick={() => {
-                                          setCustomEmailKeys(prev => ({
-                                            ...prev,
-                                            [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
-                                          }));
-                                          setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
-                                        }}
-                                        className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
-                                      >
-                                        <X className="h-3 w-3" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-                                  {emailContent || (isGenerating ? 'Generating...' : '')}
-                                </div>
+                              <div key={key}>
+                                <EmailDisplay
+                                  emailKey={key}
+                                  emailContent={emailContent || ''}
+                                  isGenerating={isGenerating}
+                                  label="Custom Email"
+                                  onClose={() => {
+                                    setCustomEmailKeys(prev => ({
+                                      ...prev,
+                                      [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
+                                    }));
+                                    setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                  }}
+                                  onDismiss={() => {
+                                    setCustomEmailKeys(prev => ({
+                                      ...prev,
+                                      [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
+                                    }));
+                                    setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                  }}
+                                  onUpdateEmail={updateEmail}
+                                />
                               </div>
                             );
                           })}

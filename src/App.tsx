@@ -10,7 +10,7 @@ import TenantDetail from "./pages/TenantDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
 import CompTracker from "./pages/CompTracker";
-import Alerts from "./pages/Alerts";
+
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";

@@ -49,6 +49,8 @@ const Prospects = () => {
   // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');
+  // Track custom email keys per tenant
+  const [customEmailKeys, setCustomEmailKeys] = useState<Record<string, string[]>>({});
 
   const pipeline = getPipeline();
 
@@ -178,6 +180,10 @@ const Prospects = () => {
       description: customReasonText.trim(),
     };
     const key = `${tenant.id}-custom-${Date.now()}`;
+    setCustomEmailKeys(prev => ({
+      ...prev,
+      [tenant.id]: [...(prev[tenant.id] || []), key],
+    }));
     generateEmail(tenant, building, customReason, key);
     setCustomReasonText('');
     setCustomReasonOpen(null);
@@ -451,6 +457,52 @@ const Prospects = () => {
                             )}
                           </div>
 
+                          {/* Custom Generated Emails */}
+                          {(customEmailKeys[tenant.id] || []).map(key => {
+                            const isGenerating = generatingKey === key;
+                            const emailContent = generatedEmails[key];
+                            if (emailContent === undefined && !isGenerating) return null;
+                            return (
+                              <div key={key} className="rounded-md border border-primary/20 bg-card p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
+                                    <Mail className="h-3 w-3" /> Custom Email
+                                    {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
+                                  </p>
+                                  <div className="flex items-center gap-1">
+                                    {!isGenerating && emailContent && (
+                                      <button
+                                        onClick={() => copyEmail(key)}
+                                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
+                                      >
+                                        {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
+                                        {copied ? 'Copied' : 'Copy'}
+                                      </button>
+                                    )}
+                                    {!isGenerating && (
+                                      <button
+                                        onClick={() => {
+                                          setCustomEmailKeys(prev => ({
+                                            ...prev,
+                                            [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
+                                          }));
+                                          setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                        }}
+                                        className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
+                                  {emailContent || (isGenerating ? 'Generating...' : '')}
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                          {/* Actions */}
                           <div className="flex items-center gap-2 pt-1">
                             <Link to={`/building/${building.id}/tenant/${tenant.id}`}>
                               <Button size="sm" className="text-xs h-8">View Full Profile →</Button>

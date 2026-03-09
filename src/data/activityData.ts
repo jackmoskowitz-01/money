@@ -228,7 +228,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'New Whole Foods Opening at City Center DC',
     summary: 'A 30,000 SF Whole Foods Market is set to open at CityCenterDC in Q3 2025, adding a major amenity draw to the East End submarket.',
     source: 'Washington Business Journal', date: '2025-03-08',
-    url: 'https://www.bizjournals.com/washington/',
+    url: 'https://www.bizjournals.com/washington/news/2025/03/08/whole-foods-citycenterdc-east-end-opening.html',
     category: 'amenity',
     touchpointAngle: 'Mention the new Whole Foods as an added amenity for employees — great for talent retention conversations.',
   },

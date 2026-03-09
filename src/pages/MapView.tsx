@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import StackingPlan from '@/components/StackingPlan';
 import { X, Users, TrendingUp } from 'lucide-react';
 import { buildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';

@@ -309,7 +309,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'Rosslyn BID Unveils $50M Public Space Improvement Plan',
     summary: 'The Rosslyn Business Improvement District announced a $50M investment in parks, streetscape, and public amenities over the next 3 years.',
     source: 'ARLnow', date: '2025-02-20',
-    url: 'https://www.arlnow.com/',
+    url: 'https://www.arlnow.com/2025/02/20/rosslyn-bid-50m-public-space-improvement-plan/',
     category: 'amenity',
     touchpointAngle: 'Rosslyn is investing heavily in quality of life — a strong talking point for tenants evaluating the corridor vs. downtown DC.',
   },

@@ -242,6 +242,7 @@ const Prospects = () => {
             const isExpanded = expandedId === tenant.id;
             const highCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
             const medCount = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
+            const clientsInBuilding = building.tenants.filter(t => t.isClient);
 
             return (
               <motion.div

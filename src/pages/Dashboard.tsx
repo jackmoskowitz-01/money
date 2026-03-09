@@ -78,27 +78,142 @@ const Dashboard = () => {
         {/* Personal Stats */}
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, i) => {
+            const isExpandable = stat.label === 'Activities (7d)' || stat.label === 'Pending Tasks';
+            const isExpanded = expandedStat === stat.label;
             const inner = (
-              <Card className={`border-border bg-card p-4 transition-colors ${stat.link ? 'hover:border-primary/30 hover:bg-secondary/30 cursor-pointer' : ''}`}>
+              <Card
+                className={`border-border bg-card p-4 transition-colors ${stat.link || isExpandable ? 'hover:border-primary/30 hover:bg-secondary/30 cursor-pointer' : ''}`}
+                onClick={isExpandable ? () => setExpandedStat(isExpanded ? null : stat.label) : undefined}
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                     <stat.icon className="h-5 w-5 text-primary" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                     <p className="text-xs text-muted-foreground">{stat.label}</p>
                   </div>
+                  {isExpandable && (
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  )}
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{stat.trend}</p>
               </Card>
             );
             return (
               <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                {stat.link ? <Link to={stat.link}>{inner}</Link> : inner}
+                {stat.link && !isExpandable ? <Link to={stat.link}>{inner}</Link> : inner}
               </motion.div>
             );
           })}
         </div>
+
+        {/* Expanded Activities / Tasks Drawer */}
+        <AnimatePresence>
+          {expandedStat === 'Activities (7d)' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden mb-8"
+            >
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold">Recent Activities</h3>
+                  <div className="flex items-center gap-2">
+                    <Link to="/activities">
+                      <Button variant="ghost" size="sm" className="text-xs h-7">View All →</Button>
+                    </Link>
+                    <button onClick={() => setExpandedStat(null)} className="rounded p-1 hover:bg-secondary">
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {activities.slice(0, 10).map(activity => {
+                    const building = buildings.find(b => b.id === activity.buildingId);
+                    const tenant = building?.tenants.find(t => t.id === activity.tenantId);
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3 rounded-md bg-secondary/30 p-2.5">
+                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <Zap className="h-3 w-3 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{activity.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            {tenant?.name && `${tenant.name} · `}{building?.name || ''}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground/60">
+                            {new Date(activity.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                          {activity.type.replace(/_/g, ' ')}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          {expandedStat === 'Pending Tasks' && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden mb-8"
+            >
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold">Pending Tasks</h3>
+                  <div className="flex items-center gap-2">
+                    <Link to="/tasks">
+                      <Button variant="ghost" size="sm" className="text-xs h-7">View All →</Button>
+                    </Link>
+                    <button onClick={() => setExpandedStat(null)} className="rounded p-1 hover:bg-secondary">
+                      <X className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {tasks.filter(t => !t.completed).slice(0, 10).map(task => {
+                    const isOverdue = task.dueDate < new Date().toISOString().split('T')[0];
+                    const building = buildings.find(b => b.id === task.buildingId);
+                    const tenant = building?.tenants.find(t => t.id === task.tenantId);
+                    return (
+                      <div key={task.id} className={`flex items-start gap-3 rounded-md p-2.5 ${isOverdue ? 'bg-destructive/5 border border-destructive/20' : 'bg-secondary/30'}`}>
+                        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isOverdue ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                          <Clock className={`h-3 w-3 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground truncate">{task.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>
+                          {tenant && (
+                            <p className="text-[10px] text-muted-foreground/60 truncate">
+                              {tenant.name} · {building?.name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${isOverdue ? 'bg-destructive/10 text-destructive' : ''}`}>
+                            {isOverdue ? 'Overdue' : 'Due'} {task.dueDate}
+                          </Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {tasks.filter(t => !t.completed).length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4">No pending tasks 🎉</p>
+                  )}
+                </div>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Pipeline Breakdown + Submarket Trends */}
         <div className="mb-8 grid gap-4 lg:grid-cols-2">

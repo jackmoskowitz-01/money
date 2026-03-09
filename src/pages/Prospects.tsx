@@ -503,8 +503,8 @@ const Prospects = () => {
                                     </div>
                                   );
                                 })}
-                            </div>
-                          </div>
+                            </CollapsibleContent>
+                          </Collapsible>
 
                           {/* Custom Reason Input */}
                           <div>

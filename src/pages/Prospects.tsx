@@ -180,6 +180,10 @@ const Prospects = () => {
       description: customReasonText.trim(),
     };
     const key = `${tenant.id}-custom-${Date.now()}`;
+    setCustomEmailKeys(prev => ({
+      ...prev,
+      [tenant.id]: [...(prev[tenant.id] || []), key],
+    }));
     generateEmail(tenant, building, customReason, key);
     setCustomReasonText('');
     setCustomReasonOpen(null);

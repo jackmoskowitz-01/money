@@ -16,7 +16,7 @@ import TenantEnrichmentCard from '@/components/TenantEnrichmentCard';
 import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 
-const stages: PipelineStage[] = ['not_contacted', 'contacted', 'meeting_set', 'proposal_sent', 'won', 'lost'];
+const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
 const urgencyOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
 

@@ -14,9 +14,48 @@ import EmailDisplay from '@/components/EmailDisplay';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
+const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
+
+type ProspectMatch = { tenant: Tenant; building: Building };
+
+const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
+  const matches: ProspectMatch[] = [];
+  const seen = new Set<string>();
+
+  buildings.forEach(building => {
+    building.tenants.forEach(tenant => {
+      if (tenant.isClient) return;
+      if (seen.has(tenant.id)) return;
+
+      // Direct relation
+      const directTenant = news.relatedTenants?.includes(tenant.id);
+      const directBuilding = news.relatedBuildings?.includes(building.id);
+      // Category-based: vacancy news affects tenants in high-vacancy buildings
+      const categoryMatch =
+        (news.category === 'vacancy' && building.vacancyRate > 15) ||
+        (news.category === 'market' && tenant.industry.toLowerCase().includes('legal') && news.title.toLowerCase().includes('law')) ||
+        (news.category === 'market' && tenant.industry.toLowerCase().includes('lobby') && news.title.toLowerCase().includes('lobby')) ||
+        (news.category === 'contraction' && tenant.industry.toLowerCase().includes('consult') && news.title.toLowerCase().includes('consult'));
+
+      if (directTenant || directBuilding || categoryMatch) {
+        seen.add(tenant.id);
+        matches.push({ tenant, building });
+      }
+    });
+  });
+
+  return matches;
+};
+
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [expandedStat, setExpandedStat] = useState<string | null>(null);
+  const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [selectedProspects, setSelectedProspects] = useState<Record<string, Set<string>>>({});
+  const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
+  const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
+  const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+
   // Personal analytics
   const pipeline = getPipeline();
   const activities = getActivities();
@@ -65,6 +104,116 @@ const Dashboard = () => {
   const filteredNews = activeCategory === 'all'
     ? newsItems
     : newsItems.filter(n => n.category === activeCategory);
+
+  const toggleProspect = (newsId: string, tenantId: string) => {
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      if (current.has(tenantId)) current.delete(tenantId);
+      else current.add(tenantId);
+      return { ...prev, [newsId]: current };
+    });
+  };
+
+  const selectAll = (newsId: string, prospects: ProspectMatch[]) => {
+    setSelectedProspects(prev => ({
+      ...prev,
+      [newsId]: new Set(prospects.map(p => p.tenant.id)),
+    }));
+  };
+
+  const deselectAll = (newsId: string) => {
+    setSelectedProspects(prev => ({ ...prev, [newsId]: new Set() }));
+  };
+
+  const generateEmailForProspect = useCallback(async (
+    tenant: Tenant,
+    building: Building,
+    news: NewsItem,
+    key: string,
+  ) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const clientsInBuilding = building.tenants
+        .filter(t => t.isClient && t.id !== tenant.id)
+        .map(t => t.name);
+
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: tenant.name,
+          buildingName: building.name,
+          contactName: tenant.contactName,
+          contactTitle: tenant.contactTitle,
+          industry: tenant.industry,
+          sqft: tenant.sqft,
+          leaseExpiration: tenant.leaseExpiration,
+          outreachReason: `Market news: ${news.title} — ${news.summary}`,
+          vacancyRate: building.vacancyRate,
+          headcount: tenant.headcount,
+          clientsInBuilding,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[]) => {
+    const selected = selectedProspects[newsId];
+    if (!selected || selected.size === 0) return;
+
+    const toSend = prospects.filter(p => selected.has(p.tenant.id));
+    for (const { tenant, building } of toSend) {
+      const key = `news-${newsId}-${tenant.id}`;
+      generateEmailForProspect(tenant, building, news, key);
+    }
+  }, [selectedProspects, generateEmailForProspect]);
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   return (
     <div className="min-h-screen pt-14">

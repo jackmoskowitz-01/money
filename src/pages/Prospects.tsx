@@ -171,10 +171,12 @@ const Prospects = () => {
 
   const copyEmail = (key: string) => {
     navigator.clipboard.writeText(generatedEmails[key] || '');
-    setCopied(true);
     toast.success('Email copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
   };
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   const generateCustomEmail = useCallback((tenant: Tenant, building: Building) => {
     if (!customReasonText.trim()) {

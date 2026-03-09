@@ -1,8 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle } from 'lucide-react';
-import { buildings, getUrgencyColor, type Tenant, type Building, type OutreachReason } from '@/data/mockData';
+import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle } from 'lucide-react';
+import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
@@ -391,6 +391,98 @@ const Prospects = () => {
                                             </div>
                                             <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[newsKey]}</pre>
                                             {isGeneratingNews && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })()}
+
+                          {/* Affiliated Scoops */}
+                          {(() => {
+                            // Match scoops by checking if any tag matches the tenant name, building name, or industry
+                            const matchedScoops = scoopPosts.filter(scoop =>
+                              scoop.tags.some(tag => {
+                                const t = tag.toLowerCase();
+                                return (
+                                  tenant.name.toLowerCase().includes(t) ||
+                                  t.includes(tenant.name.toLowerCase().split(' ')[0]) ||
+                                  building.name.toLowerCase().includes(t) ||
+                                  t.includes(building.name.toLowerCase()) ||
+                                  tenant.industry.toLowerCase().includes(t) ||
+                                  t.includes(tenant.industry.toLowerCase())
+                                );
+                              })
+                            );
+                            if (matchedScoops.length === 0) return null;
+                            return (
+                              <Collapsible>
+                                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
+                                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                    <Eye className="h-3.5 w-3.5 text-primary" /> Scoops — Broker Intel
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{matchedScoops.length}</Badge>
+                                  </p>
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2 space-y-1.5">
+                                  {matchedScoops.map(scoop => {
+                                    const scoopKey = `${tenant.id}-scoop-${scoop.id}`;
+                                    const isGeneratingScoop = generatingKey === scoopKey;
+                                    const hasScoopEmail = !!generatedEmails[scoopKey];
+                                    return (
+                                      <div key={scoop.id} className="space-y-2">
+                                        <button
+                                          onClick={() => {
+                                            const scoopReason: OutreachReason = {
+                                              type: 'market_news',
+                                              urgency: 'medium',
+                                              title: `Broker Intel: ${scoop.tags.join(', ')}`,
+                                              description: scoop.content,
+                                            };
+                                            generateEmail(tenant, building, scoopReason, scoopKey);
+                                          }}
+                                          disabled={isGeneratingScoop}
+                                          className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+                                        >
+                                          <div className="flex items-start gap-2">
+                                            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold text-foreground">
+                                              {scoop.authorAvatar}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="flex items-center gap-2 mb-0.5">
+                                                <span className="text-[11px] font-semibold text-foreground">{scoop.author}</span>
+                                                {scoop.verified && <CheckCircle className="h-3 w-3 text-primary" />}
+                                                {!hasScoopEmail && <Mail className="h-3 w-3 shrink-0 text-primary/50 ml-auto" />}
+                                                {isGeneratingScoop && <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin ml-auto" />}
+                                              </div>
+                                              <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">{scoop.content}</p>
+                                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                                {scoop.tags.map(tag => (
+                                                  <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 bg-secondary/50 text-muted-foreground">{tag}</Badge>
+                                                ))}
+                                              </div>
+                                              <p className="mt-1 text-[9px] text-muted-foreground/50">{scoop.likes} likes · {scoop.comments} comments</p>
+                                            </div>
+                                          </div>
+                                        </button>
+                                        {hasScoopEmail && activeEmailKey === scoopKey && (
+                                          <div className="ml-7 rounded-md border border-primary/20 bg-primary/5 p-3">
+                                            <div className="flex items-center justify-between mb-2">
+                                              <span className="text-[10px] font-medium text-primary">Generated Email</span>
+                                              <div className="flex items-center gap-1">
+                                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => copyEmail(scoopKey)}>
+                                                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copy
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}>
+                                                  <X className="h-3 w-3" />
+                                                </Button>
+                                              </div>
+                                            </div>
+                                            <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[scoopKey]}</pre>
+                                            {isGeneratingScoop && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
                                           </div>
                                         )}
                                       </div>

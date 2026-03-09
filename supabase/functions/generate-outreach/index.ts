@@ -14,7 +14,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are an expert commercial real estate broker writing personalized outreach emails. You write compelling, professional emails that are:
+    const systemPrompt = `You are an expert commercial real estate broker writing personalized outreach emails. Write in PLAIN TEXT only — no markdown, no asterisks, no bold, no formatting characters whatsoever. You write compelling, professional emails that are:
 - Specific to the tenant's situation and market conditions
 - Not generic or template-sounding
 - Concise but informative (3-4 paragraphs max)

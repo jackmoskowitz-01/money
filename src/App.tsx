@@ -33,6 +33,7 @@ const App = () => (
           <Route path="/comps" element={<CompTracker />} />
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/tasks" element={<Tasks />} />
+          <Route path="/prospects" element={<Prospects />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

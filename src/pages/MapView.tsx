@@ -1,11 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp } from 'lucide-react';
 import { buildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 const MapView = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);

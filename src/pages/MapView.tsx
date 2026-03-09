@@ -11,8 +11,18 @@ import { Button } from '@/components/ui/button';
 
 const MapView = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [panelOpen, setPanelOpen] = useState(true);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+
+  const filteredBuildings = useMemo(() => {
+    if (!searchQuery.trim()) return buildings;
+    const q = searchQuery.toLowerCase();
+    return buildings.filter(b =>
+      b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;

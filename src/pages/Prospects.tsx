@@ -48,7 +48,7 @@ const Prospects = () => {
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  
   // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');

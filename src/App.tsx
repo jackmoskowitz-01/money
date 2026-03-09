@@ -10,7 +10,7 @@ import TenantDetail from "./pages/TenantDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
 import CompTracker from "./pages/CompTracker";
-import Alerts from "./pages/Alerts";
+
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
@@ -32,7 +32,7 @@ const App = () => (
           <Route path="/scoop" element={<ScoopBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/comps" element={<CompTracker />} />
-          <Route path="/alerts" element={<Alerts />} />
+          
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/prospects" element={<Prospects />} />
           <Route path="/activities" element={<ActivityLogger />} />

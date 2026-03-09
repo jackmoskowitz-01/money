@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, Bell, BarChart3, CalendarCheck, ClipboardList } from 'lucide-react';
-import { marketAlerts } from '@/data/pipelineData';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, BarChart3, CalendarCheck, ClipboardList } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },
@@ -9,13 +8,12 @@ const navItems = [
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/activities', label: 'Activities', icon: ClipboardList },
   { path: '/comps', label: 'Comps', icon: BarChart3 },
-  { path: '/alerts', label: 'Alerts', icon: Bell },
+  
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 
 const Navbar = () => {
   const location = useLocation();
-  const unreadAlerts = marketAlerts.filter(a => !a.read).length;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
@@ -44,11 +42,6 @@ const Navbar = () => {
               >
                 <Icon className="h-4 w-4" />
                 <span className="hidden md:inline">{label}</span>
-                {label === 'Alerts' && unreadAlerts > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-                    {unreadAlerts}
-                  </span>
-                )}
               </Link>
             );
           })}

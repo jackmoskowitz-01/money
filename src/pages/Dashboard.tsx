@@ -1,20 +1,61 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X } from 'lucide-react';
-import { newsItems, buildings, getCategoryColor } from '@/data/mockData';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send } from 'lucide-react';
+import { newsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import SubmarketTrends from '@/components/SubmarketTrends';
+import EmailDisplay from '@/components/EmailDisplay';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
+
+const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
+
+type ProspectMatch = { tenant: Tenant; building: Building };
+
+const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
+  const matches: ProspectMatch[] = [];
+  const seen = new Set<string>();
+
+  buildings.forEach(building => {
+    building.tenants.forEach(tenant => {
+      if (tenant.isClient) return;
+      if (seen.has(tenant.id)) return;
+
+      // Direct relation
+      const directTenant = news.relatedTenants?.includes(tenant.id);
+      const directBuilding = news.relatedBuildings?.includes(building.id);
+      // Category-based: vacancy news affects tenants in high-vacancy buildings
+      const categoryMatch =
+        (news.category === 'vacancy' && building.vacancyRate > 15) ||
+        (news.category === 'market' && tenant.industry.toLowerCase().includes('legal') && news.title.toLowerCase().includes('law')) ||
+        (news.category === 'market' && tenant.industry.toLowerCase().includes('lobby') && news.title.toLowerCase().includes('lobby')) ||
+        (news.category === 'contraction' && tenant.industry.toLowerCase().includes('consult') && news.title.toLowerCase().includes('consult'));
+
+      if (directTenant || directBuilding || categoryMatch) {
+        seen.add(tenant.id);
+        matches.push({ tenant, building });
+      }
+    });
+  });
+
+  return matches;
+};
 
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [expandedStat, setExpandedStat] = useState<string | null>(null);
+  const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
+  const [selectedProspects, setSelectedProspects] = useState<Record<string, Set<string>>>({});
+  const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
+  const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
+  const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+
   // Personal analytics
   const pipeline = getPipeline();
   const activities = getActivities();
@@ -63,6 +104,116 @@ const Dashboard = () => {
   const filteredNews = activeCategory === 'all'
     ? newsItems
     : newsItems.filter(n => n.category === activeCategory);
+
+  const toggleProspect = (newsId: string, tenantId: string) => {
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      if (current.has(tenantId)) current.delete(tenantId);
+      else current.add(tenantId);
+      return { ...prev, [newsId]: current };
+    });
+  };
+
+  const selectAll = (newsId: string, prospects: ProspectMatch[]) => {
+    setSelectedProspects(prev => ({
+      ...prev,
+      [newsId]: new Set(prospects.map(p => p.tenant.id)),
+    }));
+  };
+
+  const deselectAll = (newsId: string) => {
+    setSelectedProspects(prev => ({ ...prev, [newsId]: new Set() }));
+  };
+
+  const generateEmailForProspect = useCallback(async (
+    tenant: Tenant,
+    building: Building,
+    news: NewsItem,
+    key: string,
+  ) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const clientsInBuilding = building.tenants
+        .filter(t => t.isClient && t.id !== tenant.id)
+        .map(t => t.name);
+
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: tenant.name,
+          buildingName: building.name,
+          contactName: tenant.contactName,
+          contactTitle: tenant.contactTitle,
+          industry: tenant.industry,
+          sqft: tenant.sqft,
+          leaseExpiration: tenant.leaseExpiration,
+          outreachReason: `Market news: ${news.title} — ${news.summary}`,
+          vacancyRate: building.vacancyRate,
+          headcount: tenant.headcount,
+          clientsInBuilding,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[]) => {
+    const selected = selectedProspects[newsId];
+    if (!selected || selected.size === 0) return;
+
+    const toSend = prospects.filter(p => selected.has(p.tenant.id));
+    for (const { tenant, building } of toSend) {
+      const key = `news-${newsId}-${tenant.id}`;
+      generateEmailForProspect(tenant, building, news, key);
+    }
+  }, [selectedProspects, generateEmailForProspect]);
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   return (
     <div className="min-h-screen pt-14">
@@ -287,24 +438,163 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-3">
-              {filteredNews.map((news, i) => (
-                <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                  <Card className="border-border bg-card p-4 transition-colors hover:bg-secondary/30">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="mb-2 flex items-center gap-2">
-                          <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
-                          <span className="text-xs text-muted-foreground">{news.date}</span>
+              {filteredNews.map((news, i) => {
+                const affectedProspects = getAffectedProspects(news);
+                const isExpanded = expandedNewsId === news.id;
+                const selected = selectedProspects[news.id] || new Set();
+                const allSelected = affectedProspects.length > 0 && selected.size === affectedProspects.length;
+
+                return (
+                  <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                    <Card className="border-border bg-card transition-colors hover:bg-secondary/10">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
+                              <span className="text-xs text-muted-foreground">{news.date}</span>
+                            </div>
+                            <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>
+                            <p className="text-xs leading-relaxed text-muted-foreground">{news.summary}</p>
+                            <p className="mt-2 text-xs text-muted-foreground/60">{news.source}</p>
+                          </div>
+                          <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
                         </div>
-                        <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>
-                        <p className="text-xs leading-relaxed text-muted-foreground">{news.summary}</p>
-                        <p className="mt-2 text-xs text-muted-foreground/60">{news.source}</p>
+
+                        {/* Affected Prospects Button */}
+                        {affectedProspects.length > 0 && (
+                          <button
+                            onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
+                            className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                          >
+                            <Users className="h-3.5 w-3.5 text-primary" />
+                            <span className="flex-1 text-xs font-medium text-primary">
+                              {affectedProspects.length} prospect{affectedProspects.length !== 1 ? 's' : ''} affected
+                            </span>
+                            <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+                        )}
                       </div>
-                      <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+
+                      {/* Expanded Prospects Panel */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="border-t border-border px-4 py-3 space-y-2">
+                              {/* Select controls */}
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, affectedProspects)}
+                                    className="text-[10px] text-primary hover:underline"
+                                  >
+                                    {allSelected ? 'Deselect All' : 'Select All'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Prospect List */}
+                              {affectedProspects.map(({ tenant, building }) => {
+                                const emailKey = `news-${news.id}-${tenant.id}`;
+                                const isChecked = selected.has(tenant.id);
+                                const isGenerating = generatingKeys.has(emailKey);
+                                const hasEmail = generatedEmails[emailKey] !== undefined;
+                                const hasClient = building.tenants.some(t => t.isClient && t.id !== tenant.id);
+
+                                return (
+                                  <div key={tenant.id} className="space-y-1">
+                                    <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                                      <Checkbox
+                                        checked={isChecked}
+                                        onCheckedChange={() => toggleProspect(news.id, tenant.id)}
+                                        className="h-4 w-4"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <Link
+                                            to={`/building/${building.id}/tenant/${tenant.id}`}
+                                            className="text-xs font-semibold text-foreground hover:text-primary truncate"
+                                          >
+                                            {tenant.name}
+                                          </Link>
+                                          {hasClient && (
+                                            <Badge variant="outline" className="text-[8px] px-1 py-0 bg-success/10 text-success border-success/30 shrink-0">
+                                              ✓ Client in bldg
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground truncate">
+                                          {building.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
+                                        </p>
+                                      </div>
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => generateEmailForProspect(tenant, building, news, emailKey)}
+                                          className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                                        >
+                                          <Mail className="h-3 w-3" /> Generate
+                                        </button>
+                                      )}
+                                      {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                                      {hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                                          className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                                        >
+                                          <Check className="h-3 w-3" /> View
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Email Display */}
+                                    <AnimatePresence>
+                                      {activeEmailKey === emailKey && hasEmail && (
+                                        <EmailDisplay
+                                          emailKey={emailKey}
+                                          emailContent={generatedEmails[emailKey]}
+                                          isGenerating={isGenerating}
+                                          label={`Email to ${tenant.contactName}`}
+                                          onClose={() => setActiveEmailKey(null)}
+                                          onUpdateEmail={updateEmail}
+                                        />
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })}
+
+                              {/* Send Actions */}
+                              {selected.size > 0 && (
+                                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                                  <Button
+                                    size="sm"
+                                    className="text-xs h-8 flex-1"
+                                    onClick={() => sendToSelected(news.id, news, affectedProspects)}
+                                    disabled={generatingKeys.size > 0}
+                                  >
+                                    {generatingKeys.size > 0 ? (
+                                      <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...</>
+                                    ) : (
+                                      <><Send className="mr-1 h-3 w-3" /> Generate for {selected.size} selected</>
+                                    )}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 

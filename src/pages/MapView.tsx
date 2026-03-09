@@ -81,35 +81,68 @@ const MapView = () => {
 
       {/* Building List Panel */}
       <div className="absolute left-4 top-4 z-[1000] w-80">
-        <Card className="border-border bg-card/95 p-3 backdrop-blur-lg">
-          <h2 className="mb-2 font-display text-sm font-bold">DC Buildings ({buildings.length})</h2>
-          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
-            {buildings.map(b => (
-              <button
-                key={b.id}
-                onClick={() => setSelectedBuilding(b)}
-                className={`w-full rounded-md border p-2.5 text-left transition-all ${
-                  selectedBuilding?.id === b.id
-                    ? 'border-primary/50 bg-primary/10'
-                    : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
-                }`}
+        <Card className="border-border bg-card/95 backdrop-blur-lg">
+          <button
+            onClick={() => setPanelOpen(!panelOpen)}
+            className="flex w-full items-center justify-between p-3"
+          >
+            <h2 className="font-display text-sm font-bold">DC Buildings ({filteredBuildings.length})</h2>
+            {panelOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
+
+          <AnimatePresence>
+            {panelOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
               >
-                <p className="text-sm font-semibold text-foreground">{b.name}</p>
-                <p className="text-[11px] text-muted-foreground">{b.address}</p>
-                <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Users className="h-3 w-3" /> {b.tenants.length} tenants
-                  </span>
-                  <span className={`flex items-center gap-1 ${b.vacancyRate > 20 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    <TrendingUp className="h-3 w-3" /> {b.vacancyRate}% vacant
-                  </span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                    Class {b.class}
-                  </Badge>
+                <div className="px-3 pb-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search buildings..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                    />
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+                <div className="max-h-[55vh] space-y-2 overflow-y-auto px-3 pb-3">
+                  {filteredBuildings.map(b => (
+                    <button
+                      key={b.id}
+                      onClick={() => setSelectedBuilding(b)}
+                      className={`w-full rounded-md border p-2.5 text-left transition-all ${
+                        selectedBuilding?.id === b.id
+                          ? 'border-primary/50 bg-primary/10'
+                          : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{b.address}</p>
+                      <div className="mt-1.5 flex items-center gap-3 text-[11px]">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Users className="h-3 w-3" /> {b.tenants.length} tenants
+                        </span>
+                        <span className={`flex items-center gap-1 ${b.vacancyRate > 20 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          <TrendingUp className="h-3 w-3" /> {b.vacancyRate}% vacant
+                        </span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          Class {b.class}
+                        </Badge>
+                      </div>
+                    </button>
+                  ))}
+                  {filteredBuildings.length === 0 && (
+                    <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Card>
       </div>
 

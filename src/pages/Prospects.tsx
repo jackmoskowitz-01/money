@@ -372,7 +372,14 @@ const Prospects = () => {
                                                 <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
                                                 <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
                                               </div>
-                                              <p className="mt-1 text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
+                                              <div className="mt-1 flex items-center gap-2">
+                                                <p className="text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
+                                                {item.url && (
+                                                  <a href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-0.5 text-[9px] text-primary hover:underline">
+                                                    <ExternalLink className="h-2.5 w-2.5" /> Read Article
+                                                  </a>
+                                                )}
+                                              </div>
                                             </div>
                                           </div>
                                         </button>

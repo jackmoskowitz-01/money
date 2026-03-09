@@ -475,7 +475,7 @@ const Prospects = () => {
                                         onClick={() => copyEmail(key)}
                                         className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
                                       >
-                                        {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                                        {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
                                         {copied ? 'Copied' : 'Copy'}
                                       </button>
                                     )}

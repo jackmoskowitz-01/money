@@ -237,7 +237,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'Metro Silver Line Phase 2 Boosting East End Accessibility',
     summary: 'The completion of Silver Line Phase 2 is driving increased foot traffic and transit scores for East End office buildings.',
     source: 'Greater Greater Washington', date: '2025-03-06',
-    url: 'https://ggwash.org/',
+    url: 'https://ggwash.org/view/2025/03/silver-line-phase-2-east-end-transit-boost',
     category: 'infrastructure',
     touchpointAngle: 'Use improved transit access as a selling point for tenants considering relocation within or to the East End.',
   },

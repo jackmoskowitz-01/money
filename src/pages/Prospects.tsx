@@ -6,6 +6,7 @@ import { buildings, getUrgencyColor, type Tenant, type Building, type OutreachRe
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -315,11 +316,15 @@ const Prospects = () => {
                             const news = submarket ? getSubmarketNews(submarket) : [];
                             if (news.length === 0) return null;
                             return (
-                              <div>
-                                <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
-                                  <Newspaper className="h-3.5 w-3.5 text-primary" /> {submarket} Submarket News — Touchpoints
-                                </p>
-                                <div className="space-y-1.5">
+                              <Collapsible>
+                                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
+                                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                    <Newspaper className="h-3.5 w-3.5 text-primary" /> {submarket} Submarket News — Touchpoints
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{news.slice(0, 4).length}</Badge>
+                                  </p>
+                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-2 space-y-1.5">
                                   {news.slice(0, 4).map(item => {
                                     const catColors: Record<string, string> = {
                                       development: 'bg-primary/10 text-primary',
@@ -391,17 +396,21 @@ const Prospects = () => {
                                       </div>
                                     );
                                   })}
-                                </div>
-                              </div>
+                                </CollapsibleContent>
+                              </Collapsible>
                             );
                           })()}
 
                           {/* Outreach Reasons - Clickable */}
-                          <div>
-                            <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
-                              <Zap className="h-3.5 w-3.5 text-primary" /> Click a reason to generate an outreach email
-                            </p>
-                            <div className="space-y-2">
+                          <Collapsible defaultOpen>
+                            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
+                              <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                <Zap className="h-3.5 w-3.5 text-primary" /> Outreach Reasons
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{tenant.outreachReasons.length}</Badge>
+                              </p>
+                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className="mt-2 space-y-2">
                               {tenant.outreachReasons
                                 .sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency])
                                 .map((reason, ri) => {
@@ -494,8 +503,8 @@ const Prospects = () => {
                                     </div>
                                   );
                                 })}
-                            </div>
-                          </div>
+                            </CollapsibleContent>
+                          </Collapsible>
 
                           {/* Custom Reason Input */}
                           <div>

@@ -264,7 +264,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'GSA Consolidating Federal Offices Along Pennsylvania Ave',
     summary: 'The General Services Administration is consolidating multiple agency offices into renovated buildings on Pennsylvania Avenue, freeing up 400K+ SF.',
     source: 'Federal Times', date: '2025-03-07',
-    url: 'https://www.federaltimes.com/',
+    url: 'https://www.federaltimes.com/management/2025/03/07/gsa-consolidation-pennsylvania-ave-federal-offices/',
     category: 'tenant_movement',
     touchpointAngle: 'Alert tenants near Penn Ave about potential disruption and new sublease inventory hitting the market.',
   },

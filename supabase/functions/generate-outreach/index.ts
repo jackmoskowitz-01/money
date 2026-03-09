@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tenantName, buildingName, contactName, contactTitle, industry, sqft, leaseExpiration, outreachReason, vacancyRate, headcount } = await req.json();
+    const { tenantName, buildingName, contactName, contactTitle, industry, sqft, leaseExpiration, outreachReason, vacancyRate, headcount, clientsInBuilding } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -36,7 +36,7 @@ BUILDING VACANCY: ${vacancyRate}%
 HEADCOUNT: ${headcount}
 
 OUTREACH REASON: ${outreachReason}
-
+${clientsInBuilding?.length ? `\nEXISTING CLIENTS IN THIS BUILDING: ${clientsInBuilding.join(', ')}\nIMPORTANT: Naturally mention that our firm already represents ${clientsInBuilding.join(' and ')} in this building — this establishes credibility and familiarity with the property. Reference it as a relationship advantage, not a hard sell.\n` : ''}
 Write a compelling, personalized email that references the specific reason for reaching out and demonstrates market knowledge. Make it feel like a real broker wrote it, not AI.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

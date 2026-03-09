@@ -60,6 +60,8 @@ const Prospects = () => {
     const all: ProspectEntry[] = [];
     buildings.forEach(building => {
       building.tenants.forEach(tenant => {
+        // Skip clients — they're already ours
+        if (tenant.isClient) return;
         const pipelineEntry = pipeline.find(p => p.tenantId === tenant.id);
         if (!pipelineEntry || !['won', 'lost'].includes(pipelineEntry.stage)) {
           all.push({ tenant, building, pipelineStage: pipelineEntry?.stage });
@@ -117,6 +119,9 @@ const Prospects = () => {
           outreachReason: `${reason.title}: ${reason.description}`,
           vacancyRate: building.vacancyRate,
           headcount: tenant.headcount,
+          clientsInBuilding: building.tenants
+            .filter(t => t.isClient && t.id !== tenant.id)
+            .map(t => t.name),
         }),
       });
 
@@ -237,6 +242,7 @@ const Prospects = () => {
             const isExpanded = expandedId === tenant.id;
             const highCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
             const medCount = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
+            const clientsInBuilding = building.tenants.filter(t => t.isClient);
 
             return (
               <motion.div
@@ -261,6 +267,11 @@ const Prospects = () => {
                         {medCount > 0 && (
                           <Badge variant="outline" className="bg-primary/20 text-primary text-[10px] shrink-0">
                             {medCount} medium
+                          </Badge>
+                        )}
+                        {clientsInBuilding.length > 0 && (
+                          <Badge variant="outline" className="bg-success/20 text-success text-[10px] shrink-0">
+                            ✓ Client in building
                           </Badge>
                         )}
                       </div>

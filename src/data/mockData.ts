@@ -26,6 +26,7 @@ export type Tenant = {
   contactEmail: string;
   headcount: number;
   outreachReasons: OutreachReason[];
+  isClient?: boolean;
 };
 
 export type OutreachReason = {
@@ -213,6 +214,54 @@ export const buildings: Building[] = [
           { type: 'lease_expiration', title: 'Year-End Lease Expiration', description: 'Squire PB lease expires Dec 2025. With 31% vacancy in the building, they have strong motivation to relocate.', urgency: 'high' },
           { type: 'vacancy', title: 'Critical Building Vacancy', description: '31% vacancy rate is well above market average. Building quality and services may be declining.', urgency: 'high' },
           { type: 'contraction', title: 'Lobbying Firm Downsizing', description: 'K Street firms are reducing physical footprints as remote lobbying becomes more accepted.', urgency: 'medium' },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'b6',
+    name: '1000 Vermont Avenue',
+    address: '1000 Vermont Ave NW, Washington, DC 20005',
+    lat: 38.9025,
+    lng: -77.0335,
+    sqft: 210000,
+    floors: 11,
+    yearBuilt: 1972,
+    vacancyRate: 18.5,
+    owner: 'Columbia Property Trust',
+    class: 'B',
+    tenants: [
+      {
+        id: 't10', name: 'American Academy of Nursing', industry: 'Healthcare/Nonprofit', sqft: 12000, floor: '6',
+        leaseExpiration: '2027-08-31', contactName: 'Christine Henshaw', contactTitle: 'Executive Director',
+        contactEmail: 'c.henshaw@aannet.org', headcount: 45,
+        isClient: true,
+        outreachReasons: [],
+      },
+      {
+        id: 't11', name: 'National Association of Counties', industry: 'Nonprofit/Government', sqft: 35000, floor: '3-4',
+        leaseExpiration: '2026-04-30', contactName: 'Mark Peterson', contactTitle: 'COO',
+        contactEmail: 'm.peterson@naco.org', headcount: 120,
+        outreachReasons: [
+          { type: 'lease_expiration', title: 'Lease Expiring Spring 2026', description: 'NACo\'s 35K SF lease expires April 2026. With 18.5% vacancy in the building, they may seek better terms or relocate.', urgency: 'high' },
+          { type: 'vacancy', title: 'High Building Vacancy', description: '18.5% vacancy may be impacting building services and amenities, creating relocation motivation.', urgency: 'medium' },
+        ],
+      },
+      {
+        id: 't12', name: 'Center for American Progress', industry: 'Think Tank/Nonprofit', sqft: 28000, floor: '7-8',
+        leaseExpiration: '2025-11-30', contactName: 'Danielle Rosen', contactTitle: 'Director of Operations',
+        contactEmail: 'd.rosen@americanprogress.org', headcount: 95,
+        outreachReasons: [
+          { type: 'lease_expiration', title: 'Lease Expiring Nov 2025', description: 'CAP\'s lease expires in under 9 months. As a high-profile think tank, they will want modern, collaborative space.', urgency: 'high' },
+          { type: 'contraction', title: 'Post-Election Staffing Shifts', description: 'Think tanks often resize after administration changes. CAP may be adjusting headcount and space needs.', urgency: 'medium' },
+        ],
+      },
+      {
+        id: 't13', name: 'International Association of Fire Chiefs', industry: 'Nonprofit/Association', sqft: 18000, floor: '9',
+        leaseExpiration: '2026-12-31', contactName: 'Brian Kemp', contactTitle: 'Office Manager',
+        contactEmail: 'b.kemp@iafc.org', headcount: 55,
+        outreachReasons: [
+          { type: 'vacancy', title: 'Building Quality Concerns', description: 'With aging Class B infrastructure and rising vacancy, IAFC may consider upgrading to a better-maintained property.', urgency: 'low' },
         ],
       },
     ],

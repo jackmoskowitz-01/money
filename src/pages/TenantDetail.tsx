@@ -208,40 +208,18 @@ const TenantDetail = () => {
     })
   );
 
-  const renderEmailDisplay = (key: string, isGenerating: boolean) => {
+  const renderEmailDisplay = (key: string, isGenerating: boolean, label = 'Generated Email') => {
     const emailContent = generatedEmails[key];
     if (emailContent === undefined || activeEmailKey !== key) return null;
     return (
-      <motion.div
-        initial={{ height: 0, opacity: 0 }}
-        animate={{ height: 'auto', opacity: 1 }}
-        exit={{ height: 0, opacity: 0 }}
-        transition={{ duration: 0.15 }}
-        className="overflow-hidden"
-      >
-        <div className="mt-1 rounded-md border border-primary/20 bg-card p-3">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
-              <Mail className="h-3 w-3" /> Generated Email
-              {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
-            </p>
-            <div className="flex items-center gap-1">
-              {!isGenerating && emailContent && (
-                <button onClick={(e) => { e.stopPropagation(); copyEmail(key); }} className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary">
-                  {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-                  {copied ? 'Copied' : 'Copy'}
-                </button>
-              )}
-              <button onClick={(e) => { e.stopPropagation(); setActiveEmailKey(null); }} className="rounded p-0.5 text-muted-foreground hover:bg-secondary">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
-          </div>
-          <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-            {emailContent || (isGenerating ? 'Generating...' : '')}
-          </div>
-        </div>
-      </motion.div>
+      <EmailDisplay
+        emailKey={key}
+        emailContent={emailContent}
+        isGenerating={isGenerating}
+        label={label}
+        onClose={() => setActiveEmailKey(null)}
+        onUpdateEmail={updateEmail}
+      />
     );
   };
 

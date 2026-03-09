@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-const stages: PipelineStage[] = ['not_contacted', 'contacted', 'meeting_set', 'proposal_sent', 'won', 'lost'];
+const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
 const Pipeline = () => {
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);

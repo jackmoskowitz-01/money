@@ -14,7 +14,6 @@ const navItems = [
 
 const Navbar = () => {
   const location = useLocation();
-  const unreadAlerts = marketAlerts.filter(a => !a.read).length;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">

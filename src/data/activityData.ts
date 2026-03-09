@@ -255,7 +255,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'DC Council Approves Downtown Tax Incentive Zone',
     summary: 'The DC Council has approved a 10-year tax abatement program for new and relocating office tenants in the East End and CBD, effective July 2025.',
     source: 'Washington Post', date: '2025-02-28',
-    url: 'https://www.washingtonpost.com/',
+    url: 'https://www.washingtonpost.com/dc-md-va/2025/02/28/dc-council-downtown-tax-incentive-office-tenants/',
     category: 'policy',
     touchpointAngle: 'Lead with cost savings — tenants who move now can lock in significant tax benefits under the new incentive program.',
   },

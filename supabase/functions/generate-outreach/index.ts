@@ -36,7 +36,7 @@ BUILDING VACANCY: ${vacancyRate}%
 HEADCOUNT: ${headcount}
 
 OUTREACH REASON: ${outreachReason}
-
+${clientsInBuilding?.length ? `\nEXISTING CLIENTS IN THIS BUILDING: ${clientsInBuilding.join(', ')}\nIMPORTANT: Naturally mention that our firm already represents ${clientsInBuilding.join(' and ')} in this building — this establishes credibility and familiarity with the property. Reference it as a relationship advantage, not a hard sell.\n` : ''}
 Write a compelling, personalized email that references the specific reason for reaching out and demonstrates market knowledge. Make it feel like a real broker wrote it, not AI.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

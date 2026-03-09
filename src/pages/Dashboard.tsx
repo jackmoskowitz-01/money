@@ -31,10 +31,10 @@ const Dashboard = () => {
     const pendingTasks = tasks.filter(t => !t.completed).length;
 
     return [
-      { label: 'Active Prospects', value: String(active), icon: Target, trend: `${pipeline.filter(p => p.stage === 'contacted').length} contacted` },
+      { label: 'Active Prospects', value: String(active), icon: Target, trend: `${pipeline.filter(p => p.stage === 'contacted').length} contacted`, link: '/prospects' },
       { label: 'Deals Won', value: String(won), icon: CheckCircle2, trend: `${pipeline.filter(p => p.stage === 'proposal_sent').length} proposals out` },
       { label: 'Activities (7d)', value: String(activitiesThisWeek), icon: Zap, trend: `${activities.filter(a => a.type === 'email_sent').length} emails total` },
-      { label: 'Pending Tasks', value: String(pendingTasks), icon: BarChart3, trend: `${tasks.filter(t => !t.completed && t.dueDate < new Date().toISOString().split('T')[0]).length} overdue` },
+      { label: 'Pending Tasks', value: String(pendingTasks), icon: BarChart3, trend: `${tasks.filter(t => !t.completed && t.dueDate < new Date().toISOString().split('T')[0]).length} overdue`, link: '/tasks' },
     ];
   }, [pipeline, activities, tasks]);
 
@@ -77,9 +77,9 @@ const Dashboard = () => {
 
         {/* Personal Stats */}
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats.map((stat, i) => (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-              <Card className="border-border bg-card p-4">
+          {stats.map((stat, i) => {
+            const inner = (
+              <Card className={`border-border bg-card p-4 transition-colors ${stat.link ? 'hover:border-primary/30 hover:bg-secondary/30 cursor-pointer' : ''}`}>
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                     <stat.icon className="h-5 w-5 text-primary" />
@@ -91,8 +91,13 @@ const Dashboard = () => {
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{stat.trend}</p>
               </Card>
-            </motion.div>
-          ))}
+            );
+            return (
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                {stat.link ? <Link to={stat.link}>{inner}</Link> : inner}
+              </motion.div>
+            );
+          })}
         </div>
 
         {/* Pipeline Breakdown + Submarket Trends */}

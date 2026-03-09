@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send } from 'lucide-react';
 import { buildings, getUrgencyColor, type Tenant, type Building, type OutreachReason } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
 import { Badge } from '@/components/ui/badge';
@@ -46,6 +46,9 @@ const Prospects = () => {
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // Custom reason input per tenant
+  const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
+  const [customReasonText, setCustomReasonText] = useState('');
 
   const pipeline = getPipeline();
 
@@ -162,6 +165,23 @@ const Prospects = () => {
     toast.success('Email copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const generateCustomEmail = useCallback((tenant: Tenant, building: Building) => {
+    if (!customReasonText.trim()) {
+      toast.error('Please enter a reason to reach out');
+      return;
+    }
+    const customReason: OutreachReason = {
+      type: 'market_news',
+      urgency: 'medium',
+      title: 'Custom Outreach',
+      description: customReasonText.trim(),
+    };
+    const key = `${tenant.id}-custom-${Date.now()}`;
+    generateEmail(tenant, building, customReason, key);
+    setCustomReasonText('');
+    setCustomReasonOpen(null);
+  }, [customReasonText, generateEmail]);
 
   return (
     <div className="min-h-screen pt-14">
@@ -383,7 +403,54 @@ const Prospects = () => {
                             </div>
                           </div>
 
-                          {/* Actions */}
+                          {/* Custom Reason Input */}
+                          <div>
+                            {customReasonOpen === tenant.id ? (
+                              <motion.div
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2"
+                              >
+                                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                  <Plus className="h-3.5 w-3.5 text-primary" /> Custom Outreach Reason
+                                </p>
+                                <textarea
+                                  value={customReasonText}
+                                  onChange={e => setCustomReasonText(e.target.value)}
+                                  placeholder="Type your reason to reach out to this tenant..."
+                                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                  rows={3}
+                                  autoFocus
+                                />
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    className="text-xs h-7"
+                                    disabled={!customReasonText.trim() || !!generatingKey}
+                                    onClick={() => generateCustomEmail(tenant, building)}
+                                  >
+                                    <Send className="mr-1 h-3 w-3" /> Generate Email
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-xs h-7"
+                                    onClick={() => { setCustomReasonOpen(null); setCustomReasonText(''); }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </motion.div>
+                            ) : (
+                              <button
+                                onClick={() => setCustomReasonOpen(tenant.id)}
+                                className="w-full rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+                              >
+                                <Plus className="h-3.5 w-3.5" /> Insert Custom Reason
+                              </button>
+                            )}
+                          </div>
+
                           <div className="flex items-center gap-2 pt-1">
                             <Link to={`/building/${building.id}/tenant/${tenant.id}`}>
                               <Button size="sm" className="text-xs h-8">View Full Profile →</Button>

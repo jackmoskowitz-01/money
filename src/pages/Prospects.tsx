@@ -49,6 +49,8 @@ const Prospects = () => {
   // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');
+  // Track custom email keys per tenant
+  const [customEmailKeys, setCustomEmailKeys] = useState<Record<string, string[]>>({});
 
   const pipeline = getPipeline();
 

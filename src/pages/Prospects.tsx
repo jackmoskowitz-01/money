@@ -166,6 +166,23 @@ const Prospects = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const generateCustomEmail = useCallback((tenant: Tenant, building: Building) => {
+    if (!customReasonText.trim()) {
+      toast.error('Please enter a reason to reach out');
+      return;
+    }
+    const customReason: OutreachReason = {
+      type: 'market_news',
+      urgency: 'medium',
+      title: 'Custom Outreach',
+      description: customReasonText.trim(),
+    };
+    const key = `${tenant.id}-custom-${Date.now()}`;
+    generateEmail(tenant, building, customReason, key);
+    setCustomReasonText('');
+    setCustomReasonOpen(null);
+  }, [customReasonText, generateEmail]);
+
   return (
     <div className="min-h-screen pt-14">
       <div className="mx-auto max-w-4xl px-4 py-8">

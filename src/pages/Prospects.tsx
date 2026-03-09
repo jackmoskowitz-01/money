@@ -309,6 +309,53 @@ const Prospects = () => {
                             </div>
                           </div>
 
+                          {/* Submarket News Touchpoints */}
+                          {(() => {
+                            const submarket = buildingSubmarkets[building.id];
+                            const news = submarket ? getSubmarketNews(submarket) : [];
+                            if (news.length === 0) return null;
+                            return (
+                              <div>
+                                <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">
+                                  <Newspaper className="h-3.5 w-3.5 text-primary" /> {submarket} Submarket News — Touchpoints
+                                </p>
+                                <div className="space-y-1.5">
+                                  {news.slice(0, 4).map(item => {
+                                    const catColors: Record<string, string> = {
+                                      development: 'bg-primary/10 text-primary',
+                                      infrastructure: 'bg-info/10 text-info',
+                                      policy: 'bg-warning/10 text-warning',
+                                      tenant_movement: 'bg-destructive/10 text-destructive',
+                                      investment: 'bg-success/10 text-success',
+                                      amenity: 'bg-accent/10 text-accent-foreground',
+                                    };
+                                    return (
+                                      <div key={item.id} className="rounded-md border border-border bg-secondary/20 p-2.5">
+                                        <div className="flex items-start gap-2">
+                                          <Newspaper className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 mb-0.5">
+                                              <p className="text-[11px] font-semibold text-foreground truncate">{item.title}</p>
+                                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${catColors[item.category] || ''}`}>
+                                                {item.category.replace('_', ' ')}
+                                              </Badge>
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground leading-relaxed">{item.summary}</p>
+                                            <div className="mt-1.5 flex items-start gap-1.5">
+                                              <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                                              <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
+                                            </div>
+                                            <p className="mt-1 text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
                           {/* Outreach Reasons - Clickable */}
                           <div>
                             <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1">

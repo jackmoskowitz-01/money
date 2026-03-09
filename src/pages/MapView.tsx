@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import StackingPlan from '@/components/StackingPlan';
 import { X, Users, TrendingUp } from 'lucide-react';
 import { buildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
@@ -149,8 +150,13 @@ const MapView = () => {
                 </div>
               )}
 
+              {/* Stacking Plan */}
+              <div className="mb-4">
+                <StackingPlan building={selectedBuilding} />
+              </div>
+
               <h4 className="mb-2 text-sm font-semibold">Tenant List</h4>
-              <div className="max-h-[40vh] space-y-2 overflow-y-auto">
+              <div className="max-h-[30vh] space-y-2 overflow-y-auto">
                 {selectedBuilding.tenants.map(tenant => {
                   const urgentCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
                   return (

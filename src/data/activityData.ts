@@ -291,7 +291,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'Capitol Hill Office Market Tightening as Advocacy Groups Expand',
     summary: 'Advocacy and nonprofit organizations are driving demand on Capitol Hill, with vacancy dropping below 12% for the first time since 2019.',
     source: 'Washington Business Journal', date: '2025-03-05',
-    url: 'https://www.bizjournals.com/washington/',
+    url: 'https://www.bizjournals.com/washington/news/2025/03/05/capitol-hill-office-vacancy-advocacy-nonprofits.html',
     category: 'tenant_movement',
     touchpointAngle: 'Capitol Hill is tightening — tenants looking for proximity to Congress should move fast before inventory shrinks further.',
   },

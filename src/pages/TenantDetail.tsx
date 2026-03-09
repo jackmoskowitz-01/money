@@ -532,35 +532,22 @@ const TenantDetail = () => {
                 const emailContent = generatedEmails[key];
                 if (emailContent === undefined && !isGenerating) return null;
                 return (
-                  <div key={key} className="rounded-md border border-primary/20 bg-card p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
-                        <Mail className="h-3 w-3" /> Custom Email
-                        {isGenerating && <Loader2 className="h-3 w-3 animate-spin" />}
-                      </p>
-                      <div className="flex items-center gap-1">
-                        {!isGenerating && emailContent && (
-                          <button onClick={() => copyEmail(key)} className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary">
-                            {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
-                            {copied ? 'Copied' : 'Copy'}
-                          </button>
-                        )}
-                        {!isGenerating && (
-                          <button
-                            onClick={() => {
-                              setCustomEmailKeys(prev => prev.filter(k => k !== key));
-                              setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
-                            }}
-                            className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-                      {emailContent || (isGenerating ? 'Generating...' : '')}
-                    </div>
+                  <div key={key}>
+                    <EmailDisplay
+                      emailKey={key}
+                      emailContent={emailContent || ''}
+                      isGenerating={isGenerating}
+                      label="Custom Email"
+                      onClose={() => {
+                        setCustomEmailKeys(prev => prev.filter(k => k !== key));
+                        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                      }}
+                      onDismiss={() => {
+                        setCustomEmailKeys(prev => prev.filter(k => k !== key));
+                        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                      }}
+                      onUpdateEmail={updateEmail}
+                    />
                   </div>
                 );
               })}

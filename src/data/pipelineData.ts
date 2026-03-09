@@ -47,7 +47,7 @@ export const getOrCreatePipelineItem = (tenantId: string, buildingId: string): P
   const item: PipelineItem = {
     tenantId,
     buildingId,
-    stage: 'not_contacted',
+    stage: 'meeting_set',
     notes: [],
     lastActivity: new Date().toISOString(),
   };

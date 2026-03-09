@@ -398,21 +398,14 @@ const Prospects = () => {
                                           </div>
                                         </button>
                                         {hasNewsEmail && activeEmailKey === newsKey && (
-                                          <div className="ml-5 rounded-md border border-primary/20 bg-primary/5 p-3">
-                                            <div className="flex items-center justify-between mb-2">
-                                              <span className="text-[10px] font-medium text-primary">Generated Email</span>
-                                              <div className="flex items-center gap-1">
-                                                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => copyEmail(newsKey)}>
-                                                  {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />} Copy
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}>
-                                                  <X className="h-3 w-3" />
-                                                </Button>
-                                              </div>
-                                            </div>
-                                            <pre className="whitespace-pre-wrap text-[11px] text-foreground leading-relaxed font-sans">{generatedEmails[newsKey]}</pre>
-                                            {isGeneratingNews && <Loader2 className="mt-2 h-3 w-3 animate-spin text-primary" />}
-                                          </div>
+                                          <EmailDisplay
+                                            emailKey={newsKey}
+                                            emailContent={generatedEmails[newsKey] || ''}
+                                            isGenerating={isGeneratingNews}
+                                            onClose={() => setActiveEmailKey(null)}
+                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
+                                            onUpdateEmail={updateEmail}
+                                          />
                                         )}
                                       </div>
                                     );

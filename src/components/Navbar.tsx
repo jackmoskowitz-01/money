@@ -7,8 +7,6 @@ const navItems = [
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/activities', label: 'Activities', icon: ClipboardList },
-  { path: '/comps', label: 'Comps', icon: BarChart3 },
-  
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 

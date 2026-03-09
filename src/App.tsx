@@ -11,6 +11,7 @@ import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
 import CompTracker from "./pages/CompTracker";
 import Alerts from "./pages/Alerts";
+import Tasks from "./pages/Tasks";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/comps" element={<CompTracker />} />
           <Route path="/alerts" element={<Alerts />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

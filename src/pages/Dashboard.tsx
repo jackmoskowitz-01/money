@@ -438,24 +438,163 @@ const Dashboard = () => {
             </div>
 
             <div className="space-y-3">
-              {filteredNews.map((news, i) => (
-                <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                  <Card className="border-border bg-card p-4 transition-colors hover:bg-secondary/30">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="mb-2 flex items-center gap-2">
-                          <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
-                          <span className="text-xs text-muted-foreground">{news.date}</span>
+              {filteredNews.map((news, i) => {
+                const affectedProspects = getAffectedProspects(news);
+                const isExpanded = expandedNewsId === news.id;
+                const selected = selectedProspects[news.id] || new Set();
+                const allSelected = affectedProspects.length > 0 && selected.size === affectedProspects.length;
+
+                return (
+                  <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                    <Card className="border-border bg-card transition-colors hover:bg-secondary/10">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
+                              <span className="text-xs text-muted-foreground">{news.date}</span>
+                            </div>
+                            <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>
+                            <p className="text-xs leading-relaxed text-muted-foreground">{news.summary}</p>
+                            <p className="mt-2 text-xs text-muted-foreground/60">{news.source}</p>
+                          </div>
+                          <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
                         </div>
-                        <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>
-                        <p className="text-xs leading-relaxed text-muted-foreground">{news.summary}</p>
-                        <p className="mt-2 text-xs text-muted-foreground/60">{news.source}</p>
+
+                        {/* Affected Prospects Button */}
+                        {affectedProspects.length > 0 && (
+                          <button
+                            onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
+                            className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                          >
+                            <Users className="h-3.5 w-3.5 text-primary" />
+                            <span className="flex-1 text-xs font-medium text-primary">
+                              {affectedProspects.length} prospect{affectedProspects.length !== 1 ? 's' : ''} affected
+                            </span>
+                            <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
+                        )}
                       </div>
-                      <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+
+                      {/* Expanded Prospects Panel */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="border-t border-border px-4 py-3 space-y-2">
+                              {/* Select controls */}
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, affectedProspects)}
+                                    className="text-[10px] text-primary hover:underline"
+                                  >
+                                    {allSelected ? 'Deselect All' : 'Select All'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Prospect List */}
+                              {affectedProspects.map(({ tenant, building }) => {
+                                const emailKey = `news-${news.id}-${tenant.id}`;
+                                const isChecked = selected.has(tenant.id);
+                                const isGenerating = generatingKeys.has(emailKey);
+                                const hasEmail = generatedEmails[emailKey] !== undefined;
+                                const hasClient = building.tenants.some(t => t.isClient && t.id !== tenant.id);
+
+                                return (
+                                  <div key={tenant.id} className="space-y-1">
+                                    <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                                      <Checkbox
+                                        checked={isChecked}
+                                        onCheckedChange={() => toggleProspect(news.id, tenant.id)}
+                                        className="h-4 w-4"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <Link
+                                            to={`/building/${building.id}/tenant/${tenant.id}`}
+                                            className="text-xs font-semibold text-foreground hover:text-primary truncate"
+                                          >
+                                            {tenant.name}
+                                          </Link>
+                                          {hasClient && (
+                                            <Badge variant="outline" className="text-[8px] px-1 py-0 bg-success/10 text-success border-success/30 shrink-0">
+                                              ✓ Client in bldg
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground truncate">
+                                          {building.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
+                                        </p>
+                                      </div>
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => generateEmailForProspect(tenant, building, news, emailKey)}
+                                          className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                                        >
+                                          <Mail className="h-3 w-3" /> Generate
+                                        </button>
+                                      )}
+                                      {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                                      {hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                                          className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                                        >
+                                          <Check className="h-3 w-3" /> View
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Email Display */}
+                                    <AnimatePresence>
+                                      {activeEmailKey === emailKey && hasEmail && (
+                                        <EmailDisplay
+                                          emailKey={emailKey}
+                                          emailContent={generatedEmails[emailKey]}
+                                          isGenerating={isGenerating}
+                                          label={`Email to ${tenant.contactName}`}
+                                          onClose={() => setActiveEmailKey(null)}
+                                          onUpdateEmail={updateEmail}
+                                        />
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })}
+
+                              {/* Send Actions */}
+                              {selected.size > 0 && (
+                                <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                                  <Button
+                                    size="sm"
+                                    className="text-xs h-8 flex-1"
+                                    onClick={() => sendToSelected(news.id, news, affectedProspects)}
+                                    disabled={generatingKeys.size > 0}
+                                  >
+                                    {generatingKeys.size > 0 ? (
+                                      <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...</>
+                                    ) : (
+                                      <><Send className="mr-1 h-3 w-3" /> Generate for {selected.size} selected</>
+                                    )}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </div>
 

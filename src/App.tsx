@@ -13,6 +13,7 @@ import CompTracker from "./pages/CompTracker";
 import Alerts from "./pages/Alerts";
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
+import ActivityLogger from "./pages/ActivityLogger";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

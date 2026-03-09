@@ -111,7 +111,7 @@ const MapView = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="absolute right-4 top-4 z-[1000] w-96"
           >
-            <Card className="border-border bg-card/95 p-4 backdrop-blur-lg">
+            <Card className="border-border bg-card/95 p-4 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
               <div className="mb-3 flex items-start justify-between">
                 <div>
                   <h3 className="font-display text-lg font-bold">{selectedBuilding.name}</h3>

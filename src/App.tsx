@@ -35,6 +35,7 @@ const App = () => (
           <Route path="/alerts" element={<Alerts />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/prospects" element={<Prospects />} />
+          <Route path="/activities" element={<ActivityLogger />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

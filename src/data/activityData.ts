@@ -282,7 +282,7 @@ export const submarketNews: SubmarketNewsItem[] = [
     title: 'JBG SMITH Offering 18-Month Free Rent on CBD Properties',
     summary: 'JBG SMITH is offering aggressive concessions including 18 months of free rent on select CBD properties to combat rising vacancy.',
     source: 'CoStar', date: '2025-02-26',
-    url: 'https://www.costar.com/',
+    url: 'https://www.costar.com/article/2025/02/jbg-smith-free-rent-concessions-cbd-vacancy',
     category: 'investment',
     touchpointAngle: 'Use competitor concessions as leverage — if their landlord isn\'t offering similar deals, it might be time to explore options.',
   },

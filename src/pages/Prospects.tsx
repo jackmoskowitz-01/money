@@ -269,6 +269,11 @@ const Prospects = () => {
                             {medCount} medium
                           </Badge>
                         )}
+                        {clientsInBuilding.length > 0 && (
+                          <Badge variant="outline" className="bg-success/20 text-success text-[10px] shrink-0">
+                            ✓ Client in building
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><Building2 className="h-3 w-3" /> {building.name}</span>

@@ -17,6 +17,8 @@ import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 import EmailComposer from '@/components/EmailComposer';
 import CompanyContacts from '@/components/CompanyContacts';
+import ResearchBrief from '@/components/ResearchBrief';
+import SequenceBuilder from '@/components/SequenceBuilder';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
@@ -626,6 +628,25 @@ const TenantDetail = () => {
 
             {/* Sidebar */}
             <div className="space-y-4">
+              <ResearchBrief
+                tenantName={tenant.name}
+                industry={tenant.industry}
+                sqft={tenant.sqft}
+                buildingName={building.name}
+                leaseExpiration={tenant.leaseExpiration}
+                headcount={tenant.headcount}
+                contactName={tenant.contactName}
+                contactTitle={tenant.contactTitle}
+              />
+              <SequenceBuilder
+                tenantName={tenant.name}
+                contactName={tenant.contactName}
+                industry={tenant.industry}
+                sqft={tenant.sqft}
+                buildingName={building.name}
+                leaseExpiration={tenant.leaseExpiration}
+                contactEmail={tenant.contactEmail}
+              />
               <TenantEnrichmentCard
                 tenantId={tenantId!}
                 tenantName={tenant.name}

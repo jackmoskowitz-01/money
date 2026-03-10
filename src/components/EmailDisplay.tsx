@@ -1,11 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown } from 'lucide-react';
+import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown, FlipHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 const SMART_DRAFT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-drafting`;
+const SMART_OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-outreach`;
 
 const tones = [
   { id: 'formal', label: 'Formal', icon: '🏛️', desc: 'Polished & professional' },
@@ -53,6 +54,9 @@ const EmailDisplay = ({
   const [subjectLines, setSubjectLines] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [abVariant, setAbVariant] = useState('');
+  const [isGeneratingAB, setIsGeneratingAB] = useState(false);
+  const [showABVariant, setShowABVariant] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const copyEmail = () => {
@@ -225,7 +229,71 @@ const EmailDisplay = ({
     toast.success('Subject line selected');
   };
 
-  const actionButtonsDisabled = isGenerating || isRefining || isRewritingTone;
+  const generateABVariant = useCallback(async () => {
+    if (isGeneratingAB || !emailContent) return;
+    setIsGeneratingAB(true);
+    setShowABVariant(true);
+    setAbVariant('');
+
+    try {
+      const resp = await fetch(SMART_OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'ab_variant',
+          currentEmail: emailContent,
+          tenantName,
+          industry,
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        toast.error(err.error || 'Failed to generate variant');
+        setShowABVariant(false);
+        setIsGeneratingAB(false);
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '', full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; setAbVariant(full); }
+          } catch { /* partial */ }
+        }
+      }
+      toast.success('A/B variant generated');
+    } catch { toast.error('Failed to generate variant'); setShowABVariant(false); }
+    setIsGeneratingAB(false);
+  }, [isGeneratingAB, emailContent, tenantName, industry]);
+
+  const useVariant = () => {
+    onUpdateEmail(emailKey, abVariant);
+    setShowABVariant(false);
+    setAbVariant('');
+    toast.success('Switched to variant B');
+  };
+
+  const actionButtonsDisabled = isGenerating || isRefining || isRewritingTone || isGeneratingAB;
 
   return (
     <motion.div
@@ -294,6 +362,17 @@ const EmailDisplay = ({
                 >
                   {isLoadingSubjects ? <Loader2 className="h-3 w-3 animate-spin" /> : <Hash className="h-3 w-3" />}
                   Subject
+                </button>
+
+                {/* A/B Variant */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); generateABVariant(); }}
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-colors ${showABVariant ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                  title="Generate A/B variant"
+                  disabled={isGeneratingAB}
+                >
+                  {isGeneratingAB ? <Loader2 className="h-3 w-3 animate-spin" /> : <FlipHorizontal className="h-3 w-3" />}
+                  A/B
                 </button>
 
                 <button
@@ -411,6 +490,51 @@ const EmailDisplay = ({
                         {subj}
                       </button>
                     ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* A/B Variant Panel */}
+        <AnimatePresence>
+          {showABVariant && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-2"
+            >
+              <div className="rounded-md border border-border bg-secondary/20 p-2.5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-foreground flex items-center gap-1">
+                    <FlipHorizontal className="h-3 w-3 text-primary" /> A/B Variant
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {abVariant && !isGeneratingAB && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); useVariant(); }}
+                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
+                      >
+                        Use This Version
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowABVariant(false); }}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                </div>
+                {isGeneratingAB ? (
+                  <div className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {abVariant || 'Generating alternative version...'}
+                  </div>
+                ) : (
+                  <div className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {abVariant}
                   </div>
                 )}
               </div>

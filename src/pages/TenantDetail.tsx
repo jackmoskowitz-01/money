@@ -576,6 +576,7 @@ const TenantDetail = () => {
                       contactName={tenant.contactName}
                       contactEmail={tenant.contactEmail}
                       subject={`${tenant.name} — Custom Outreach`}
+                      recipients={recipients}
                       onClose={() => {
                         setCustomEmailKeys(prev => prev.filter(k => k !== key));
                         setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });

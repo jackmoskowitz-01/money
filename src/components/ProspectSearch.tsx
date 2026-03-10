@@ -1,12 +1,21 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Building2, User, X, Plus, Globe, MapPin, ArrowLeft } from 'lucide-react';
+import { Search, Building2, User, X, Plus, Globe, MapPin, ArrowLeft, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { buildings } from '@/data/mockData';
 import { getCustomProspects, addCustomProspect, type CustomProspect } from '@/data/customProspects';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+
+const AUTOCOMPLETE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/places-autocomplete`;
+
+type PlacePrediction = {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+};
 
 type SearchResult = {
   tenantId: string;
@@ -50,6 +59,51 @@ const ProspectSearch = () => {
   const [newName, setNewName] = useState('');
   const [newWebsite, setNewWebsite] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<PlacePrediction[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchAddressSuggestions = useCallback(async (input: string) => {
+    if (input.length < 2) {
+      setAddressSuggestions([]);
+      return;
+    }
+    setAddressLoading(true);
+    try {
+      const resp = await fetch(AUTOCOMPLETE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ query: input }),
+      });
+      const data = await resp.json();
+      setAddressSuggestions(data.predictions || []);
+      setShowSuggestions(true);
+    } catch {
+      setAddressSuggestions([]);
+    }
+    setAddressLoading(false);
+  }, []);
+
+  const handleAddressChange = (val: string) => {
+    setNewAddress(val);
+    setShowSuggestions(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchAddressSuggestions(val), 300);
+  };
+
+  const selectSuggestion = (prediction: PlacePrediction) => {
+    setNewAddress(prediction.description);
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    // Auto-fill name if empty
+    if (!newName.trim() && prediction.mainText) {
+      setNewName(prediction.mainText);
+    }
+  };
 
   const allResults = useMemo<SearchResult[]>(() => {
     const customResults: SearchResult[] = customProspects.map(cp => ({
@@ -113,6 +167,8 @@ const ProspectSearch = () => {
     setNewName('');
     setNewWebsite('');
     setNewAddress('');
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const selectResult = (result: SearchResult) => {
@@ -316,7 +372,7 @@ const ProspectSearch = () => {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="relative">
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Address <span className="text-destructive">*</span>
                         </label>
@@ -325,12 +381,32 @@ const ProspectSearch = () => {
                           <input
                             type="text"
                             value={newAddress}
-                            onChange={e => setNewAddress(e.target.value)}
-                            placeholder="e.g. 1600 Pennsylvania Ave NW, Washington, DC"
+                            onChange={e => handleAddressChange(e.target.value)}
+                            onFocus={() => { if (addressSuggestions.length > 0) setShowSuggestions(true); }}
+                            placeholder="Start typing a company or address..."
                             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                             maxLength={255}
                           />
+                          {addressLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
                         </div>
+                        {/* Autocomplete dropdown */}
+                        {showSuggestions && addressSuggestions.length > 0 && (
+                          <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-border bg-card shadow-lg overflow-hidden">
+                            {addressSuggestions.map(p => (
+                              <button
+                                key={p.placeId}
+                                onClick={() => selectSuggestion(p)}
+                                className="w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-secondary/70 transition-colors"
+                              >
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{p.mainText}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{p.secondaryText}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

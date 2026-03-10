@@ -13,7 +13,7 @@ import {
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
 
-const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] = [
+const typeOptions: { value: ActivityType; label: string; icon: typeof Mail; defaultTitle: string }[] = [
   { value: 'email_sent', label: 'Email', icon: Mail, defaultTitle: 'Sent email' },
   { value: 'call', label: 'Call', icon: Phone, defaultTitle: 'Phone call' },
   { value: 'meeting', label: 'Meeting', icon: Users, defaultTitle: 'Meeting held' },

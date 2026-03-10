@@ -81,8 +81,8 @@ const EmailComposer = ({
     setEditableBody(fillTemplate(template.body, templateVars));
   };
 
-  const handleSendEmail = () => {
-    const to = contactEmail || '';
+  const handleSendEmail = (toEmails?: string[]) => {
+    const to = toEmails ? toEmails.join(',') : (contactEmail || '');
     const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(editableSubject)}&body=${encodeURIComponent(editableBody)}`;
     window.open(mailto, '_blank');
 

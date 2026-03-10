@@ -10,12 +10,15 @@ interface EmailDisplayProps {
   emailContent: string;
   isGenerating: boolean;
   label?: string;
+  contactName?: string;
+  contactEmail?: string;
+  subject?: string;
   onClose: () => void;
   onDismiss?: () => void;
   onUpdateEmail: (key: string, content: string) => void;
 }
 
-const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
+const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', contactName, contactEmail, subject, onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -29,6 +32,15 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
     setCopied(true);
     toast.success('Email copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const openInEmailClient = () => {
+    const to = contactEmail || '';
+    const subj = subject || (label ? `Re: ${label}` : '');
+    const body = emailContent;
+    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    window.open(mailto, '_blank');
+    toast.success('Opening email client...');
   };
 
   const startEditing = () => {
@@ -147,6 +159,13 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
                 >
                   {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                   {copied ? 'Copied' : 'Copy'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openInEmailClient(); }}
+                  className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
+                  title={contactEmail ? `Send to ${contactEmail}` : 'Open in email client'}
+                >
+                  <Send className="h-3 w-3" /> Send
                 </button>
               </>
             )}

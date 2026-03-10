@@ -402,6 +402,9 @@ const Prospects = () => {
                                             emailKey={newsKey}
                                             emailContent={generatedEmails[newsKey] || ''}
                                             isGenerating={isGeneratingNews}
+                                            contactName={tenant.contactName}
+                                            contactEmail={tenant.contactEmail}
+                                            subject={`${tenant.name} — Market News`}
                                             onClose={() => setActiveEmailKey(null)}
                                             onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
                                             onUpdateEmail={updateEmail}
@@ -487,6 +490,9 @@ const Prospects = () => {
                                             emailKey={scoopKey}
                                             emailContent={generatedEmails[scoopKey] || ''}
                                             isGenerating={isGeneratingScoop}
+                                            contactName={tenant.contactName}
+                                            contactEmail={tenant.contactEmail}
+                                            subject={`${tenant.name} — Broker Intel`}
                                             onClose={() => setActiveEmailKey(null)}
                                             onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
                                             onUpdateEmail={updateEmail}
@@ -565,6 +571,9 @@ const Prospects = () => {
                                             emailKey={key}
                                             emailContent={generatedEmails[key]}
                                             isGenerating={isGenerating}
+                                            contactName={tenant.contactName}
+                                            contactEmail={tenant.contactEmail}
+                                            subject={`${tenant.name} — Outreach`}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />
@@ -636,6 +645,9 @@ const Prospects = () => {
                                   emailContent={emailContent || ''}
                                   isGenerating={isGenerating}
                                   label="Custom Email"
+                                  contactName={tenant.contactName}
+                                  contactEmail={tenant.contactEmail}
+                                  subject={`${tenant.name} — Custom Outreach`}
                                   onClose={() => {
                                     setCustomEmailKeys(prev => ({
                                       ...prev,

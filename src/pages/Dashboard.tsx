@@ -886,6 +886,9 @@ const Dashboard = () => {
                                           emailContent={generatedEmails[emailKey]}
                                           isGenerating={isGenerating}
                                           label={`Email to ${tenant.contactName}`}
+                                          contactName={tenant.contactName}
+                                          contactEmail={tenant.contactEmail}
+                                          subject={`${news.title} — ${tenant.name}`}
                                           onClose={() => setActiveEmailKey(null)}
                                           onUpdateEmail={updateEmail}
                                         />
@@ -955,6 +958,7 @@ const Dashboard = () => {
                                           emailContent={generatedEmails[emailKey]}
                                           isGenerating={isGenerating}
                                           label={`Email to ${custom.name}`}
+                                          subject={`${news.title} — ${custom.name}`}
                                           onClose={() => setActiveEmailKey(null)}
                                           onUpdateEmail={updateEmail}
                                         />

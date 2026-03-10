@@ -217,6 +217,9 @@ const TenantDetail = () => {
         emailContent={emailContent}
         isGenerating={isGenerating}
         label={label}
+        contactName={tenant?.contactName}
+        contactEmail={tenant?.contactEmail}
+        subject={`${tenant?.name} — Outreach`}
         onClose={() => setActiveEmailKey(null)}
         onUpdateEmail={updateEmail}
       />

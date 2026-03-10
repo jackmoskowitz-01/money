@@ -44,7 +44,7 @@ const Tasks = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as BrokerTask['type'], dueDate: format(new Date(), 'yyyy-MM-dd') });
+  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as BrokerTask['type'], priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd') });
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   const taskCounts = useMemo(() => {

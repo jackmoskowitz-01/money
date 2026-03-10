@@ -190,16 +190,30 @@ export const updatePipelineStage = (tenantId: string, buildingId: string, stage:
   savePipeline(pipeline);
 };
 
-export const addPipelineNote = (tenantId: string, buildingId: string, note: string) => {
+export const markTouchpointSent = (tenantId: string, buildingId: string, touchpoint: Touchpoint) => {
   const pipeline = getPipeline();
   const idx = pipeline.findIndex(p => p.tenantId === tenantId && p.buildingId === buildingId);
   if (idx >= 0) {
-    pipeline[idx].notes.push(note);
+    if (!pipeline[idx].sentTouchpoints) pipeline[idx].sentTouchpoints = [];
+    const sent: Touchpoint = { ...touchpoint, sentAt: new Date().toISOString(), followUpDate: new Date(Date.now() + 7 * 86400000).toISOString() };
+    pipeline[idx].sentTouchpoints!.push(sent);
     pipeline[idx].lastActivity = new Date().toISOString();
-  } else {
-    pipeline.push({ tenantId, buildingId, stage: 'meeting_set', notes: [note], lastActivity: new Date().toISOString() });
+    savePipeline(pipeline);
   }
-  savePipeline(pipeline);
+  return getPipeline();
+};
+
+export const getOverdueTouchpoints = (): { item: PipelineItem; touchpoint: Touchpoint }[] => {
+  const now = new Date().toISOString();
+  const results: { item: PipelineItem; touchpoint: Touchpoint }[] = [];
+  getPipeline().forEach(item => {
+    (item.sentTouchpoints || []).forEach(tp => {
+      if (tp.followUpDate && tp.followUpDate < now) {
+        results.push({ item, touchpoint: tp });
+      }
+    });
+  });
+  return results;
 };
 
 // Comp data

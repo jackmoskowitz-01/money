@@ -1,10 +1,18 @@
 import { useState, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
+const SMART_DRAFT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-drafting`;
+
+const tones = [
+  { id: 'formal', label: 'Formal', icon: '🏛️', desc: 'Polished & professional' },
+  { id: 'casual', label: 'Casual', icon: '👋', desc: 'Friendly & conversational' },
+  { id: 'consultative', label: 'Consultative', icon: '📊', desc: 'Advisory & data-driven' },
+  { id: 'urgent', label: 'Urgent', icon: '⚡', desc: 'Time-sensitive & action-oriented' },
+] as const;
 
 interface EmailDisplayProps {
   emailKey: string;
@@ -15,18 +23,36 @@ interface EmailDisplayProps {
   contactEmail?: string;
   subject?: string;
   recipients?: EmailRecipient[];
+  tenantName?: string;
+  industry?: string;
+  buildingName?: string;
+  sqft?: number;
+  leaseExpiration?: string;
+  outreachReason?: string;
   onClose: () => void;
   onDismiss?: () => void;
   onUpdateEmail: (key: string, content: string) => void;
 }
 
-const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', contactName, contactEmail, subject, recipients, onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
+const EmailDisplay = ({
+  emailKey, emailContent, isGenerating, label = 'Generated Email',
+  contactName, contactEmail, subject, recipients,
+  tenantName, industry, buildingName, sqft, leaseExpiration, outreachReason,
+  onClose, onDismiss, onUpdateEmail,
+}: EmailDisplayProps) => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [refineInput, setRefineInput] = useState('');
   const [isRefining, setIsRefining] = useState(false);
   const [showRefine, setShowRefine] = useState(false);
+  const [showToneSelector, setShowToneSelector] = useState(false);
+  const [activeTone, setActiveTone] = useState<string | null>(null);
+  const [isRewritingTone, setIsRewritingTone] = useState(false);
+  const [showSubjectLines, setShowSubjectLines] = useState(false);
+  const [subjectLines, setSubjectLines] = useState<string[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const copyEmail = () => {
@@ -38,7 +64,7 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
 
   const openInEmailClient = (toEmails?: string[]) => {
     const to = toEmails ? toEmails.join(',') : (contactEmail || '');
-    const subj = subject || (label ? `Re: ${label}` : '');
+    const subj = selectedSubject || subject || (label ? `Re: ${label}` : '');
     let body = emailContent;
     const subjectLineMatch = body.match(/^Subject:\s*[^\n]*\n*/i);
     if (subjectLineMatch) {
@@ -68,7 +94,6 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
   const refineWithAI = async () => {
     if (!refineInput.trim() || isRefining) return;
     setIsRefining(true);
-
     try {
       const resp = await fetch(REFINE_URL, {
         method: 'POST',
@@ -76,29 +101,21 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({
-          currentEmail: emailContent,
-          instruction: refineInput.trim(),
-        }),
+        body: JSON.stringify({ currentEmail: emailContent, instruction: refineInput.trim() }),
       });
-
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: 'Refinement failed' }));
         toast.error(err.error || 'Failed to refine email');
         setIsRefining(false);
         return;
       }
-
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
-      let full = '';
-
+      let buffer = '', full = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
         let idx: number;
         while ((idx = buffer.indexOf('\n')) !== -1) {
           let line = buffer.slice(0, idx);
@@ -110,22 +127,105 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
           try {
             const parsed = JSON.parse(json);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              full += content;
-              onUpdateEmail(emailKey, full);
-            }
+            if (content) { full += content; onUpdateEmail(emailKey, full); }
           } catch { /* partial */ }
         }
       }
-
       setRefineInput('');
       setShowRefine(false);
       toast.success('Email refined');
-    } catch {
-      toast.error('Failed to refine email');
-    }
+    } catch { toast.error('Failed to refine email'); }
     setIsRefining(false);
   };
+
+  const rewriteTone = async (tone: string) => {
+    if (isRewritingTone || !emailContent) return;
+    setActiveTone(tone);
+    setIsRewritingTone(true);
+    setShowToneSelector(false);
+    try {
+      const resp = await fetch(SMART_DRAFT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ action: 'rewrite_tone', currentEmail: emailContent, tone }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Tone rewrite failed' }));
+        toast.error(err.error || 'Failed to rewrite tone');
+        setIsRewritingTone(false);
+        return;
+      }
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '', full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; onUpdateEmail(emailKey, full); }
+          } catch { /* partial */ }
+        }
+      }
+      toast.success(`Rewritten in ${tone} tone`);
+    } catch { toast.error('Failed to rewrite tone'); }
+    setIsRewritingTone(false);
+  };
+
+  const generateSubjectLines = async () => {
+    if (isLoadingSubjects || !emailContent) return;
+    setIsLoadingSubjects(true);
+    setShowSubjectLines(true);
+    setSubjectLines([]);
+    try {
+      const resp = await fetch(SMART_DRAFT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'subject_lines',
+          currentEmail: emailContent,
+          tenantName, industry, buildingName, sqft, leaseExpiration, outreachReason,
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Failed' }));
+        toast.error(err.error || 'Failed to generate subject lines');
+        setShowSubjectLines(false);
+        setIsLoadingSubjects(false);
+        return;
+      }
+      const data = await resp.json();
+      setSubjectLines(data.subjects || []);
+    } catch {
+      toast.error('Failed to generate subject lines');
+      setShowSubjectLines(false);
+    }
+    setIsLoadingSubjects(false);
+  };
+
+  const selectSubject = (subj: string) => {
+    setSelectedSubject(subj);
+    setShowSubjectLines(false);
+    toast.success('Subject line selected');
+  };
+
+  const actionButtonsDisabled = isGenerating || isRefining || isRewritingTone;
 
   return (
     <motion.div
@@ -140,11 +240,62 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
         <div className="flex items-center justify-between mb-2">
           <p className="text-[10px] font-semibold text-primary flex items-center gap-1">
             <Mail className="h-3 w-3" /> {label}
-            {(isGenerating || isRefining) && <Loader2 className="h-3 w-3 animate-spin" />}
+            {(isGenerating || isRefining || isRewritingTone) && <Loader2 className="h-3 w-3 animate-spin" />}
+            {activeTone && !isRewritingTone && (
+              <span className="text-[9px] text-muted-foreground ml-1">
+                ({tones.find(t => t.id === activeTone)?.icon} {activeTone})
+              </span>
+            )}
           </p>
           <div className="flex items-center gap-1">
-            {!isGenerating && !isRefining && emailContent && !isEditing && (
+            {!actionButtonsDisabled && emailContent && !isEditing && (
               <>
+                {/* Tone Selector */}
+                <div className="relative">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowToneSelector(!showToneSelector); setShowRefine(false); }}
+                    className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-colors ${showToneSelector ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                    title="Change tone"
+                  >
+                    <Type className="h-3 w-3" /> Tone
+                  </button>
+                  <AnimatePresence>
+                    {showToneSelector && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -5 }}
+                        className="absolute right-0 top-full mt-1 z-50 w-48 rounded-lg border border-border bg-card shadow-lg overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="p-1">
+                          {tones.map(tone => (
+                            <button
+                              key={tone.id}
+                              onClick={() => rewriteTone(tone.id)}
+                              className={`w-full text-left rounded-md px-2.5 py-1.5 text-[10px] transition-colors hover:bg-secondary ${activeTone === tone.id ? 'bg-primary/10 text-primary' : 'text-foreground'}`}
+                            >
+                              <span className="font-medium">{tone.icon} {tone.label}</span>
+                              <span className="block text-[9px] text-muted-foreground">{tone.desc}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Subject Line Generator */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); generateSubjectLines(); }}
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-colors ${showSubjectLines ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                  title="Generate subject lines"
+                  disabled={isLoadingSubjects}
+                >
+                  {isLoadingSubjects ? <Loader2 className="h-3 w-3 animate-spin" /> : <Hash className="h-3 w-3" />}
+                  Subject
+                </button>
+
                 <button
                   onClick={(e) => { e.stopPropagation(); startEditing(); }}
                   className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
@@ -153,7 +304,7 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
                   <Pencil className="h-3 w-3" /> Edit
                 </button>
                 <button
-                  onClick={(e) => { e.stopPropagation(); setShowRefine(!showRefine); }}
+                  onClick={(e) => { e.stopPropagation(); setShowRefine(!showRefine); setShowToneSelector(false); }}
                   className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-colors ${showRefine ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
                   title="Refine with AI"
                 >
@@ -208,6 +359,64 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
             )}
           </div>
         </div>
+
+        {/* Selected Subject Line */}
+        {selectedSubject && (
+          <div className="mb-2 flex items-center gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-1.5">
+            <Hash className="h-3 w-3 text-primary shrink-0" />
+            <span className="text-[10px] font-medium text-foreground flex-1 truncate">{selectedSubject}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); setSelectedSubject(null); }}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-2.5 w-2.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Subject Line Options */}
+        <AnimatePresence>
+          {showSubjectLines && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-2"
+            >
+              <div className="rounded-md border border-border bg-secondary/20 p-2.5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-foreground flex items-center gap-1">
+                    <Hash className="h-3 w-3 text-primary" /> Subject Line Options
+                  </p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowSubjectLines(false); }}
+                    className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+                {isLoadingSubjects ? (
+                  <div className="flex items-center gap-2 py-3 justify-center">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <span className="text-[10px] text-muted-foreground">Generating subject lines...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {subjectLines.map((subj, i) => (
+                      <button
+                        key={i}
+                        onClick={(e) => { e.stopPropagation(); selectSubject(subj); }}
+                        className="w-full text-left rounded-md px-2.5 py-1.5 text-[10px] text-foreground hover:bg-primary/10 hover:text-primary transition-colors border border-transparent hover:border-primary/20"
+                      >
+                        {subj}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* AI Refine Input */}
         {showRefine && !isEditing && (

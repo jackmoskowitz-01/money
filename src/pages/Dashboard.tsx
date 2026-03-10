@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw } from 'lucide-react';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles } from 'lucide-react';
 import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
@@ -65,6 +65,9 @@ const Dashboard = () => {
   const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
+  const [customIntelInput, setCustomIntelInput] = useState('');
+  const [customIntelItems, setCustomIntelItems] = useState<NewsItem[]>([]);
+  const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
   const [newsLoading, setNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -102,7 +105,26 @@ const Dashboard = () => {
     fetchLiveNews();
   }, [fetchLiveNews]);
 
-  const currentNews: NewsItem[] = liveNews || staticNewsItems;
+  const currentNews: NewsItem[] = [...customIntelItems, ...(liveNews || staticNewsItems)];
+
+  const addCustomIntel = useCallback(() => {
+    const text = customIntelInput.trim();
+    if (!text) return;
+    const id = `custom-intel-${Date.now()}`;
+    const newItem: NewsItem = {
+      id,
+      title: text.length > 80 ? text.slice(0, 77) + '...' : text,
+      summary: text,
+      source: 'Custom Intel',
+      date: new Date().toISOString().split('T')[0],
+      category: 'market',
+    };
+    setCustomIntelItems(prev => [newItem, ...prev]);
+    setCustomIntelInput('');
+    setShowCustomIntel(false);
+    setExpandedNewsId(id);
+    toast.success('Custom intel added — add prospects to generate outreach');
+  }, [customIntelInput]);
 
   // Personal analytics
   const pipeline = getPipeline();
@@ -628,6 +650,66 @@ const Dashboard = () => {
                 </Button>
               </div>
             </div>
+            {/* Custom Intel Input */}
+            <AnimatePresence>
+              {showCustomIntel ? (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mb-4"
+                >
+                  <Card className="border-primary/20 bg-card p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">Custom Intel</p>
+                      <button onClick={() => setShowCustomIntel(false)} className="ml-auto rounded p-1 hover:bg-secondary">
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Paste a news article, market data, or type your own intel. This becomes an outreach trigger you can generate emails from.
+                    </p>
+                    <textarea
+                      value={customIntelInput}
+                      onChange={e => setCustomIntelInput(e.target.value)}
+                      placeholder={"Paste an article, URL, or type market intelligence here...\n\nExample: 'The American Bar Association is reportedly exploring a move from their current 50,000 SF space at 1050 Connecticut Ave as their lease expires in Q2 2026...'"}
+                      className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between mt-3">
+                      <p className="text-[10px] text-muted-foreground">
+                        {customIntelInput.trim().length > 0 ? `${customIntelInput.trim().length} chars` : 'Start typing or paste content'}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={addCustomIntel}
+                        disabled={!customIntelInput.trim()}
+                      >
+                        <Sparkles className="mr-1 h-3 w-3" /> Create Outreach Trigger
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
+                  <button
+                    onClick={() => setShowCustomIntel(true)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-foreground">Drop in your own intel</p>
+                      <p className="text-[10px] text-muted-foreground">Paste a news article or type custom market intelligence to generate outreach</p>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="mb-4 flex flex-wrap gap-2">
               {categories.map(cat => (
@@ -659,6 +741,7 @@ const Dashboard = () => {
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {
+                const isCustomIntel = news.id.startsWith('custom-intel-');
                 const autoProspects = getAffectedProspects(news);
                 const manual = manualProspects[news.id] || [];
                 const customs = customProspects[news.id] || [];
@@ -671,12 +754,17 @@ const Dashboard = () => {
 
                 return (
                   <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                    <Card className="border-border bg-card transition-colors hover:bg-secondary/10">
+                    <Card className={`border-border bg-card transition-colors hover:bg-secondary/10 ${isCustomIntel ? 'border-primary/20' : ''}`}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
                             <div className="mb-2 flex items-center gap-2">
                               <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
+                              {isCustomIntel && (
+                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[8px]">
+                                  Your Intel
+                                </Badge>
+                              )}
                               <span className="text-xs text-muted-foreground">{news.date}</span>
                             </div>
                             <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>

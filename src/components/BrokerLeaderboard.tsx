@@ -1,156 +1,145 @@
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { Trophy, Calendar, Phone, Mail, Users, FileText, Sparkles } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getActivities, getAssignments, brokers, type ActivityType } from '@/data/activityData';
+import { getActivities, getAssignments, brokers } from '@/data/activityData';
 import { getPipeline } from '@/data/pipelineData';
+
+const BROKER_COLORS = [
+  'hsl(38, 92%, 55%)',
+  'hsl(210, 70%, 55%)',
+  'hsl(152, 60%, 45%)',
+  'hsl(25, 85%, 55%)',
+];
 
 const BrokerLeaderboard = () => {
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();
 
-  const leaderboard = useMemo(() => {
+  const { barData, pieData } = useMemo(() => {
     const now = Date.now();
     const weekMs = 7 * 24 * 3600000;
 
-    return brokers.map(broker => {
+    const brokerStats = brokers.map((broker, i) => {
       const brokerAssignments = assignments.filter(a => a.brokerId === broker.id);
       const tenantIds = new Set(brokerAssignments.map(a => a.tenantId));
 
-      // All activities for this broker's prospects
-      const brokerActivities = activities.filter(a => tenantIds.has(a.tenantId));
-
-      // This week's activities
-      const weekActivities = brokerActivities.filter(
-        a => now - new Date(a.timestamp).getTime() < weekMs
+      const weekActivities = activities.filter(
+        a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < weekMs
       );
 
-      // Activity breakdown
-      const breakdown: Partial<Record<ActivityType, number>> = {};
-      weekActivities.forEach(a => {
-        breakdown[a.type] = (breakdown[a.type] || 0) + 1;
-      });
+      // Count outreach activities (emails, calls, ai_emails)
+      const outreach = weekActivities.filter(
+        a => a.type === 'email_sent' || a.type === 'call' || a.type === 'ai_email'
+      ).length;
 
-      // Meetings set this week (prospects moved to meeting_set stage)
+      // Meetings set this week
       const meetingsSet = pipeline.filter(p => {
         if (p.stage !== 'meeting_set' && p.stage !== 'meeting_held') return false;
-        const isAssigned = brokerAssignments.some(
+        return brokerAssignments.some(
           a => a.tenantId === p.tenantId && a.buildingId === p.buildingId
-        );
-        if (!isAssigned) return false;
-        return now - new Date(p.lastActivity).getTime() < weekMs;
+        ) && now - new Date(p.lastActivity).getTime() < weekMs;
       }).length;
 
       return {
-        ...broker,
-        totalActivities: weekActivities.length,
-        allTimeActivities: brokerActivities.length,
+        name: broker.name.split(' ')[0],
+        fullName: broker.name,
+        outreach,
         meetingsSet,
-        breakdown,
-        prospects: brokerAssignments.length,
+        color: BROKER_COLORS[i % BROKER_COLORS.length],
       };
-    }).sort((a, b) => b.totalActivities - a.totalActivities);
+    });
+
+    return {
+      barData: [...brokerStats].sort((a, b) => b.outreach - a.outreach),
+      pieData: brokerStats.filter(b => b.meetingsSet > 0),
+    };
   }, [activities, assignments, pipeline]);
 
-  const topBroker = leaderboard[0];
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+        <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName || label}</p>
+        <p className="text-[11px] text-muted-foreground">{payload[0]?.value} outreach activities</p>
+      </div>
+    );
+  };
+
+  const PieTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+        <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName}</p>
+        <p className="text-[11px] text-muted-foreground">{payload[0]?.value} meetings set</p>
+      </div>
+    );
+  };
 
   return (
-    <Card className="border-border bg-card p-4">
-      <div className="flex items-center gap-2 mb-4">
-        <Trophy className="h-4 w-4 text-primary" />
-        <h3 className="font-display text-sm font-bold">Broker Leaderboard</h3>
-        <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-auto">This Week</Badge>
-      </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      {/* Bar Chart - Outreach */}
+      <Card className="border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-sm font-bold">Outreach by Broker</h3>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
+        </div>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 25%, 16%)" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(215, 15%, 50%)' }} axisLine={false} tickLine={false} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 12, fill: 'hsl(210, 20%, 92%)', fontWeight: 500 }} axisLine={false} tickLine={false} width={60} />
+            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(222, 30%, 14%, 0.5)' }} />
+            <Bar dataKey="outreach" radius={[0, 4, 4, 0]} barSize={24}>
+              {barData.map((entry, i) => (
+                <Cell key={i} fill={entry.color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
 
-      <div className="space-y-3">
-        {leaderboard.map((broker, i) => {
-          const isTop = i === 0 && broker.totalActivities > 0;
-          return (
-            <motion.div
-              key={broker.id}
-              initial={{ opacity: 0, x: -5 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className={`rounded-lg border p-3 transition-colors ${
-                isTop
-                  ? 'border-primary/30 bg-primary/5'
-                  : 'border-border bg-secondary/20'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                {/* Rank */}
-                <span className={`text-sm font-bold w-5 text-center ${isTop ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {i + 1}
-                </span>
-
-                {/* Avatar */}
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${broker.color}`}>
-                  {broker.initials}
-                </div>
-
-                {/* Name + prospects */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">{broker.name}</p>
-                    {isTop && <Trophy className="h-3 w-3 text-primary" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    {broker.prospects} prospects assigned
-                  </p>
-                </div>
-
-                {/* Stats */}
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-center">
-                    <p className="text-lg font-bold text-foreground leading-none">{broker.totalActivities}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Activities</p>
-                  </div>
-                  <div className="text-center">
-                    <p className={`text-lg font-bold leading-none ${broker.meetingsSet > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                      {broker.meetingsSet}
-                    </p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5">Meetings</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Activity breakdown row */}
-              {broker.totalActivities > 0 && (
-                <div className="flex items-center gap-2 mt-2 ml-8 pl-5">
-                  {(broker.breakdown.email_sent || 0) > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Mail className="h-2.5 w-2.5 text-info" /> {broker.breakdown.email_sent}
-                    </span>
-                  )}
-                  {(broker.breakdown.call || 0) > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Phone className="h-2.5 w-2.5 text-warning" /> {broker.breakdown.call}
-                    </span>
-                  )}
-                  {(broker.breakdown.meeting || 0) > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Users className="h-2.5 w-2.5 text-success" /> {broker.breakdown.meeting}
-                    </span>
-                  )}
-                  {(broker.breakdown.note || 0) > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <FileText className="h-2.5 w-2.5" /> {broker.breakdown.note}
-                    </span>
-                  )}
-                  {(broker.breakdown.ai_email || 0) > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <Sparkles className="h-2.5 w-2.5 text-accent" /> {broker.breakdown.ai_email}
-                    </span>
-                  )}
-                </div>
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
-    </Card>
+      {/* Pie Chart - Meetings Set */}
+      <Card className="border-border bg-card p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display text-sm font-bold">Meetings Set by Broker</h3>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
+        </div>
+        {pieData.length === 0 ? (
+          <div className="flex items-center justify-center h-[200px]">
+            <p className="text-xs text-muted-foreground">No meetings set this week</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie
+                data={pieData}
+                cx="50%"
+                cy="50%"
+                innerRadius={45}
+                outerRadius={75}
+                paddingAngle={3}
+                dataKey="meetingsSet"
+                nameKey="fullName"
+              >
+                {pieData.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} stroke="hsl(222, 40%, 9%)" strokeWidth={2} />
+                ))}
+              </Pie>
+              <Tooltip content={<PieTooltip />} />
+              <Legend
+                formatter={(value: string) => (
+                  <span className="text-[11px] text-foreground">{value}</span>
+                )}
+                iconSize={8}
+                wrapperStyle={{ fontSize: 11 }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
+      </Card>
+    </div>
   );
 };
 

@@ -402,9 +402,8 @@ const Dashboard = () => {
           <SubmarketTrends />
         </div>
 
-        {/* Broker Leaderboard + Meetings Overview */}
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
-          <BrokerLeaderboard />
+        {/* Meetings Overview */}
+        <div className="mb-8">
           <MeetingsOverview />
         </div>
 

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown } from 'lucide-react';
+import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown, FlipHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 

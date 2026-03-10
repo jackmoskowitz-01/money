@@ -797,7 +797,7 @@ const Dashboard = () => {
                                   <Button
                                     size="sm"
                                     className="text-xs h-8 flex-1"
-                                    onClick={() => sendToSelected(news.id, news, allProspects)}
+                                    onClick={() => sendToSelected(news.id, news, allProspects, customs)}
                                     disabled={generatingKeys.size > 0}
                                   >
                                     {generatingKeys.size > 0 ? (

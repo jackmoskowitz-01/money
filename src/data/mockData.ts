@@ -207,7 +207,7 @@ export const buildings: Building[] = [
     class: 'B',
     tenants: [
       {
-        id: 't9', name: 'Squire Patton Boggs', industry: 'Legal/Lobbying', sqft: 65000, floor: '4-5',
+        id: 't9', name: 'Squire Patton Boggs', industry: 'Lobbying', sqft: 65000, floor: '4-5',
         leaseExpiration: '2025-12-31', contactName: 'Thomas Grant', contactTitle: 'Office Managing Partner',
         contactEmail: 't.grant@squirepb.com', headcount: 180,
         outreachReasons: [

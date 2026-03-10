@@ -40,15 +40,6 @@ const ScoopBoard = () => {
     return result;
   }, [scoops, filterCategory, filterVerified, searchQuery]);
 
-  // Extract popular tags for quick filtering
-  const popularTags = useMemo(() => {
-    const tagCounts: Record<string, number> = {};
-    scoops.forEach(s => s.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
-    return Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([tag]) => tag);
-  }, [scoops]);
 
   return (
     <div className="min-h-screen pt-14">

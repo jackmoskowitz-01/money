@@ -190,6 +190,18 @@ export const updatePipelineStage = (tenantId: string, buildingId: string, stage:
   savePipeline(pipeline);
 };
 
+export const addPipelineNote = (tenantId: string, buildingId: string, note: string) => {
+  const pipeline = getPipeline();
+  const idx = pipeline.findIndex(p => p.tenantId === tenantId && p.buildingId === buildingId);
+  if (idx >= 0) {
+    pipeline[idx].notes.push(note);
+    pipeline[idx].lastActivity = new Date().toISOString();
+  } else {
+    pipeline.push({ tenantId, buildingId, stage: 'meeting_set', notes: [note], lastActivity: new Date().toISOString() });
+  }
+  savePipeline(pipeline);
+};
+
 export const markTouchpointSent = (tenantId: string, buildingId: string, touchpoint: Touchpoint) => {
   const pipeline = getPipeline();
   const idx = pipeline.findIndex(p => p.tenantId === tenantId && p.buildingId === buildingId);

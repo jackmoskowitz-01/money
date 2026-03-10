@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,21 +12,24 @@ const BROKER_COLORS = [
   'hsl(25, 85%, 55%)',
 ];
 
+type TimeRange = 'week' | 'month';
+
 const BrokerLeaderboard = () => {
+  const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();
 
   const { barData, pieData } = useMemo(() => {
     const now = Date.now();
-    const weekMs = 7 * 24 * 3600000;
+    const rangeMs = timeRange === 'week' ? 7 * 24 * 3600000 : 30 * 24 * 3600000;
 
     const brokerStats = brokers.map((broker, i) => {
       const brokerAssignments = assignments.filter(a => a.brokerId === broker.id);
       const tenantIds = new Set(brokerAssignments.map(a => a.tenantId));
 
       const weekActivities = activities.filter(
-        a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < weekMs
+        a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < rangeMs
       );
 
       // Count outreach activities (emails, calls, ai_emails)
@@ -39,7 +42,7 @@ const BrokerLeaderboard = () => {
         if (p.stage !== 'meeting_set' && p.stage !== 'meeting_held') return false;
         return brokerAssignments.some(
           a => a.tenantId === p.tenantId && a.buildingId === p.buildingId
-        ) && now - new Date(p.lastActivity).getTime() < weekMs;
+        ) && now - new Date(p.lastActivity).getTime() < rangeMs;
       }).length;
 
       return {
@@ -55,7 +58,7 @@ const BrokerLeaderboard = () => {
       barData: [...brokerStats].sort((a, b) => b.outreach - a.outreach),
       pieData: brokerStats.filter(b => b.meetingsSet > 0),
     };
-  }, [activities, assignments, pipeline]);
+  }, [activities, assignments, pipeline, timeRange]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;
@@ -78,12 +81,27 @@ const BrokerLeaderboard = () => {
   };
 
   return (
-    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <button
+          onClick={() => setTimeRange('week')}
+          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${timeRange === 'week' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+        >
+          This Week
+        </button>
+        <button
+          onClick={() => setTimeRange('month')}
+          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${timeRange === 'month' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
+        >
+          This Month
+        </button>
+      </div>
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {/* Bar Chart - Outreach */}
       <Card className="border-border bg-card p-3 col-span-1">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-xs font-bold">Outreach by Broker</h3>
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{timeRange === 'week' ? 'This Week' : 'This Month'}</Badge>
         </div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
@@ -104,7 +122,7 @@ const BrokerLeaderboard = () => {
       <Card className="border-border bg-card p-3 col-span-1">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-xs font-bold">Meetings Set</h3>
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{timeRange === 'week' ? 'This Week' : 'This Month'}</Badge>
         </div>
         {pieData.length === 0 ? (
           <div className="flex items-center justify-center h-[160px]">
@@ -139,6 +157,7 @@ const BrokerLeaderboard = () => {
           </ResponsiveContainer>
         )}
       </Card>
+      </div>
     </div>
   );
 };

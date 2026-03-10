@@ -59,6 +59,8 @@ const Prospects = () => {
   const [showListPicker, setShowListPicker] = useState(false);
   const [newListName, setNewListName] = useState('');
 
+  const pipeline = getPipeline();
+
   const prospects = useMemo<ProspectEntry[]>(() => {
     const all: ProspectEntry[] = [];
     buildings.forEach(building => {

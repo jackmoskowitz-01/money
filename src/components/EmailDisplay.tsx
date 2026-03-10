@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 
@@ -13,6 +14,7 @@ interface EmailDisplayProps {
   contactName?: string;
   contactEmail?: string;
   subject?: string;
+  recipients?: EmailRecipient[];
   onClose: () => void;
   onDismiss?: () => void;
   onUpdateEmail: (key: string, content: string) => void;

@@ -105,7 +105,26 @@ const Dashboard = () => {
     fetchLiveNews();
   }, [fetchLiveNews]);
 
-  const currentNews: NewsItem[] = liveNews || staticNewsItems;
+  const currentNews: NewsItem[] = [...customIntelItems, ...(liveNews || staticNewsItems)];
+
+  const addCustomIntel = useCallback(() => {
+    const text = customIntelInput.trim();
+    if (!text) return;
+    const id = `custom-intel-${Date.now()}`;
+    const newItem: NewsItem = {
+      id,
+      title: text.length > 80 ? text.slice(0, 77) + '...' : text,
+      summary: text,
+      source: 'Custom Intel',
+      date: new Date().toISOString().split('T')[0],
+      category: 'market',
+    };
+    setCustomIntelItems(prev => [newItem, ...prev]);
+    setCustomIntelInput('');
+    setShowCustomIntel(false);
+    setExpandedNewsId(id);
+    toast.success('Custom intel added — add prospects to generate outreach');
+  }, [customIntelInput]);
 
   // Personal analytics
   const pipeline = getPipeline();

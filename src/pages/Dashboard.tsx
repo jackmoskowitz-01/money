@@ -55,6 +55,20 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
   return matches;
 };
 
+const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
+  const list: EmailRecipient[] = [{
+    id: 'primary',
+    name: tenant.contactName,
+    email: tenant.contactEmail,
+    title: tenant.contactTitle,
+    isPrimary: true,
+  }];
+  getContacts(tenant.id).forEach(c => {
+    list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+  });
+  return list;
+};
+
 const Dashboard = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [expandedStat, setExpandedStat] = useState<string | null>(null);

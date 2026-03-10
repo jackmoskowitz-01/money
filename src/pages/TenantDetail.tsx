@@ -57,6 +57,27 @@ const TenantDetail = () => {
 
   const building = buildings.find(b => b.id === buildingId);
   const tenant = building?.tenants.find(t => t.id === tenantId);
+  const [contactsVersion, setContactsVersion] = useState(0);
+
+  const recipients: EmailRecipient[] = useMemo(() => {
+    const list: EmailRecipient[] = [];
+    if (tenant) {
+      list.push({
+        id: 'primary',
+        name: tenant.contactName,
+        email: tenant.contactEmail,
+        title: tenant.contactTitle,
+        isPrimary: true,
+      });
+    }
+    if (tenantId) {
+      const additional = getContacts(tenantId);
+      additional.forEach(c => {
+        list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+      });
+    }
+    return list;
+  }, [tenant, tenantId, contactsVersion]);
 
   useEffect(() => {
     if (tenantId && buildingId) {

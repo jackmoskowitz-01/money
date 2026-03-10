@@ -905,6 +905,7 @@ const Dashboard = () => {
                                           contactName={tenant.contactName}
                                           contactEmail={tenant.contactEmail}
                                           subject={`${news.title} — ${tenant.name}`}
+                                          recipients={buildRecipients(tenant)}
                                           onClose={() => setActiveEmailKey(null)}
                                           onUpdateEmail={updateEmail}
                                         />

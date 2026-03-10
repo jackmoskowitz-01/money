@@ -364,7 +364,17 @@ const EmailDisplay = ({
                   Subject
                 </button>
 
+                {/* A/B Variant */}
                 <button
+                  onClick={(e) => { e.stopPropagation(); generateABVariant(); }}
+                  className={`flex items-center gap-1 rounded px-2 py-0.5 text-[10px] transition-colors ${showABVariant ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-secondary'}`}
+                  title="Generate A/B variant"
+                  disabled={isGeneratingAB}
+                >
+                  {isGeneratingAB ? <Loader2 className="h-3 w-3 animate-spin" /> : <FlipHorizontal className="h-3 w-3" />}
+                  A/B
+                </button>
+
                   onClick={(e) => { e.stopPropagation(); startEditing(); }}
                   className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
                   title="Edit email"

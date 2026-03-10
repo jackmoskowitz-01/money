@@ -321,7 +321,12 @@ const Tasks = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.02 }}
                           >
-                            <Card className={`border-border bg-card p-3 transition-colors ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''}`}>
+                            <Card
+                              className={`border-border bg-card p-3 transition-colors ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''} ${info ? 'cursor-pointer hover:border-primary/30' : ''}`}
+                              onClick={() => {
+                                if (info) navigate(`/building/${task.buildingId}/tenant/${task.tenantId}`);
+                              }}
+                            >
                               <div className="flex items-start gap-3">
                                 <button
                                   onClick={() => handleToggle(task.id)}

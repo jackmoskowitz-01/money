@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import EmailDisplay from '@/components/EmailDisplay';
+import { getContacts } from '@/data/companyContacts';
+import { type EmailRecipient } from '@/components/RecipientPicker';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
 

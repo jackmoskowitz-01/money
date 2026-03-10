@@ -518,7 +518,7 @@ const News = () => {
               )}
             </AnimatePresence>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               {categories.map(cat => (
                 <button
                   key={cat}
@@ -532,6 +532,54 @@ const News = () => {
                   {cat}
                 </button>
               ))}
+
+              <div className="ml-auto relative">
+                <button
+                  onClick={() => setShowIndustryFilter(!showIndustryFilter)}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    activeIndustry !== 'all'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  <Filter className="h-3 w-3" />
+                  {activeIndustry === 'all' ? 'Industry' : activeIndustry}
+                  <ChevronDown className={`h-3 w-3 transition-transform ${showIndustryFilter ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {showIndustryFilter && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-card shadow-lg overflow-hidden"
+                    >
+                      <div className="max-h-64 overflow-y-auto p-1">
+                        <button
+                          onClick={() => { setActiveIndustry('all'); setShowIndustryFilter(false); }}
+                          className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
+                            activeIndustry === 'all' ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          All Industries
+                        </button>
+                        {allIndustries.map(ind => (
+                          <button
+                            key={ind}
+                            onClick={() => { setActiveIndustry(ind); setShowIndustryFilter(false); }}
+                            className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
+                              activeIndustry === ind ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                            }`}
+                          >
+                            {ind}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {newsLoading && !liveNews && (

@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import EmailDisplay from '@/components/EmailDisplay';
+import { getContacts } from '@/data/companyContacts';
+import { type EmailRecipient } from '@/components/RecipientPicker';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
 
@@ -51,6 +53,20 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
   });
 
   return matches;
+};
+
+const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
+  const list: EmailRecipient[] = [{
+    id: 'primary',
+    name: tenant.contactName,
+    email: tenant.contactEmail,
+    title: tenant.contactTitle,
+    isPrimary: true,
+  }];
+  getContacts(tenant.id).forEach(c => {
+    list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+  });
+  return list;
 };
 
 const Dashboard = () => {
@@ -889,6 +905,7 @@ const Dashboard = () => {
                                           contactName={tenant.contactName}
                                           contactEmail={tenant.contactEmail}
                                           subject={`${news.title} — ${tenant.name}`}
+                                          recipients={buildRecipients(tenant)}
                                           onClose={() => setActiveEmailKey(null)}
                                           onUpdateEmail={updateEmail}
                                         />

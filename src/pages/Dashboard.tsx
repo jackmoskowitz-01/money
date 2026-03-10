@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import EmailDisplay from '@/components/EmailDisplay';
+import TeamActivityFeed from '@/components/TeamActivityFeed';
+import MeetingsOverview from '@/components/MeetingsOverview';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
@@ -395,19 +397,49 @@ const Dashboard = () => {
           <SubmarketTrends />
         </div>
 
-        {/* Team + Broker Leaderboard */}
+        {/* Team Activity Feed + Meetings Overview (Salesforce-style) */}
+        <div className="mb-8 grid gap-4 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <TeamActivityFeed />
+          </div>
+          <div className="lg:col-span-2">
+            <MeetingsOverview />
+          </div>
+        </div>
+
+        {/* Team Leaderboard */}
         <div className="mb-8">
           <Card className="border-border bg-card p-4">
-            <h3 className="mb-3 font-display text-sm font-bold">Team Activity</h3>
+            <h3 className="mb-3 font-display text-sm font-bold">Broker Leaderboard</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {brokerStats.map(broker => (
-                <div key={broker.id} className="rounded-md bg-secondary/50 p-3 text-center">
-                  <div className={`mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${broker.color}`}>
-                    {broker.initials}
+              {brokerStats.map((broker, i) => (
+                <motion.div
+                  key={broker.id}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="rounded-md bg-secondary/50 p-3"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${broker.color}`}>
+                      {broker.initials}
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-foreground">{broker.name}</p>
+                      <p className="text-[10px] text-muted-foreground">#{i + 1} by activity</p>
+                    </div>
                   </div>
-                  <p className="text-xs font-medium text-foreground">{broker.name}</p>
-                  <p className="text-[11px] text-muted-foreground">{broker.prospects} prospects · {broker.activities} activities</p>
-                </div>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div className="rounded bg-background/50 px-2 py-1 text-center">
+                      <p className="text-sm font-bold text-foreground">{broker.prospects}</p>
+                      <p className="text-[9px] text-muted-foreground">Prospects</p>
+                    </div>
+                    <div className="rounded bg-background/50 px-2 py-1 text-center">
+                      <p className="text-sm font-bold text-foreground">{broker.activities}</p>
+                      <p className="text-[9px] text-muted-foreground">Activities</p>
+                    </div>
+                  </div>
+                </motion.div>
               ))}
             </div>
           </Card>
@@ -461,7 +493,6 @@ const Dashboard = () => {
                           <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
                         </div>
 
-                        {/* Affected Prospects Button */}
                         {affectedProspects.length > 0 && (
                           <button
                             onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
@@ -476,7 +507,6 @@ const Dashboard = () => {
                         )}
                       </div>
 
-                      {/* Expanded Prospects Panel */}
                       <AnimatePresence>
                         {isExpanded && (
                           <motion.div
@@ -487,7 +517,6 @@ const Dashboard = () => {
                             className="overflow-hidden"
                           >
                             <div className="border-t border-border px-4 py-3 space-y-2">
-                              {/* Select controls */}
                               <div className="flex items-center justify-between mb-1">
                                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
                                 <div className="flex items-center gap-2">
@@ -500,7 +529,6 @@ const Dashboard = () => {
                                 </div>
                               </div>
 
-                              {/* Prospect List */}
                               {affectedProspects.map(({ tenant, building }) => {
                                 const emailKey = `news-${news.id}-${tenant.id}`;
                                 const isChecked = selected.has(tenant.id);
@@ -553,7 +581,6 @@ const Dashboard = () => {
                                       )}
                                     </div>
 
-                                    {/* Email Display */}
                                     <AnimatePresence>
                                       {activeEmailKey === emailKey && hasEmail && (
                                         <EmailDisplay
@@ -570,7 +597,6 @@ const Dashboard = () => {
                                 );
                               })}
 
-                              {/* Send Actions */}
                               {selected.size > 0 && (
                                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                                   <Button

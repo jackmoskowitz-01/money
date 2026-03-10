@@ -370,7 +370,7 @@ const ProspectSearch = () => {
                         </div>
                       </div>
 
-                      <div>
+                      <div className="relative">
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Address <span className="text-destructive">*</span>
                         </label>
@@ -379,12 +379,32 @@ const ProspectSearch = () => {
                           <input
                             type="text"
                             value={newAddress}
-                            onChange={e => setNewAddress(e.target.value)}
-                            placeholder="e.g. 1600 Pennsylvania Ave NW, Washington, DC"
+                            onChange={e => handleAddressChange(e.target.value)}
+                            onFocus={() => { if (addressSuggestions.length > 0) setShowSuggestions(true); }}
+                            placeholder="Start typing a company or address..."
                             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                             maxLength={255}
                           />
+                          {addressLoading && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />}
                         </div>
+                        {/* Autocomplete dropdown */}
+                        {showSuggestions && addressSuggestions.length > 0 && (
+                          <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-border bg-card shadow-lg overflow-hidden">
+                            {addressSuggestions.map(p => (
+                              <button
+                                key={p.placeId}
+                                onClick={() => selectSuggestion(p)}
+                                className="w-full flex items-start gap-2.5 px-3 py-2 text-left hover:bg-secondary/70 transition-colors"
+                              >
+                                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{p.mainText}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{p.secondaryText}</p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
 

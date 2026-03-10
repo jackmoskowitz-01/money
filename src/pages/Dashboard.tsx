@@ -590,10 +590,12 @@ const Dashboard = () => {
               {filteredNews.map((news, i) => {
                 const autoProspects = getAffectedProspects(news);
                 const manual = manualProspects[news.id] || [];
+                const customs = customProspects[news.id] || [];
                 const allProspects = [...autoProspects, ...manual];
+                const totalCount = allProspects.length + customs.length;
                 const isExpanded = expandedNewsId === news.id;
                 const selected = selectedProspects[news.id] || new Set();
-                const allSelected = allProspects.length > 0 && selected.size === allProspects.length;
+                const allSelected = totalCount > 0 && selected.size === totalCount;
                 const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (

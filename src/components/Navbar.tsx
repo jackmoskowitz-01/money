@@ -1,12 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, ClipboardList } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },
   { path: '/map', label: 'Map', icon: Map },
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
-  { path: '/activities', label: 'Activities', icon: ClipboardList },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 

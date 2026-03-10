@@ -621,8 +621,8 @@ const Dashboard = () => {
                         >
                           <Users className="h-3.5 w-3.5 text-primary" />
                           <span className="flex-1 text-xs font-medium text-primary">
-                            {allProspects.length > 0
-                              ? `${allProspects.length} prospect${allProspects.length !== 1 ? 's' : ''} ${manual.length > 0 ? `(${manual.length} added manually)` : 'affected'}`
+                            {totalCount > 0
+                              ? `${totalCount} prospect${totalCount !== 1 ? 's' : ''} ${(manual.length + customs.length) > 0 ? `(${manual.length + customs.length} added manually)` : 'affected'}`
                               : 'Add prospects for outreach'
                             }
                           </span>

@@ -225,7 +225,7 @@ const ProspectSearch = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="fixed left-1/2 top-16 z-[70] w-[90vw] max-w-lg -translate-x-1/2 rounded-lg border border-border bg-card shadow-2xl overflow-hidden"
+              className="fixed left-1/2 top-16 z-[70] w-[94vw] max-w-xl -translate-x-1/2 rounded-lg border border-border bg-card shadow-2xl"
             >
               <AnimatePresence mode="wait">
                 {view === 'search' ? (
@@ -336,7 +336,7 @@ const ProspectSearch = () => {
                     </div>
 
                     {/* Create Form */}
-                    <div className="p-4 space-y-3">
+                    <div className="p-4 space-y-3 overflow-visible">
                       <div>
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Name <span className="text-destructive">*</span>
@@ -372,7 +372,7 @@ const ProspectSearch = () => {
                         </div>
                       </div>
 
-                      <div className="relative">
+                      <div className="relative pb-2">
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Address <span className="text-destructive">*</span>
                         </label>
@@ -391,7 +391,7 @@ const ProspectSearch = () => {
                         </div>
                         {/* Autocomplete dropdown */}
                         {showSuggestions && addressSuggestions.length > 0 && (
-                          <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-border bg-card shadow-lg overflow-hidden">
+                          <div className="absolute left-0 right-0 top-full z-[80] mt-1 max-h-[200px] overflow-y-auto rounded-md border border-border bg-card shadow-lg">
                             {addressSuggestions.map(p => (
                               <button
                                 key={p.placeId}

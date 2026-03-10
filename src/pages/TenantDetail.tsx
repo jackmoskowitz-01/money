@@ -541,6 +541,9 @@ const TenantDetail = () => {
                       emailContent={emailContent || ''}
                       isGenerating={isGenerating}
                       label="Custom Email"
+                      contactName={tenant.contactName}
+                      contactEmail={tenant.contactEmail}
+                      subject={`${tenant.name} — Custom Outreach`}
                       onClose={() => {
                         setCustomEmailKeys(prev => prev.filter(k => k !== key));
                         setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });

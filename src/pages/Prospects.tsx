@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink, UserPlus, ListPlus } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink, UserPlus, ListPlus, BarChart3, Target } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
@@ -395,224 +395,46 @@ const Prospects = () => {
                         className="overflow-hidden"
                       >
                         <div className="border-t border-border px-4 pb-4 pt-3 space-y-4">
-                          {/* Contact & Space Info */}
-                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                            <div className="rounded-md bg-secondary/50 p-2.5">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">Contact</p>
-                              <p className="text-xs font-medium text-foreground">{tenant.contactName}</p>
-                              <p className="text-[10px] text-muted-foreground">{tenant.contactTitle}</p>
+                          {/* ─── Section: Overview ─── */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2.5">
+                              <Users className="h-3.5 w-3.5 text-primary" />
+                              <h3 className="text-xs font-semibold text-foreground tracking-wide uppercase">Overview</h3>
                             </div>
-                            <div className="rounded-md bg-secondary/50 p-2.5">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">Headcount</p>
-                              <p className="text-xs font-medium text-foreground">{tenant.headcount}</p>
-                              <p className="text-[10px] text-muted-foreground">{Math.round(tenant.sqft / tenant.headcount)} SF/person</p>
-                            </div>
-                            <div className="rounded-md bg-secondary/50 p-2.5">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">Floor(s)</p>
-                              <p className="text-xs font-medium text-foreground">{tenant.floor}</p>
-                              <p className="text-[10px] text-muted-foreground">{tenant.sqft.toLocaleString()} SF</p>
-                            </div>
-                            <div className="rounded-md bg-secondary/50 p-2.5">
-                              <p className="text-[10px] text-muted-foreground mb-0.5">Building Vacancy</p>
-                              <p className={`text-xs font-medium ${building.vacancyRate > 20 ? 'text-destructive' : 'text-foreground'}`}>
-                                {building.vacancyRate}%
-                              </p>
-                              <p className="text-[10px] text-muted-foreground">Class {building.class}</p>
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                              <div className="rounded-md bg-secondary/50 p-2.5">
+                                <p className="text-[10px] text-muted-foreground mb-0.5">Contact</p>
+                                <p className="text-xs font-medium text-foreground">{tenant.contactName}</p>
+                                <p className="text-[10px] text-muted-foreground">{tenant.contactTitle}</p>
+                              </div>
+                              <div className="rounded-md bg-secondary/50 p-2.5">
+                                <p className="text-[10px] text-muted-foreground mb-0.5">Space</p>
+                                <p className="text-xs font-medium text-foreground">{tenant.sqft.toLocaleString()} SF</p>
+                                <p className="text-[10px] text-muted-foreground">Floor {tenant.floor} · {tenant.headcount} people</p>
+                              </div>
+                              <div className="rounded-md bg-secondary/50 p-2.5">
+                                <p className="text-[10px] text-muted-foreground mb-0.5">Lease Expiration</p>
+                                <p className="text-xs font-medium text-foreground">{tenant.leaseExpiration}</p>
+                                <p className="text-[10px] text-muted-foreground">{Math.round(tenant.sqft / tenant.headcount)} SF/person</p>
+                              </div>
+                              <div className="rounded-md bg-secondary/50 p-2.5">
+                                <p className="text-[10px] text-muted-foreground mb-0.5">Building</p>
+                                <p className={`text-xs font-medium ${building.vacancyRate > 20 ? 'text-destructive' : 'text-foreground'}`}>
+                                  {building.vacancyRate}% vacancy
+                                </p>
+                                <p className="text-[10px] text-muted-foreground">Class {building.class} · {building.name}</p>
+                              </div>
                             </div>
                           </div>
 
-                          {/* Submarket News Touchpoints */}
-                          {(() => {
-                            const submarket = buildingSubmarkets[building.id];
-                            const news = submarket ? getSubmarketNews(submarket) : [];
-                            if (news.length === 0) return null;
-                            return (
-                              <Collapsible>
-                                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
-                                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                    <Newspaper className="h-3.5 w-3.5 text-primary" /> {submarket} Submarket News — Touchpoints
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{news.slice(0, 4).length}</Badge>
-                                  </p>
-                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2 space-y-1.5">
-                                  {news.slice(0, 4).map(item => {
-                                    const catColors: Record<string, string> = {
-                                      development: 'bg-primary/10 text-primary',
-                                      infrastructure: 'bg-info/10 text-info',
-                                      policy: 'bg-warning/10 text-warning',
-                                      tenant_movement: 'bg-destructive/10 text-destructive',
-                                      investment: 'bg-success/10 text-success',
-                                      amenity: 'bg-accent/10 text-accent-foreground',
-                                    };
-                                    const newsKey = `${tenant.id}-news-${item.id}`;
-                                    const isGeneratingNews = generatingKey === newsKey;
-                                    const hasNewsEmail = !!generatedEmails[newsKey];
-                                    return (
-                                      <div key={item.id} className="space-y-2">
-                                        <button
-                                          onClick={() => {
-                                            const newsReason: OutreachReason = {
-                                              type: 'market_news',
-                                              urgency: 'medium',
-                                              title: item.title,
-                                              description: `${item.summary} — Touchpoint angle: ${item.touchpointAngle}`,
-                                            };
-                                            generateEmail(tenant, building, newsReason, newsKey);
-                                          }}
-                                          disabled={isGeneratingNews}
-                                          className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
-                                        >
-                                          <div className="flex items-start gap-2">
-                                            <Newspaper className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 mb-0.5">
-                                                <p className="text-[11px] font-semibold text-foreground truncate">{item.title}</p>
-                                                <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${catColors[item.category] || ''}`}>
-                                                  {item.category.replace('_', ' ')}
-                                                </Badge>
-                                                {!hasNewsEmail && (
-                                                  <Mail className="h-3 w-3 shrink-0 text-primary/50" />
-                                                )}
-                                                {isGeneratingNews && (
-                                                  <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin" />
-                                                )}
-                                              </div>
-                                              <p className="text-[10px] text-muted-foreground leading-relaxed">{item.summary}</p>
-                                              <div className="mt-1.5 flex items-start gap-1.5">
-                                                <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                                                <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
-                                              </div>
-                                              <div className="mt-1 flex items-center gap-2">
-                                                <p className="text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
-                                                {item.url && (
-                                                  <a href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-0.5 text-[9px] text-primary hover:underline">
-                                                    <ExternalLink className="h-2.5 w-2.5" /> Read Article
-                                                  </a>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </button>
-                                        {hasNewsEmail && activeEmailKey === newsKey && (
-                                          <EmailDisplay
-                                            emailKey={newsKey}
-                                            emailContent={generatedEmails[newsKey] || ''}
-                                            isGenerating={isGeneratingNews}
-                                            contactName={tenant.contactName}
-                                            contactEmail={tenant.contactEmail}
-                                            subject={`${tenant.name} — Market News`}
-                                            onClose={() => setActiveEmailKey(null)}
-                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
-                                            onUpdateEmail={updateEmail}
-                                          />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </CollapsibleContent>
-                              </Collapsible>
-                            );
-                          })()}
-
-                          {/* Affiliated Scoops */}
-                          {(() => {
-                            // Match scoops by checking if any tag matches the tenant name, building name, or industry
-                            const matchedScoops = scoopPosts.filter(scoop =>
-                              scoop.tags.some(tag => {
-                                const t = tag.toLowerCase();
-                                return (
-                                  tenant.name.toLowerCase().includes(t) ||
-                                  t.includes(tenant.name.toLowerCase().split(' ')[0]) ||
-                                  building.name.toLowerCase().includes(t) ||
-                                  t.includes(building.name.toLowerCase()) ||
-                                  tenant.industry.toLowerCase().includes(t) ||
-                                  t.includes(tenant.industry.toLowerCase())
-                                );
-                              })
-                            );
-                            if (matchedScoops.length === 0) return null;
-                            return (
-                              <Collapsible>
-                                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
-                                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                    <Eye className="h-3.5 w-3.5 text-primary" /> Scoops — Broker Intel
-                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{matchedScoops.length}</Badge>
-                                  </p>
-                                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-2 space-y-1.5">
-                                  {matchedScoops.map(scoop => {
-                                    const scoopKey = `${tenant.id}-scoop-${scoop.id}`;
-                                    const isGeneratingScoop = generatingKey === scoopKey;
-                                    const hasScoopEmail = !!generatedEmails[scoopKey];
-                                    return (
-                                      <div key={scoop.id} className="space-y-2">
-                                        <button
-                                          onClick={() => {
-                                            const scoopReason: OutreachReason = {
-                                              type: 'market_news',
-                                              urgency: 'medium',
-                                              title: `Broker Intel: ${scoop.tags.join(', ')}`,
-                                              description: scoop.content,
-                                            };
-                                            generateEmail(tenant, building, scoopReason, scoopKey);
-                                          }}
-                                          disabled={isGeneratingScoop}
-                                          className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
-                                        >
-                                          <div className="flex items-start gap-2">
-                                            <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold text-foreground">
-                                              {scoop.authorAvatar}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center gap-2 mb-0.5">
-                                                <span className="text-[11px] font-semibold text-foreground">{scoop.author}</span>
-                                                {scoop.verified && <CheckCircle className="h-3 w-3 text-primary" />}
-                                                {!hasScoopEmail && <Mail className="h-3 w-3 shrink-0 text-primary/50 ml-auto" />}
-                                                {isGeneratingScoop && <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin ml-auto" />}
-                                              </div>
-                                              <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">{scoop.content}</p>
-                                              <div className="mt-1.5 flex flex-wrap gap-1">
-                                                {scoop.tags.map(tag => (
-                                                  <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 bg-secondary/50 text-muted-foreground">{tag}</Badge>
-                                                ))}
-                                              </div>
-                                              <p className="mt-1 text-[9px] text-muted-foreground/50">{scoop.likes} likes · {scoop.comments} comments</p>
-                                            </div>
-                                          </div>
-                                        </button>
-                                        {hasScoopEmail && activeEmailKey === scoopKey && (
-                                          <EmailDisplay
-                                            emailKey={scoopKey}
-                                            emailContent={generatedEmails[scoopKey] || ''}
-                                            isGenerating={isGeneratingScoop}
-                                            contactName={tenant.contactName}
-                                            contactEmail={tenant.contactEmail}
-                                            subject={`${tenant.name} — Broker Intel`}
-                                            onClose={() => setActiveEmailKey(null)}
-                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
-                                            onUpdateEmail={updateEmail}
-                                          />
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </CollapsibleContent>
-                              </Collapsible>
-                            );
-                          })()}
-
-                          {/* Outreach Reasons - Clickable */}
-                          <Collapsible defaultOpen>
-                            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
-                              <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                <Zap className="h-3.5 w-3.5 text-primary" /> Outreach Reasons
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{tenant.outreachReasons.length}</Badge>
-                              </p>
-                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className="mt-2 space-y-2">
+                          {/* ─── Section: Outreach Triggers ─── */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-2.5">
+                              <Target className="h-3.5 w-3.5 text-primary" />
+                              <h3 className="text-xs font-semibold text-foreground tracking-wide uppercase">Outreach Triggers</h3>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary">{tenant.outreachReasons.length}</Badge>
+                            </div>
+                            <div className="space-y-2">
                               {tenant.outreachReasons
                                 .sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency])
                                 .map((reason, ri) => {
@@ -646,127 +468,283 @@ const Prospects = () => {
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 mb-1">
                                               <p className="text-xs font-semibold text-foreground">{reason.title}</p>
-                                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${getUrgencyColor(reason.urgency)}`}>
+                                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${getUrgencyColor(reason.urgency)}`}>
                                                 {reason.urgency}
                                               </Badge>
                                               <span className="text-[9px] text-muted-foreground">{reasonTypeLabels[reason.type]}</span>
-                                              {hasEmail && (
-                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary ml-auto">
-                                                  <Mail className="h-2.5 w-2.5 mr-0.5" /> Email ready
-                                                </Badge>
-                                              )}
+                                              {!hasEmail && <Mail className="ml-auto h-3 w-3 shrink-0 text-primary/50" />}
                                             </div>
-                                            <p className="text-[11px] leading-relaxed text-muted-foreground">{reason.description}</p>
+                                            <p className="text-[10px] leading-relaxed text-muted-foreground">{reason.description}</p>
                                           </div>
                                         </div>
                                       </button>
 
-                                      {/* Generated Email Display */}
-                                      <AnimatePresence>
-                                        {isShowingEmail && generatedEmails[key] !== undefined && (
+                                      {hasEmail && isShowingEmail && (
+                                        <div className="mt-2">
                                           <EmailDisplay
                                             emailKey={key}
-                                            emailContent={generatedEmails[key]}
+                                            emailContent={generatedEmails[key] || ''}
                                             isGenerating={isGenerating}
                                             contactName={tenant.contactName}
                                             contactEmail={tenant.contactEmail}
-                                            subject={`${tenant.name} — Outreach`}
+                                            subject={`${tenant.name} — ${reason.title}`}
                                             onClose={() => setActiveEmailKey(null)}
+                                            onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; }); }}
                                             onUpdateEmail={updateEmail}
                                           />
-                                        )}
-                                      </AnimatePresence>
+                                        </div>
+                                      )}
                                     </div>
                                   );
                                 })}
-                            </CollapsibleContent>
-                          </Collapsible>
 
-                          {/* Custom Reason Input */}
-                          <div>
-                            {customReasonOpen === tenant.id ? (
-                              <motion.div
-                                initial={{ opacity: 0, y: 4 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2"
-                              >
-                                <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                                  <Plus className="h-3.5 w-3.5 text-primary" /> Custom Outreach Reason
-                                </p>
-                                <textarea
-                                  value={customReasonText}
-                                  onChange={e => setCustomReasonText(e.target.value)}
-                                  placeholder="Type your reason to reach out to this tenant..."
-                                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                                  rows={3}
-                                  autoFocus
-                                />
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="text-xs h-7"
-                                    disabled={!customReasonText.trim() || !!generatingKey}
-                                    onClick={() => generateCustomEmail(tenant, building)}
-                                  >
-                                    <Send className="mr-1 h-3 w-3" /> Generate Email
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="text-xs h-7"
-                                    onClick={() => { setCustomReasonOpen(null); setCustomReasonText(''); }}
-                                  >
-                                    Cancel
-                                  </Button>
+                              {/* Custom Reason */}
+                              {customReasonOpen === tenant.id ? (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2">
+                                  <textarea
+                                    value={customReasonText}
+                                    onChange={e => setCustomReasonText(e.target.value)}
+                                    placeholder="Describe your custom outreach reason..."
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <Button size="sm" className="text-xs h-7" disabled={!customReasonText.trim() || !!generatingKey} onClick={() => generateCustomEmail(tenant, building)}>
+                                      <Send className="mr-1 h-3 w-3" /> Generate Email
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setCustomReasonOpen(null); setCustomReasonText(''); }}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </motion.div>
+                              ) : (
+                                <button
+                                  onClick={() => setCustomReasonOpen(tenant.id)}
+                                  className="w-full rounded-md border border-dashed border-border p-2.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                  <Plus className="h-3.5 w-3.5" /> Custom Reason
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Custom Generated Emails */}
+                            {(customEmailKeys[tenant.id] || []).map(key => {
+                              const isGenerating = generatingKey === key;
+                              const emailContent = generatedEmails[key];
+                              if (emailContent === undefined && !isGenerating) return null;
+                              return (
+                                <div key={key} className="mt-2">
+                                  <EmailDisplay
+                                    emailKey={key}
+                                    emailContent={emailContent || ''}
+                                    isGenerating={isGenerating}
+                                    label="Custom Email"
+                                    contactName={tenant.contactName}
+                                    contactEmail={tenant.contactEmail}
+                                    subject={`${tenant.name} — Custom Outreach`}
+                                    onClose={() => {
+                                      setCustomEmailKeys(prev => ({ ...prev, [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key) }));
+                                      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                    }}
+                                    onDismiss={() => {
+                                      setCustomEmailKeys(prev => ({ ...prev, [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key) }));
+                                      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+                                    }}
+                                    onUpdateEmail={updateEmail}
+                                  />
                                 </div>
-                              </motion.div>
-                            ) : (
-                              <button
-                                onClick={() => setCustomReasonOpen(tenant.id)}
-                                className="w-full rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
-                              >
-                                <Plus className="h-3.5 w-3.5" /> Insert Custom Reason
-                              </button>
-                            )}
+                              );
+                            })}
                           </div>
 
-                          {/* Custom Generated Emails */}
-                          {(customEmailKeys[tenant.id] || []).map(key => {
-                            const isGenerating = generatingKey === key;
-                            const emailContent = generatedEmails[key];
-                            if (emailContent === undefined && !isGenerating) return null;
+                          {/* ─── Section: Market Intel ─── */}
+                          {(() => {
+                            const submarket = buildingSubmarkets[building.id];
+                            const news = submarket ? getSubmarketNews(submarket) : [];
+                            const matchedScoops = scoopPosts.filter(scoop =>
+                              scoop.tags.some(tag => {
+                                const t = tag.toLowerCase();
+                                return (
+                                  tenant.name.toLowerCase().includes(t) ||
+                                  t.includes(tenant.name.toLowerCase().split(' ')[0]) ||
+                                  building.name.toLowerCase().includes(t) ||
+                                  t.includes(building.name.toLowerCase()) ||
+                                  tenant.industry.toLowerCase().includes(t) ||
+                                  t.includes(tenant.industry.toLowerCase())
+                                );
+                              })
+                            );
+                            if (news.length === 0 && matchedScoops.length === 0) return null;
+
                             return (
-                              <div key={key}>
-                                <EmailDisplay
-                                  emailKey={key}
-                                  emailContent={emailContent || ''}
-                                  isGenerating={isGenerating}
-                                  label="Custom Email"
-                                  contactName={tenant.contactName}
-                                  contactEmail={tenant.contactEmail}
-                                  subject={`${tenant.name} — Custom Outreach`}
-                                  onClose={() => {
-                                    setCustomEmailKeys(prev => ({
-                                      ...prev,
-                                      [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
-                                    }));
-                                    setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
-                                  }}
-                                  onDismiss={() => {
-                                    setCustomEmailKeys(prev => ({
-                                      ...prev,
-                                      [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key),
-                                    }));
-                                    setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
-                                  }}
-                                  onUpdateEmail={updateEmail}
-                                />
+                              <div>
+                                <div className="flex items-center gap-1.5 mb-2.5">
+                                  <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                                  <h3 className="text-xs font-semibold text-foreground tracking-wide uppercase">Market Intel</h3>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary">{news.slice(0, 4).length + matchedScoops.length}</Badge>
+                                </div>
+
+                                {/* Submarket News */}
+                                {news.length > 0 && (
+                                  <Collapsible defaultOpen={news.length <= 2}>
+                                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group mb-1.5">
+                                      <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                                        <Newspaper className="h-3 w-3 text-muted-foreground" /> {submarket} News
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-secondary text-muted-foreground">{news.slice(0, 4).length}</Badge>
+                                      </p>
+                                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="space-y-1.5">
+                                      {news.slice(0, 4).map(item => {
+                                        const catColors: Record<string, string> = {
+                                          development: 'bg-primary/10 text-primary',
+                                          infrastructure: 'bg-info/10 text-info',
+                                          policy: 'bg-warning/10 text-warning',
+                                          tenant_movement: 'bg-destructive/10 text-destructive',
+                                          investment: 'bg-success/10 text-success',
+                                          amenity: 'bg-accent/10 text-accent-foreground',
+                                        };
+                                        const newsKey = `${tenant.id}-news-${item.id}`;
+                                        const isGeneratingNews = generatingKey === newsKey;
+                                        const hasNewsEmail = !!generatedEmails[newsKey];
+                                        return (
+                                          <div key={item.id} className="space-y-2">
+                                            <button
+                                              onClick={() => {
+                                                const newsReason: OutreachReason = {
+                                                  type: 'market_news',
+                                                  urgency: 'medium',
+                                                  title: item.title,
+                                                  description: `${item.summary} — Touchpoint angle: ${item.touchpointAngle}`,
+                                                };
+                                                generateEmail(tenant, building, newsReason, newsKey);
+                                              }}
+                                              disabled={isGeneratingNews}
+                                              className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+                                            >
+                                              <div className="flex items-start gap-2">
+                                                <Newspaper className="mt-0.5 h-3 w-3 shrink-0 text-muted-foreground" />
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2 mb-0.5">
+                                                    <p className="text-[11px] font-semibold text-foreground truncate">{item.title}</p>
+                                                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 ${catColors[item.category] || ''}`}>
+                                                      {item.category.replace('_', ' ')}
+                                                    </Badge>
+                                                    {!hasNewsEmail && <Mail className="h-3 w-3 shrink-0 text-primary/50" />}
+                                                    {isGeneratingNews && <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin" />}
+                                                  </div>
+                                                  <p className="text-[10px] text-muted-foreground leading-relaxed">{item.summary}</p>
+                                                  <div className="mt-1.5 flex items-start gap-1.5">
+                                                    <MessageCircle className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                                                    <p className="text-[10px] text-primary/80 italic leading-relaxed">{item.touchpointAngle}</p>
+                                                  </div>
+                                                  <div className="mt-1 flex items-center gap-2">
+                                                    <p className="text-[9px] text-muted-foreground/50">{item.source} · {item.date}</p>
+                                                    {item.url && (
+                                                      <a href={item.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="inline-flex items-center gap-0.5 text-[9px] text-primary hover:underline">
+                                                        <ExternalLink className="h-2.5 w-2.5" /> Article
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </button>
+                                            {hasNewsEmail && activeEmailKey === newsKey && (
+                                              <EmailDisplay
+                                                emailKey={newsKey}
+                                                emailContent={generatedEmails[newsKey] || ''}
+                                                isGenerating={isGeneratingNews}
+                                                contactName={tenant.contactName}
+                                                contactEmail={tenant.contactEmail}
+                                                subject={`${tenant.name} — Market News`}
+                                                onClose={() => setActiveEmailKey(null)}
+                                                onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
+                                                onUpdateEmail={updateEmail}
+                                              />
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
+
+                                {/* Scoops */}
+                                {matchedScoops.length > 0 && (
+                                  <Collapsible>
+                                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group mt-1.5">
+                                      <p className="text-xs font-medium text-foreground flex items-center gap-1">
+                                        <Eye className="h-3 w-3 text-muted-foreground" /> Broker Intel
+                                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-secondary text-muted-foreground">{matchedScoops.length}</Badge>
+                                      </p>
+                                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="mt-1.5 space-y-1.5">
+                                      {matchedScoops.map(scoop => {
+                                        const scoopKey = `${tenant.id}-scoop-${scoop.id}`;
+                                        const isGeneratingScoop = generatingKey === scoopKey;
+                                        const hasScoopEmail = !!generatedEmails[scoopKey];
+                                        return (
+                                          <div key={scoop.id} className="space-y-2">
+                                            <button
+                                              onClick={() => {
+                                                const scoopReason: OutreachReason = {
+                                                  type: 'market_news',
+                                                  urgency: 'medium',
+                                                  title: `Broker Intel: ${scoop.tags.join(', ')}`,
+                                                  description: scoop.content,
+                                                };
+                                                generateEmail(tenant, building, scoopReason, scoopKey);
+                                              }}
+                                              disabled={isGeneratingScoop}
+                                              className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+                                            >
+                                              <div className="flex items-start gap-2">
+                                                <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-secondary text-[9px] font-bold text-foreground">
+                                                  {scoop.authorAvatar}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className="text-[11px] font-semibold text-foreground">{scoop.author}</span>
+                                                    {scoop.verified && <CheckCircle className="h-3 w-3 text-primary" />}
+                                                    {!hasScoopEmail && <Mail className="h-3 w-3 shrink-0 text-primary/50 ml-auto" />}
+                                                    {isGeneratingScoop && <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin ml-auto" />}
+                                                  </div>
+                                                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">{scoop.content}</p>
+                                                  <div className="mt-1.5 flex flex-wrap gap-1">
+                                                    {scoop.tags.map(tag => (
+                                                      <Badge key={tag} variant="outline" className="text-[9px] px-1.5 py-0 bg-secondary/50 text-muted-foreground">{tag}</Badge>
+                                                    ))}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </button>
+                                            {hasScoopEmail && activeEmailKey === scoopKey && (
+                                              <EmailDisplay
+                                                emailKey={scoopKey}
+                                                emailContent={generatedEmails[scoopKey] || ''}
+                                                isGenerating={isGeneratingScoop}
+                                                contactName={tenant.contactName}
+                                                contactEmail={tenant.contactEmail}
+                                                subject={`${tenant.name} — Broker Intel`}
+                                                onClose={() => setActiveEmailKey(null)}
+                                                onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
+                                                onUpdateEmail={updateEmail}
+                                              />
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </CollapsibleContent>
+                                  </Collapsible>
+                                )}
                               </div>
                             );
-                          })}
+                          })()}
 
-                          {/* Actions */}
-                          <div className="flex items-center gap-2 pt-1">
+                          {/* ─── Actions ─── */}
+                          <div className="flex items-center gap-2 pt-1 border-t border-border">
                             <Link to={`/building/${building.id}/tenant/${tenant.id}`}>
                               <Button size="sm" className="text-xs h-8">View Full Profile →</Button>
                             </Link>

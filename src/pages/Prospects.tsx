@@ -165,7 +165,7 @@ const Prospects = () => {
     clearSelection();
   };
 
-
+  const generateEmail = useCallback(async (tenant: Tenant, building: Building, reason: OutreachReason, key: string) => {
     if (generatedEmails[key]) {
       setActiveEmailKey(activeEmailKey === key ? null : key);
       return;

@@ -70,6 +70,8 @@ const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
 
 const News = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeIndustry, setActiveIndustry] = useState<string>('all');
+  const [showIndustryFilter, setShowIndustryFilter] = useState(false);
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
   const [selectedProspects, setSelectedProspects] = useState<Record<string, Set<string>>>({});
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());

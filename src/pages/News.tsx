@@ -207,7 +207,7 @@ const News = () => {
   }, [customIntelInput]);
 
   const filteredNews = useMemo(() => {
-    let result = currentNews;
+    let result = currentNews.filter(n => !dismissedIds.has(n.id));
     if (activeCategory !== 'all') {
       result = result.filter(n => n.category === activeCategory);
     }

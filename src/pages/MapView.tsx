@@ -1,28 +1,131 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp } from 'lucide-react';
-import { buildings, type Building } from '@/data/mockData';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, MapPin } from 'lucide-react';
+import { buildings as mockBuildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+type GoogleBuilding = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating: number | null;
+  ratingCount: number;
+  types: string[];
+  businessStatus: string;
+};
 
 const MapView = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [selectedGoogleBuilding, setSelectedGoogleBuilding] = useState<GoogleBuilding | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
+  const [googleBuildings, setGoogleBuildings] = useState<GoogleBuilding[]>([]);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const googleMarkersRef = useRef<any[]>([]);
 
-  const filteredBuildings = useMemo(() => {
-    if (!searchQuery.trim()) return buildings;
+  const fetchGoogleBuildings = useCallback(async () => {
+    if (googleLoaded) return;
+    setLoadingGoogle(true);
+    try {
+      const allBuildings: GoogleBuilding[] = [];
+      let pageToken: string | null = null;
+
+      // Fetch up to 3 pages (60 buildings)
+      for (let i = 0; i < 3; i++) {
+        const { data, error } = await supabase.functions.invoke('fetch-dc-buildings', {
+          body: { pageToken },
+        });
+
+        if (error) throw new Error(error.message);
+        if (!data?.success) throw new Error(data?.error || 'Failed to fetch');
+
+        allBuildings.push(...(data.buildings || []));
+        pageToken = data.nextPageToken;
+
+        if (!pageToken) break;
+        // Google requires a short delay between page token requests
+        await new Promise(r => setTimeout(r, 2000));
+      }
+
+      setGoogleBuildings(allBuildings);
+      setGoogleLoaded(true);
+      toast.success(`Loaded ${allBuildings.length} real DC office buildings`);
+
+      // Add markers to map
+      if (mapInstanceRef.current) {
+        addGoogleMarkersToMap(allBuildings);
+      }
+    } catch (err) {
+      console.error('Error fetching buildings:', err);
+      toast.error('Failed to fetch buildings from Google Places');
+    } finally {
+      setLoadingGoogle(false);
+    }
+  }, [googleLoaded]);
+
+  const addGoogleMarkersToMap = async (gBuildings: GoogleBuilding[]) => {
+    const L = await import('leaflet');
+
+    // Clear existing google markers
+    googleMarkersRef.current.forEach(m => m.remove());
+    googleMarkersRef.current = [];
+
+    const googleIcon = L.divIcon({
+      html: `<div style="background:#3b82f6;width:10px;height:10px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
+      className: '',
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    });
+
+    gBuildings.forEach(b => {
+      if (!b.lat || !b.lng) return;
+      const marker = L.marker([b.lat, b.lng], { icon: googleIcon }).addTo(mapInstanceRef.current);
+      marker.bindPopup(`
+        <div style="min-width:180px">
+          <strong>${b.name}</strong><br/>
+          <span style="font-size:11px;opacity:0.7">${b.address}</span><br/>
+          ${b.rating ? `<span style="font-size:11px">⭐ ${b.rating} (${b.ratingCount} reviews)</span>` : ''}
+        </div>
+      `);
+      marker.on('click', () => {
+        setSelectedBuilding(null);
+        setSelectedGoogleBuilding(b);
+      });
+      googleMarkersRef.current.push(marker);
+    });
+  };
+
+  const allBuildings = useMemo(() => {
+    return mockBuildings;
+  }, []);
+
+  const filteredMockBuildings = useMemo(() => {
+    if (!searchQuery.trim()) return allBuildings;
     const q = searchQuery.toLowerCase();
-    return buildings.filter(b =>
+    return allBuildings.filter(b =>
       b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, allBuildings]);
+
+  const filteredGoogleBuildings = useMemo(() => {
+    if (!searchQuery.trim()) return googleBuildings;
+    const q = searchQuery.toLowerCase();
+    return googleBuildings.filter(b =>
+      b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
+    );
+  }, [searchQuery, googleBuildings]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;

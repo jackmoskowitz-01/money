@@ -39,7 +39,9 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
         (news.category === 'vacancy' && building.vacancyRate > 15) ||
         (news.category === 'market' && tenant.industry.toLowerCase().includes('legal') && news.title.toLowerCase().includes('law')) ||
         (news.category === 'market' && tenant.industry.toLowerCase().includes('lobby') && news.title.toLowerCase().includes('lobby')) ||
-        (news.category === 'contraction' && tenant.industry.toLowerCase().includes('consult') && news.title.toLowerCase().includes('consult'));
+        (news.category === 'contraction' && tenant.industry.toLowerCase().includes('consult') && news.title.toLowerCase().includes('consult')) ||
+        (news.category === 'contraction' && (tenant.industry.toLowerCase().includes('nonprofit') || tenant.industry.toLowerCase().includes('association') || tenant.industry.toLowerCase().includes('think tank')) && (news.title.toLowerCase().includes('nonprofit') || news.title.toLowerCase().includes('non-profit'))) ||
+        (news.category === 'market' && (tenant.industry.toLowerCase().includes('nonprofit') || tenant.industry.toLowerCase().includes('association')) && (news.title.toLowerCase().includes('nonprofit') || news.title.toLowerCase().includes('funding') || news.title.toLowerCase().includes('501')));
 
       if (directTenant || directBuilding || categoryMatch) {
         seen.add(tenant.id);

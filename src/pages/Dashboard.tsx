@@ -150,6 +150,28 @@ const Dashboard = () => {
     setShowSearchFor(null);
   };
 
+  const addCustomProspect = (newsId: string, name: string) => {
+    const id = `custom-${Date.now()}`;
+    setCustomProspects(prev => ({
+      ...prev,
+      [newsId]: [...(prev[newsId] || []), { id, name: name.trim() }],
+    }));
+    setProspectSearch(prev => ({ ...prev, [newsId]: '' }));
+    setShowSearchFor(null);
+  };
+
+  const removeCustomProspect = (newsId: string, customId: string) => {
+    setCustomProspects(prev => ({
+      ...prev,
+      [newsId]: (prev[newsId] || []).filter(c => c.id !== customId),
+    }));
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      current.delete(customId);
+      return { ...prev, [newsId]: current };
+    });
+  };
+
   const removeManualProspect = (newsId: string, tenantId: string) => {
     setManualProspects(prev => ({
       ...prev,

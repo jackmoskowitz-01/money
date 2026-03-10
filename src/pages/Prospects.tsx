@@ -1,16 +1,18 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink, UserPlus, ListPlus } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
-import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
+import { buildingSubmarkets, getSubmarketNews, brokers, assignTenant, type Broker } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getProspectLists, addProspectsToList, type ProspectList } from '@/data/prospectLists';
 
 type ProspectEntry = {
   tenant: Tenant;

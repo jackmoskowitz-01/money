@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
 import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { buildings as mockBuildings, type Building } from '@/data/mockData';
+import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

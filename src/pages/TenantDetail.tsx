@@ -613,6 +613,7 @@ const TenantDetail = () => {
                   sqft={tenant.sqft}
                   leaseExpiration={tenant.leaseExpiration}
                   floor={tenant.floor}
+                  recipients={recipients}
                 />
                 <a href={`mailto:${tenant.contactEmail}`}>
                   <Button size="sm" variant="outline" className="text-xs h-8">

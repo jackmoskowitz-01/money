@@ -1,8 +1,9 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search } from 'lucide-react';
-import { newsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw } from 'lucide-react';
+import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
+import { toast } from 'sonner';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +18,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
-
+const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
 
 type ProspectMatch = { tenant: Tenant; building: Building };
 
@@ -64,6 +65,44 @@ const Dashboard = () => {
   const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
+  const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const fetchLiveNews = useCallback(async () => {
+    setNewsLoading(true);
+    try {
+      const resp = await fetch(NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({}),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to fetch news');
+      }
+      const data = await resp.json();
+      if (data.news && Array.isArray(data.news)) {
+        setLiveNews(data.news);
+        setLastRefreshed(new Date());
+        toast.success('Market news updated');
+      }
+    } catch (e) {
+      console.error('Failed to fetch live news:', e);
+      toast.error('Failed to fetch live news — showing cached data');
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveNews();
+  }, [fetchLiveNews]);
+
+  const currentNews: NewsItem[] = liveNews || staticNewsItems;
 
   // Personal analytics
   const pipeline = getPipeline();
@@ -111,8 +150,8 @@ const Dashboard = () => {
   }, [assignments, activities]);
 
   const filteredNews = activeCategory === 'all'
-    ? newsItems
-    : newsItems.filter(n => n.category === activeCategory);
+    ? currentNews
+    : currentNews.filter(n => n.category === activeCategory);
 
   // All non-client tenants for manual adding
   const allNonClientProspects = useMemo(() => {
@@ -564,8 +603,30 @@ const Dashboard = () => {
           {/* News Feed */}
           <div className="lg:col-span-2">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Market News</h2>
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold">Market News</h2>
+                {liveNews && (
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[10px]">
+                    Live
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {lastRefreshed && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={fetchLiveNews}
+                  disabled={newsLoading}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">
@@ -583,8 +644,18 @@ const Dashboard = () => {
                 </button>
               ))}
             </div>
-
-
+            {newsLoading && !liveNews && (
+              <div className="space-y-3 mb-3">
+                {[1, 2, 3].map(i => (
+                  <Card key={i} className="border-border bg-card p-4 animate-pulse">
+                    <div className="h-4 w-20 bg-secondary rounded mb-2" />
+                    <div className="h-5 w-3/4 bg-secondary rounded mb-2" />
+                    <div className="h-3 w-full bg-secondary rounded mb-1" />
+                    <div className="h-3 w-2/3 bg-secondary rounded" />
+                  </Card>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {

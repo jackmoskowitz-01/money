@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.refine-email]
 verify_jwt = false
+
+[functions.fetch-market-news]
+verify_jwt = false

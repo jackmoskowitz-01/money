@@ -166,6 +166,9 @@ const MapView = () => {
       });
 
       mapInstanceRef.current = map;
+
+      // Auto-fetch Google buildings after map loads
+      fetchGoogleBuildings();
     };
 
     loadMap();

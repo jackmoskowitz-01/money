@@ -645,6 +645,9 @@ const Prospects = () => {
                                   emailContent={emailContent || ''}
                                   isGenerating={isGenerating}
                                   label="Custom Email"
+                                  contactName={tenant.contactName}
+                                  contactEmail={tenant.contactEmail}
+                                  subject={`${tenant.name} — Custom Outreach`}
                                   onClose={() => {
                                     setCustomEmailKeys(prev => ({
                                       ...prev,

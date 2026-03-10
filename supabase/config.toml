@@ -18,5 +18,8 @@ verify_jwt = false
 [functions.smart-drafting]
 verify_jwt = false
 
+[functions.smart-outreach]
+verify_jwt = false
+
 [functions.places-autocomplete]
 verify_jwt = false

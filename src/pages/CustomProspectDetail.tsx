@@ -5,6 +5,7 @@ import { ArrowLeft, Globe, MapPin, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getCustomProspect } from '@/data/customProspects';
+import EmailComposer from '@/components/EmailComposer';
 import { getActivities, addActivity, activityTypeLabels, activityTypeIcons, type ActivityType, type ActivityEntry } from '@/data/activityData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -101,6 +102,17 @@ const CustomProspectDetail = () => {
             <p className="mt-1 text-[11px] text-muted-foreground/60 flex items-center gap-1">
               <Calendar className="h-3 w-3" /> Created {format(new Date(prospect.createdAt), 'MMM d, yyyy')}
             </p>
+          </div>
+
+          {/* Email Composer */}
+          <div className="mb-6">
+            <EmailComposer
+              tenantId={prospectId!}
+              buildingId=""
+              tenantName={prospect.name}
+              contactName={prospect.name}
+              buildingName={prospect.address}
+            />
           </div>
 
           {/* Activity Log */}

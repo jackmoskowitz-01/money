@@ -232,7 +232,7 @@ export const buildings: Building[] = [
     class: 'B',
     tenants: [
       {
-        id: 't10', name: 'American Academy of Nursing', industry: 'Healthcare/Nonprofit', sqft: 12000, floor: '6',
+        id: 't10', name: 'American Academy of Nursing', industry: 'Healthcare', sqft: 12000, floor: '6',
         leaseExpiration: '2027-08-31', contactName: 'Christine Henshaw', contactTitle: 'Executive Director',
         contactEmail: 'c.henshaw@aannet.org', headcount: 45,
         isClient: true,

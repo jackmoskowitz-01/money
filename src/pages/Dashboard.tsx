@@ -397,52 +397,10 @@ const Dashboard = () => {
           <SubmarketTrends />
         </div>
 
-        {/* Team Activity Feed + Meetings Overview (Salesforce-style) */}
-        <div className="mb-8 grid gap-4 lg:grid-cols-5">
-          <div className="lg:col-span-3">
-            <TeamActivityFeed />
-          </div>
-          <div className="lg:col-span-2">
-            <MeetingsOverview />
-          </div>
-        </div>
-
-        {/* Team Leaderboard */}
-        <div className="mb-8">
-          <Card className="border-border bg-card p-4">
-            <h3 className="mb-3 font-display text-sm font-bold">Broker Leaderboard</h3>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {brokerStats.map((broker, i) => (
-                <motion.div
-                  key={broker.id}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="rounded-md bg-secondary/50 p-3"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold ${broker.color}`}>
-                      {broker.initials}
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-foreground">{broker.name}</p>
-                      <p className="text-[10px] text-muted-foreground">#{i + 1} by activity</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <div className="rounded bg-background/50 px-2 py-1 text-center">
-                      <p className="text-sm font-bold text-foreground">{broker.prospects}</p>
-                      <p className="text-[9px] text-muted-foreground">Prospects</p>
-                    </div>
-                    <div className="rounded bg-background/50 px-2 py-1 text-center">
-                      <p className="text-sm font-bold text-foreground">{broker.activities}</p>
-                      <p className="text-[9px] text-muted-foreground">Activities</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
+        {/* Broker Leaderboard + Meetings Overview */}
+        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+          <BrokerLeaderboard />
+          <MeetingsOverview />
         </div>
 
         <div className="grid gap-8 lg:grid-cols-3">

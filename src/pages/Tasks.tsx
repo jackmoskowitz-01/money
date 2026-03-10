@@ -328,6 +328,16 @@ const Tasks = () => {
                                       <Icon className="mr-1 h-2.5 w-2.5" />
                                       {task.type.replace('_', ' ')}
                                     </Badge>
+                                    {(() => {
+                                      const p = priorityConfig[task.priority || 'medium'];
+                                      const PIcon = p.icon;
+                                      return (
+                                        <Badge variant="outline" className={`text-[10px] ${p.class}`}>
+                                          <PIcon className="mr-1 h-2.5 w-2.5" />
+                                          {p.label}
+                                        </Badge>
+                                      );
+                                    })()}
                                   </div>
                                   {task.description && (
                                     <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>

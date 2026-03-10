@@ -33,6 +33,12 @@ const taskTypeColors: Record<string, string> = {
   other: 'bg-muted text-muted-foreground',
 };
 
+const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: string; class: string; sortOrder: number }> = {
+  high: { icon: AlertTriangle, label: 'High', class: 'text-destructive bg-destructive/10 border-destructive/30', sortOrder: 0 },
+  medium: { icon: ArrowRight, label: 'Med', class: 'text-warning bg-warning/10 border-warning/30', sortOrder: 1 },
+  low: { icon: ArrowDown, label: 'Low', class: 'text-muted-foreground bg-muted border-border', sortOrder: 2 },
+};
+
 const Tasks = () => {
   const [tasks, setTasks] = useState<BrokerTask[]>(() => getTasks());
   const [currentMonth, setCurrentMonth] = useState(new Date());

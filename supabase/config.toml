@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.fetch-dc-buildings]
 verify_jwt = false
+
+[functions.generate-nonprofit-outreach]
+verify_jwt = false
+
+[functions.refine-email]
+verify_jwt = false

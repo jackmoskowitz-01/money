@@ -14,6 +14,7 @@ import Pipeline from "./pages/Pipeline";
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
+import NonprofitOutreach from "./pages/NonprofitOutreach";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ const App = () => (
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/prospects" element={<Prospects />} />
           <Route path="/activities" element={<ActivityLogger />} />
+          <Route path="/nonprofit" element={<NonprofitOutreach />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

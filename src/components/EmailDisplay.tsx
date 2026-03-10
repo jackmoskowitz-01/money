@@ -34,6 +34,15 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const openInEmailClient = () => {
+    const to = contactEmail || '';
+    const subj = subject || (label ? `Re: ${label}` : '');
+    const body = emailContent;
+    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    window.open(mailto, '_blank');
+    toast.success('Opening email client...');
+  };
+
   const startEditing = () => {
     setEditText(emailContent);
     setIsEditing(true);

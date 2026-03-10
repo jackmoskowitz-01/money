@@ -1,85 +1,148 @@
 import type { Building, Tenant, OutreachReason } from './mockData';
 
-// Estimate lat/lng from DC NW quadrant addresses
+// Simple deterministic hash for consistent offsets
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+  }
+  return h;
+}
+
+// Precise DC NW quadrant coordinate estimation
+// DC grid: numbered streets run N-S, lettered/named streets run E-W
+// In NW quadrant, block numbers correspond to cross streets:
+//   100 block = 1st St, 200 = 2nd St, ..., 1000 = 10th St, etc.
 function estimateCoords(address: string): { lat: number; lng: number } {
-  const base = { lat: 38.9025, lng: -77.0335 }; // ~15th & K NW
+  const addr = address.toLowerCase().replace(/,.*/, '').trim();
+  const blockMatch = addr.match(/^(\d+)/);
+  const blockNum = blockMatch ? parseInt(blockMatch[1]) : 1000;
 
-  // Street longitude mapping (numbered streets, N-S)
-  const streetLng: Record<string, number> = {
-    '10th': -77.026, '11th': -77.0275, '12th': -77.029, '13th': -77.0305,
-    '14th': -77.032, '15th': -77.0335, '16th': -77.036, '17th': -77.0385,
-    '18th': -77.041, '19th': -77.0435, '20th': -77.045, '21st': -77.047,
-    '22nd': -77.049,
+  // --- Longitude: determined by the STREET NAME (N-S streets) ---
+  // Precise longitudes for DC numbered streets (NW quadrant)
+  const numberedStreetLng: Record<number, number> = {
+    5: -77.0184, 6: -77.0198, 7: -77.0215, 8: -77.0230, 9: -77.0245,
+    10: -77.0262, 11: -77.0277, 12: -77.0292, 13: -77.0308, 14: -77.0323,
+    15: -77.0338, 16: -77.0358, 17: -77.0387, 18: -77.0410, 19: -77.0432,
+    20: -77.0455, 21: -77.0475, 22: -77.0495,
   };
 
-  // Named streets/avenues longitude approximations
-  const namedLng: Record<string, number> = {
-    'connecticut': -77.040, 'vermont': -77.0335, 'new hampshire': -77.044,
-    'new york': -77.030, 'massachusetts': -77.029, 'thomas': -77.034,
+  // Named avenue longitudes (approximate center line)
+  const namedAveLng: Record<string, number> = {
+    'connecticut': -77.0405, 'vermont': -77.0330, 'new hampshire': -77.0440,
+    'new york': -77.0290, 'massachusetts': -77.0285, 'thomas': -77.0340,
   };
 
-  // Lettered street latitude mapping (E-W)
-  const streetLat: Record<string, number> = {
-    'e': 38.895, 'f': 38.897, 'g': 38.898, 'h': 38.900,
-    'i': 38.901, 'eye': 38.901, 'k': 38.903, 'l': 38.905,
-    'm': 38.906, 'n': 38.908,
+  // --- Latitude: determined by the STREET NAME (E-W streets) ---
+  // Precise latitudes for DC lettered streets
+  const letteredStreetLat: Record<string, number> = {
+    'c': 38.8930, 'd': 38.8940, 'e': 38.8950, 'f': 38.8965, 'g': 38.8980,
+    'h': 38.8998, 'eye': 38.9012, 'i': 38.9012, 'k': 38.9025, 'l': 38.9040,
+    'm': 38.9055, 'n': 38.9070, 'o': 38.9083,
   };
 
-  // Pennsylvania Ave diagonal approximation
-  const paLat: Record<string, number> = {
-    '1100': 38.895, '1200': 38.896, '1275': 38.8965, '1300': 38.897,
-    '1331': 38.8975, '1350': 38.898, '1400': 38.8985, '1455': 38.899,
-    '1500': 38.8995, '1700': 38.900, '1701': 38.900, '1717': 38.9005,
-    '1730': 38.901, '1747': 38.9015, '1750': 38.9015, '1775': 38.902,
-    '1801': 38.9025, '1875': 38.903, '1899': 38.9035, '1900': 38.904,
-    '1901': 38.904, '1919': 38.9045, '2000': 38.905, '2001': 38.905,
-    '2011': 38.9055, '2099': 38.907, '2100': 38.907, '2112': 38.9075,
-    '2121': 38.908, '2150': 38.9085, '2200': 38.909,
-  };
+  let lat: number | null = null;
+  let lng: number | null = null;
 
-  const addr = address.toLowerCase();
-  let lat = base.lat;
-  let lng = base.lng;
+  // Determine if it's "### <Street> St" or "### <Avenue> Ave"
+  // For addresses like "1425 K St NW": K St gives latitude, block 1425 → ~14th St cross gives longitude
+  // For addresses like "910 17th St NW": 17th St gives longitude, block 910 → ~I/K St cross gives latitude
 
-  // Try numbered street for longitude
-  for (const [st, lngVal] of Object.entries(streetLng)) {
-    if (addr.includes(` ${st} st`)) { lng = lngVal; break; }
-  }
-
-  // Try named avenues for longitude
-  for (const [name, lngVal] of Object.entries(namedLng)) {
-    if (addr.includes(name)) { lng = lngVal; break; }
-  }
-
-  // Try lettered street for latitude
-  for (const [letter, latVal] of Object.entries(streetLat)) {
+  // Check for lettered street (E-W) → gives latitude, block gives longitude
+  for (const [letter, latVal] of Object.entries(letteredStreetLat)) {
     const patterns = [` ${letter} st`, ` ${letter} street`];
-    if (patterns.some(p => addr.includes(p))) { lat = latVal; break; }
-  }
-
-  // Pennsylvania Ave special handling
-  if (addr.includes('pennsylvania')) {
-    const blockMatch = addr.match(/^(\d+)/);
-    if (blockMatch) {
-      const block = blockMatch[1];
-      lat = paLat[block] || 38.900;
-      // PA Ave runs diagonally NW-SE
-      const blockNum = parseInt(block);
-      lng = -77.030 - (blockNum - 1100) * 0.000015;
+    if (patterns.some(p => addr.includes(p))) {
+      lat = latVal;
+      // Block number on an E-W street tells us the N-S cross street
+      // 800 block ≈ 8th St, 1400 block ≈ 14th St, etc.
+      const crossStreet = Math.floor(blockNum / 100);
+      if (numberedStreetLng[crossStreet]) {
+        // Interpolate within the block
+        const frac = (blockNum % 100) / 100;
+        const nextLng = numberedStreetLng[crossStreet + 1] || (numberedStreetLng[crossStreet] - 0.0015);
+        lng = numberedStreetLng[crossStreet] + frac * (nextLng - numberedStreetLng[crossStreet]);
+      }
+      break;
     }
   }
 
-  // Adjust latitude slightly based on block number for E-W streets
-  const blockMatch = addr.match(/^(\d+)/);
-  if (blockMatch && !addr.includes('pennsylvania')) {
-    const block = parseInt(blockMatch[1]);
-    // Higher block numbers are slightly further from center
-    lat += (block - 1000) * 0.000002;
+  // Check for numbered street (N-S) → gives longitude, block gives latitude
+  if (lat === null) {
+    const stMatch = addr.match(/(\d+)(?:st|nd|rd|th)\s+st/);
+    if (stMatch) {
+      const stNum = parseInt(stMatch[1]);
+      if (numberedStreetLng[stNum]) {
+        lng = numberedStreetLng[stNum];
+        // Block number on a N-S street tells us the E-W cross street
+        // 500-600 ≈ E/F St, 700-800 ≈ G/H St, 900 ≈ I/Eye St, 1000 ≈ K St, etc.
+        const letterIdx = Math.floor((blockNum - 400) / 100); // 500→1(E), 600→2(F), ...
+        const letters = ['d', 'e', 'f', 'g', 'h', 'i', 'k', 'l', 'm', 'n', 'o'];
+        const baseLetter = letters[Math.max(0, Math.min(letterIdx, letters.length - 1))];
+        if (letteredStreetLat[baseLetter]) {
+          const frac = (blockNum % 100) / 100;
+          const nextIdx = Math.min(letterIdx + 1, letters.length - 1);
+          const nextLat = letteredStreetLat[letters[nextIdx]] || letteredStreetLat[baseLetter];
+          lat = letteredStreetLat[baseLetter] + frac * (nextLat - letteredStreetLat[baseLetter]);
+        }
+      }
+    }
   }
 
-  // Add small random offset to prevent marker stacking
-  lat += (Math.random() - 0.5) * 0.0008;
-  lng += (Math.random() - 0.5) * 0.0008;
+  // Check for named avenues
+  for (const [name, lngVal] of Object.entries(namedAveLng)) {
+    if (addr.includes(name)) {
+      lng = lngVal;
+      // For avenues, block num approximates latitude
+      const letterIdx = Math.floor((blockNum - 400) / 100);
+      const letters = ['d', 'e', 'f', 'g', 'h', 'i', 'k', 'l', 'm', 'n', 'o'];
+      const baseLetter = letters[Math.max(0, Math.min(letterIdx, letters.length - 1))];
+      if (letteredStreetLat[baseLetter]) {
+        lat = letteredStreetLat[baseLetter];
+      }
+      break;
+    }
+  }
+
+  // Pennsylvania Ave: runs diagonally, use precise mapping
+  if (addr.includes('pennsylvania')) {
+    // PA Ave NW runs from Capitol (~38.8895, -77.0090) to Georgetown (~38.9070, -77.0545)
+    const paPoints: [number, number, number][] = [
+      // [blockNum, lat, lng]
+      [1100, 38.8955, -77.0280], [1200, 38.8965, -77.0295], [1275, 38.8970, -77.0305],
+      [1300, 38.8975, -77.0310], [1331, 38.8978, -77.0315], [1350, 38.8980, -77.0318],
+      [1400, 38.8985, -77.0325], [1455, 38.8990, -77.0332], [1500, 38.8995, -77.0338],
+      [1600, 38.9005, -77.0355], [1700, 38.9015, -77.0375], [1701, 38.9015, -77.0376],
+      [1717, 38.9017, -77.0379], [1730, 38.9019, -77.0382], [1750, 38.9021, -77.0386],
+      [1775, 38.9024, -77.0390], [1800, 38.9027, -77.0395], [1900, 38.9038, -77.0415],
+      [1901, 38.9038, -77.0416], [2000, 38.9050, -77.0438], [2001, 38.9050, -77.0439],
+      [2099, 38.9060, -77.0458], [2100, 38.9060, -77.0459], [2200, 38.9070, -77.0478],
+    ];
+    // Find closest two points and interpolate
+    let best = paPoints[0];
+    let bestNext = paPoints[1];
+    for (let i = 0; i < paPoints.length - 1; i++) {
+      if (blockNum >= paPoints[i][0] && blockNum <= paPoints[i + 1][0]) {
+        best = paPoints[i];
+        bestNext = paPoints[i + 1];
+        break;
+      }
+      if (blockNum >= paPoints[i][0]) { best = paPoints[i]; bestNext = paPoints[Math.min(i + 1, paPoints.length - 1)]; }
+    }
+    const range = bestNext[0] - best[0] || 1;
+    const t = (blockNum - best[0]) / range;
+    lat = best[1] + t * (bestNext[1] - best[1]);
+    lng = best[2] + t * (bestNext[2] - best[2]);
+  }
+
+  // Fallback to center of DC CBD
+  if (lat === null) lat = 38.9025;
+  if (lng === null) lng = -77.0335;
+
+  // Deterministic small offset based on address hash to prevent exact stacking
+  const h = hashStr(address);
+  const h2 = hashStr(address + 'y');
+  lat += ((h % 100) / 100 - 0.5) * 0.0003;
+  lng += ((h2 % 100) / 100 - 0.5) * 0.0003;
 
   return { lat, lng };
 }

@@ -16,6 +16,7 @@ import TenantEnrichmentCard from '@/components/TenantEnrichmentCard';
 import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 import EmailComposer from '@/components/EmailComposer';
+import CompanyContacts from '@/components/CompanyContacts';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 

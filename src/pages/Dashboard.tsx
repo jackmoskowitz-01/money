@@ -644,8 +644,18 @@ const Dashboard = () => {
                 </button>
               ))}
             </div>
-
-
+            {newsLoading && !liveNews && (
+              <div className="space-y-3 mb-3">
+                {[1, 2, 3].map(i => (
+                  <Card key={i} className="border-border bg-card p-4 animate-pulse">
+                    <div className="h-4 w-20 bg-secondary rounded mb-2" />
+                    <div className="h-5 w-3/4 bg-secondary rounded mb-2" />
+                    <div className="h-3 w-full bg-secondary rounded mb-1" />
+                    <div className="h-3 w-2/3 bg-secondary rounded" />
+                  </Card>
+                ))}
+              </div>
+            )}
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {

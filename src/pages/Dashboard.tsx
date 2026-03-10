@@ -489,10 +489,13 @@ const Dashboard = () => {
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {
-                const affectedProspects = getAffectedProspects(news);
+                const autoProspects = getAffectedProspects(news);
+                const manual = manualProspects[news.id] || [];
+                const allProspects = [...autoProspects, ...manual];
                 const isExpanded = expandedNewsId === news.id;
                 const selected = selectedProspects[news.id] || new Set();
-                const allSelected = affectedProspects.length > 0 && selected.size === affectedProspects.length;
+                const allSelected = allProspects.length > 0 && selected.size === allProspects.length;
+                const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (
                   <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -511,18 +514,19 @@ const Dashboard = () => {
                           <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
                         </div>
 
-                        {affectedProspects.length > 0 && (
-                          <button
-                            onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
-                            className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
-                          >
-                            <Users className="h-3.5 w-3.5 text-primary" />
-                            <span className="flex-1 text-xs font-medium text-primary">
-                              {affectedProspects.length} prospect{affectedProspects.length !== 1 ? 's' : ''} affected
-                            </span>
-                            <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
+                          className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                        >
+                          <Users className="h-3.5 w-3.5 text-primary" />
+                          <span className="flex-1 text-xs font-medium text-primary">
+                            {allProspects.length > 0
+                              ? `${allProspects.length} prospect${allProspects.length !== 1 ? 's' : ''} ${manual.length > 0 ? `(${manual.length} added manually)` : 'affected'}`
+                              : 'Add prospects for outreach'
+                            }
+                          </span>
+                          <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
                       </div>
 
                       <AnimatePresence>

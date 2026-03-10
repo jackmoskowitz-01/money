@@ -254,6 +254,26 @@ const Tasks = () => {
                           ))}
                         </div>
                         <div className="mb-3">
+                          <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
+                          <div className="flex gap-2">
+                            {(Object.entries(priorityConfig) as [TaskPriority, typeof priorityConfig.high][]).map(([key, cfg]) => {
+                              const PIcon = cfg.icon;
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => setNewTask({ ...newTask, priority: key })}
+                                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                    newTask.priority === key ? cfg.class : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
+                                  }`}
+                                >
+                                  <PIcon className="h-3 w-3" />
+                                  {cfg.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="mb-3">
                           <label className="mb-1 block text-xs text-muted-foreground">Due Date</label>
                           <Input
                             type="date"

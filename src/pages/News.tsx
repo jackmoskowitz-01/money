@@ -121,7 +121,7 @@ const News = () => {
     fetchLiveNews();
   }, [fetchLiveNews]);
 
-  const currentNews: NewsItem[] = [...customIntelItems, ...(liveNews || staticNewsItems)];
+  const currentNews: NewsItem[] = useMemo(() => [...customIntelItems, ...(liveNews || staticNewsItems)], [customIntelItems, liveNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();
@@ -582,16 +582,10 @@ const News = () => {
               </div>
             </div>
 
-            {newsLoading && !liveNews && (
-              <div className="space-y-3 mb-3">
-                {[1, 2, 3].map(i => (
-                  <Card key={i} className="border-border bg-card p-4 animate-pulse">
-                    <div className="h-4 w-20 bg-secondary rounded mb-2" />
-                    <div className="h-5 w-3/4 bg-secondary rounded mb-2" />
-                    <div className="h-3 w-full bg-secondary rounded mb-1" />
-                    <div className="h-3 w-2/3 bg-secondary rounded" />
-                  </Card>
-                ))}
+            {newsLoading && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-primary">Fetching latest market news...</span>
               </div>
             )}
 
@@ -609,7 +603,7 @@ const News = () => {
                 const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (
-                  <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                  <div key={news.id}>
                     <Card className={`border-border bg-card transition-colors hover:bg-secondary/10 ${isCustomIntel ? 'border-primary/20' : ''}`}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -920,7 +914,7 @@ const News = () => {
                         )}
                       </AnimatePresence>
                     </Card>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

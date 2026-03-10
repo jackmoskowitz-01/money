@@ -372,7 +372,7 @@ const Dashboard = () => {
           <Card className="border-border bg-card p-4">
             <h3 className="mb-3 font-display text-sm font-bold">Pipeline Breakdown</h3>
             <div className="space-y-2">
-              {(['not_contacted', 'contacted', 'meeting_set', 'proposal_sent', 'won', 'lost'] as PipelineStage[]).map(stage => {
+              {(['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'] as PipelineStage[]).map(stage => {
                 const count = stageCounts[stage] || 0;
                 const total = pipeline.length || 1;
                 const pct = Math.round((count / total) * 100);

@@ -58,7 +58,7 @@ const BrokerLeaderboard = () => {
       barData: [...brokerStats].sort((a, b) => b.outreach - a.outreach),
       pieData: brokerStats.filter(b => b.meetingsSet > 0),
     };
-  }, [activities, assignments, pipeline]);
+  }, [activities, assignments, pipeline, timeRange]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (!active || !payload?.length) return null;

@@ -60,6 +60,9 @@ const Dashboard = () => {
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+  const [manualProspects, setManualProspects] = useState<Record<string, ProspectMatch[]>>({});
+  const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
+  const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
 
   // Personal analytics
   const pipeline = getPipeline();

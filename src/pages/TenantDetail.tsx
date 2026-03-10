@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, User, Building2, Clock, Copy, Check, AlertTriangle, Loader2, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, Zap, Info, Calendar, Briefcase, TrendingUp, ChevronDown, ExternalLink } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';

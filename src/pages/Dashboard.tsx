@@ -484,6 +484,57 @@ const Dashboard = () => {
               ))}
             </div>
 
+            {/* Non-Profit Newsletter Generator */}
+            <Card className="mb-4 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                    <Heart className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Non-Profit & Association Newsletter</h3>
+                    <p className="text-[10px] text-muted-foreground">Generate a DC market update to mass-send to non-profit and association contacts</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <input
+                    type="text"
+                    value={newsletterContext}
+                    onChange={(e) => setNewsletterContext(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !isGeneratingNewsletter && generateNewsletter()}
+                    placeholder="Optional: focus on Capitol Hill, mention sublease deals, highlight affordable options..."
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={generateNewsletter}
+                    disabled={isGeneratingNewsletter}
+                    className="text-xs h-8 shrink-0"
+                  >
+                    {isGeneratingNewsletter ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Sparkles className="h-3 w-3" /> Generate Newsletter</>
+                    )}
+                  </Button>
+                </div>
+
+                <AnimatePresence>
+                  {showNewsletter && (
+                    <EmailDisplay
+                      emailKey="nonprofit-newsletter"
+                      emailContent={newsletterContent}
+                      isGenerating={isGeneratingNewsletter}
+                      label="Market Newsletter for Non-Profits"
+                      onClose={() => { setShowNewsletter(false); setNewsletterContent(''); }}
+                      onUpdateEmail={(_k, c) => setNewsletterContent(c)}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
+            </Card>
+
             <div className="space-y-3">
               {filteredNews.map((news, i) => {
                 const affectedProspects = getAffectedProspects(news);

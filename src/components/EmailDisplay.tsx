@@ -18,7 +18,7 @@ interface EmailDisplayProps {
   onUpdateEmail: (key: string, content: string) => void;
 }
 
-const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
+const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', contactName, contactEmail, subject, onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');

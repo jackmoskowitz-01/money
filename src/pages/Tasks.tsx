@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { buildings } from '@/data/mockData';
 import {
   getTasks, addTask, updateTask, deleteTask, getTaskCountsByDate,
-  type BrokerTask,
+  type BrokerTask, type TaskPriority,
 } from '@/data/activityData';
 import ProspectLists from '@/components/ProspectLists';
 

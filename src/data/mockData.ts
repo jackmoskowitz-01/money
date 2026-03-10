@@ -248,7 +248,7 @@ export const buildings: Building[] = [
         ],
       },
       {
-        id: 't12', name: 'Center for American Progress', industry: 'Think Tank/Nonprofit', sqft: 28000, floor: '7-8',
+        id: 't12', name: 'Center for American Progress', industry: 'Nonprofit/Association', sqft: 28000, floor: '7-8',
         leaseExpiration: '2025-11-30', contactName: 'Danielle Rosen', contactTitle: 'Director of Operations',
         contactEmail: 'd.rosen@americanprogress.org', headcount: 95,
         outreachReasons: [

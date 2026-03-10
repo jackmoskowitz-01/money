@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles, ChevronDown, X } from 'lucide-react';
+import { TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles, ChevronDown, X, Filter } from 'lucide-react';
 import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,12 @@ import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
+
+const allIndustries = (() => {
+  const set = new Set<string>();
+  buildings.forEach(b => b.tenants.forEach(t => { if (t.industry) set.add(t.industry); }));
+  return Array.from(set).sort();
+})();
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
@@ -64,6 +70,8 @@ const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
 
 const News = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeIndustry, setActiveIndustry] = useState<string>('all');
+  const [showIndustryFilter, setShowIndustryFilter] = useState(false);
   const [expandedNewsId, setExpandedNewsId] = useState<string | null>(null);
   const [selectedProspects, setSelectedProspects] = useState<Record<string, Set<string>>>({});
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
@@ -134,9 +142,27 @@ const News = () => {
     toast.success('Custom intel added — add prospects to generate outreach');
   }, [customIntelInput]);
 
-  const filteredNews = activeCategory === 'all'
-    ? currentNews
-    : currentNews.filter(n => n.category === activeCategory);
+  const filteredNews = useMemo(() => {
+    let result = currentNews;
+    if (activeCategory !== 'all') {
+      result = result.filter(n => n.category === activeCategory);
+    }
+    if (activeIndustry !== 'all') {
+      result = result.filter(news => {
+        // Check if any affected prospect matches the industry
+        const prospects = getAffectedProspects(news);
+        return prospects.some(p => p.tenant.industry === activeIndustry) ||
+          // Also check related tenants directly
+          news.relatedTenants?.some(tid => {
+            return buildings.some(b => b.tenants.some(t => t.id === tid && t.industry === activeIndustry));
+          }) ||
+          // Check if news text mentions the industry
+          news.title.toLowerCase().includes(activeIndustry.toLowerCase()) ||
+          news.summary.toLowerCase().includes(activeIndustry.toLowerCase());
+      });
+    }
+    return result;
+  }, [currentNews, activeCategory, activeIndustry]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];
@@ -492,7 +518,7 @@ const News = () => {
               )}
             </AnimatePresence>
 
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-2">
               {categories.map(cat => (
                 <button
                   key={cat}
@@ -506,6 +532,54 @@ const News = () => {
                   {cat}
                 </button>
               ))}
+
+              <div className="ml-auto relative">
+                <button
+                  onClick={() => setShowIndustryFilter(!showIndustryFilter)}
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                    activeIndustry !== 'all'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  <Filter className="h-3 w-3" />
+                  {activeIndustry === 'all' ? 'Industry' : activeIndustry}
+                  <ChevronDown className={`h-3 w-3 transition-transform ${showIndustryFilter ? 'rotate-180' : ''}`} />
+                </button>
+
+                <AnimatePresence>
+                  {showIndustryFilter && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -5 }}
+                      className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-card shadow-lg overflow-hidden"
+                    >
+                      <div className="max-h-64 overflow-y-auto p-1">
+                        <button
+                          onClick={() => { setActiveIndustry('all'); setShowIndustryFilter(false); }}
+                          className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
+                            activeIndustry === 'all' ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                          }`}
+                        >
+                          All Industries
+                        </button>
+                        {allIndustries.map(ind => (
+                          <button
+                            key={ind}
+                            onClick={() => { setActiveIndustry(ind); setShowIndustryFilter(false); }}
+                            className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
+                              activeIndustry === ind ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                            }`}
+                          >
+                            {ind}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {newsLoading && !liveNews && (

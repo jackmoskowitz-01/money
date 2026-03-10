@@ -40,15 +40,6 @@ const ScoopBoard = () => {
     return result;
   }, [scoops, filterCategory, filterVerified, searchQuery]);
 
-  // Extract popular tags for quick filtering
-  const popularTags = useMemo(() => {
-    const tagCounts: Record<string, number> = {};
-    scoops.forEach(s => s.tags.forEach(t => { tagCounts[t] = (tagCounts[t] || 0) + 1; }));
-    return Object.entries(tagCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([tag]) => tag);
-  }, [scoops]);
 
   return (
     <div className="min-h-screen pt-14">
@@ -132,25 +123,6 @@ const ScoopBoard = () => {
             </button>
           </div>
 
-          {/* Popular tags */}
-          {popularTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground mr-1">Trending:</span>
-              {popularTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setSearchQuery(searchQuery === tag ? '' : tag)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-                    searchQuery === tag
-                      ? 'bg-primary/15 text-primary border-primary/30'
-                      : 'bg-secondary/30 text-muted-foreground border-transparent hover:border-border'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Stats bar */}

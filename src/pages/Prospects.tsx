@@ -435,6 +435,38 @@ const Prospects = () => {
                               <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-primary/10 text-primary">{tenant.outreachReasons.length}</Badge>
                             </div>
                             <div className="space-y-2">
+                              {/* Custom Reason — placed first for visibility */}
+                              {customReasonOpen === tenant.id ? (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                                  <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                    <Plus className="h-3.5 w-3.5 text-primary" /> Custom Outreach Reason
+                                  </p>
+                                  <textarea
+                                    value={customReasonText}
+                                    onChange={e => setCustomReasonText(e.target.value)}
+                                    placeholder="Describe your custom outreach reason..."
+                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <Button size="sm" className="text-xs h-7" disabled={!customReasonText.trim() || !!generatingKey} onClick={() => generateCustomEmail(tenant, building)}>
+                                      <Send className="mr-1 h-3 w-3" /> Generate Email
+                                    </Button>
+                                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setCustomReasonOpen(null); setCustomReasonText(''); }}>
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </motion.div>
+                              ) : (
+                                <button
+                                  onClick={() => setCustomReasonOpen(tenant.id)}
+                                  className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/5 p-2.5 text-xs font-medium text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5"
+                                >
+                                  <Plus className="h-4 w-4" /> Insert Custom Outreach Reason
+                                </button>
+                              )}
+
                               {tenant.outreachReasons
                                 .sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency])
                                 .map((reason, ri) => {
@@ -497,35 +529,6 @@ const Prospects = () => {
                                     </div>
                                   );
                                 })}
-
-                              {/* Custom Reason */}
-                              {customReasonOpen === tenant.id ? (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="space-y-2">
-                                  <textarea
-                                    value={customReasonText}
-                                    onChange={e => setCustomReasonText(e.target.value)}
-                                    placeholder="Describe your custom outreach reason..."
-                                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                                    rows={3}
-                                    autoFocus
-                                  />
-                                  <div className="flex items-center gap-2">
-                                    <Button size="sm" className="text-xs h-7" disabled={!customReasonText.trim() || !!generatingKey} onClick={() => generateCustomEmail(tenant, building)}>
-                                      <Send className="mr-1 h-3 w-3" /> Generate Email
-                                    </Button>
-                                    <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setCustomReasonOpen(null); setCustomReasonText(''); }}>
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                </motion.div>
-                              ) : (
-                                <button
-                                  onClick={() => setCustomReasonOpen(tenant.id)}
-                                  className="w-full rounded-md border border-dashed border-border p-2.5 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-1.5"
-                                >
-                                  <Plus className="h-3.5 w-3.5" /> Custom Reason
-                                </button>
-                              )}
                             </div>
 
                             {/* Custom Generated Emails */}

@@ -497,6 +497,51 @@ const EmailDisplay = ({
           )}
         </AnimatePresence>
 
+        {/* A/B Variant Panel */}
+        <AnimatePresence>
+          {showABVariant && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden mb-2"
+            >
+              <div className="rounded-md border border-border bg-secondary/20 p-2.5">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-foreground flex items-center gap-1">
+                    <FlipHorizontal className="h-3 w-3 text-primary" /> A/B Variant
+                  </p>
+                  <div className="flex items-center gap-1">
+                    {abVariant && !isGeneratingAB && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); useVariant(); }}
+                        className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
+                      >
+                        Use This Version
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowABVariant(false); }}
+                      className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                </div>
+                {isGeneratingAB ? (
+                  <div className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                    {abVariant || 'Generating alternative version...'}
+                  </div>
+                ) : (
+                  <div className="text-[11px] leading-relaxed text-foreground/90 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                    {abVariant}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* AI Refine Input */}
         {showRefine && !isEditing && (
           <div className="mb-2 flex gap-1.5">

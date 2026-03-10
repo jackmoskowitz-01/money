@@ -571,6 +571,9 @@ const Prospects = () => {
                                             emailKey={key}
                                             emailContent={generatedEmails[key]}
                                             isGenerating={isGenerating}
+                                            contactName={tenant.contactName}
+                                            contactEmail={tenant.contactEmail}
+                                            subject={`${tenant.name} — Outreach`}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />

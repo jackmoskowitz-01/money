@@ -1,7 +1,8 @@
 import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send } from 'lucide-react';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Sparkles, Newspaper, Heart } from 'lucide-react';
 import { newsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
@@ -17,6 +18,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
+const NONPROFIT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-nonprofit-outreach`;
 
 type ProspectMatch = { tenant: Tenant; building: Building };
 
@@ -57,6 +59,57 @@ const Dashboard = () => {
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+  const [newsletterContent, setNewsletterContent] = useState('');
+  const [isGeneratingNewsletter, setIsGeneratingNewsletter] = useState(false);
+  const [showNewsletter, setShowNewsletter] = useState(false);
+  const [newsletterContext, setNewsletterContext] = useState('');
+
+  const generateNewsletter = useCallback(async () => {
+    setIsGeneratingNewsletter(true);
+    setNewsletterContent('');
+    setShowNewsletter(true);
+    try {
+      const resp = await fetch(NONPROFIT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ type: 'newsletter', customContext: newsletterContext }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Generation failed' }));
+        toast.error(err.error || 'Failed to generate newsletter');
+        setIsGeneratingNewsletter(false);
+        return;
+      }
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; setNewsletterContent(full); }
+          } catch { /* partial */ }
+        }
+      }
+      toast.success('Newsletter generated!');
+    } catch { toast.error('Failed to generate newsletter'); }
+    setIsGeneratingNewsletter(false);
+  }, [newsletterContext]);
 
   // Personal analytics
   const pipeline = getPipeline();
@@ -430,6 +483,57 @@ const Dashboard = () => {
                 </button>
               ))}
             </div>
+
+            {/* Non-Profit Newsletter Generator */}
+            <Card className="mb-4 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10">
+                    <Heart className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Non-Profit & Association Newsletter</h3>
+                    <p className="text-[10px] text-muted-foreground">Generate a DC market update to mass-send to non-profit and association contacts</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <input
+                    type="text"
+                    value={newsletterContext}
+                    onChange={(e) => setNewsletterContext(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && !isGeneratingNewsletter && generateNewsletter()}
+                    placeholder="Optional: focus on Capitol Hill, mention sublease deals, highlight affordable options..."
+                    className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={generateNewsletter}
+                    disabled={isGeneratingNewsletter}
+                    className="text-xs h-8 shrink-0"
+                  >
+                    {isGeneratingNewsletter ? (
+                      <><Loader2 className="h-3 w-3 animate-spin" /> Generating...</>
+                    ) : (
+                      <><Sparkles className="h-3 w-3" /> Generate Newsletter</>
+                    )}
+                  </Button>
+                </div>
+
+                <AnimatePresence>
+                  {showNewsletter && (
+                    <EmailDisplay
+                      emailKey="nonprofit-newsletter"
+                      emailContent={newsletterContent}
+                      isGenerating={isGeneratingNewsletter}
+                      label="Market Newsletter for Non-Profits"
+                      onClose={() => { setShowNewsletter(false); setNewsletterContent(''); }}
+                      onUpdateEmail={(_k, c) => setNewsletterContent(c)}
+                    />
+                  )}
+                </AnimatePresence>
+              </div>
+            </Card>
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {

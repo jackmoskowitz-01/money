@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
+import DealVelocity from '@/components/DealVelocity';
+import RevenueForecast from '@/components/RevenueForecast';
 
 const Dashboard = () => {
   const [expandedStat, setExpandedStat] = useState<string | null>(null);

@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { tenantName, buildingName, contactName, contactTitle, industry, sqft, leaseExpiration, outreachReason, vacancyRate, headcount, clientsInBuilding } = await req.json();
+    const { tenantName, buildingName, contactName, contactTitle, industry, sqft, leaseExpiration, outreachReason, vacancyRate, headcount, clientsInBuilding, isCustomProspect } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
@@ -22,11 +22,21 @@ serve(async (req) => {
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
 
-CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.
+${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}
 
 Sign off with just "Best regards" (the broker will add their name).`;
 
-    const userPrompt = `Write a personalized outreach email for the following prospect:
+    let userPrompt: string;
+    if (isCustomProspect) {
+      userPrompt = `Write a personalized outreach email for the following prospect:
+
+ORGANIZATION: ${tenantName}
+
+OUTREACH REASON: ${outreachReason}
+
+Write a compelling, personalized email that references the specific market news as the reason for reaching out. Use what you know about this organization to make the email relevant. Demonstrate DC market knowledge and position yourself as a helpful resource, not a salesperson. Make it feel like a real broker wrote it, not AI.`;
+    } else {
+      userPrompt = `Write a personalized outreach email for the following prospect:
 
 TENANT: ${tenantName}
 BUILDING: ${buildingName}
@@ -40,6 +50,7 @@ HEADCOUNT: ${headcount}
 OUTREACH REASON: ${outreachReason}
 ${clientsInBuilding?.length ? `\nEXISTING CLIENTS IN THIS BUILDING: ${clientsInBuilding.join(', ')}\nIMPORTANT: Naturally mention that our firm already represents ${clientsInBuilding.join(' and ')} in this building — this establishes credibility and familiarity with the property. Reference it as a relationship advantage, not a hard sell.\n` : ''}
 Write a compelling, personalized email that references the specific reason for reaching out and demonstrates market knowledge. Make it feel like a real broker wrote it, not AI.`;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

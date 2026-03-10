@@ -37,7 +37,12 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
   const openInEmailClient = () => {
     const to = contactEmail || '';
     const subj = subject || (label ? `Re: ${label}` : '');
-    const body = emailContent;
+    // Strip leading Subject: line from body to avoid duplication
+    let body = emailContent;
+    const subjectLineMatch = body.match(/^Subject:\s*[^\n]*\n*/i);
+    if (subjectLineMatch) {
+      body = body.slice(subjectLineMatch[0].length).trimStart();
+    }
     const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
     window.open(mailto, '_blank');
     toast.success('Opening email client...');

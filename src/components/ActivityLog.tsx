@@ -14,10 +14,10 @@ import {
 } from '@/data/activityData';
 
 const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] = [
-  { value: 'email_sent', label: 'Email', icon: Mail },
-  { value: 'call', label: 'Call', icon: Phone },
-  { value: 'meeting', label: 'Meeting', icon: Users },
-  { value: 'note', label: 'Note', icon: StickyNote },
+  { value: 'email_sent', label: 'Email', icon: Mail, defaultTitle: 'Sent email' },
+  { value: 'call', label: 'Call', icon: Phone, defaultTitle: 'Phone call' },
+  { value: 'meeting', label: 'Meeting', icon: Users, defaultTitle: 'Meeting held' },
+  { value: 'note', label: 'Note', icon: StickyNote, defaultTitle: 'Note added' },
 ];
 
 // Types that require contact selection

@@ -42,7 +42,7 @@ const BrokerLeaderboard = () => {
         if (p.stage !== 'meeting_set' && p.stage !== 'meeting_held') return false;
         return brokerAssignments.some(
           a => a.tenantId === p.tenantId && a.buildingId === p.buildingId
-        ) && now - new Date(p.lastActivity).getTime() < weekMs;
+        ) && now - new Date(p.lastActivity).getTime() < rangeMs;
       }).length;
 
       return {

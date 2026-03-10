@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, User, Building2, Clock, Copy, Check, AlertTriangle, Loader2, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, Zap, Info, Calendar, Briefcase, TrendingUp, ChevronDown, ExternalLink } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
@@ -17,6 +17,8 @@ import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 import EmailComposer from '@/components/EmailComposer';
 import CompanyContacts from '@/components/CompanyContacts';
+import { getContacts } from '@/data/companyContacts';
+import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -55,6 +57,27 @@ const TenantDetail = () => {
 
   const building = buildings.find(b => b.id === buildingId);
   const tenant = building?.tenants.find(t => t.id === tenantId);
+  const [contactsVersion, setContactsVersion] = useState(0);
+
+  const recipients: EmailRecipient[] = useMemo(() => {
+    const list: EmailRecipient[] = [];
+    if (tenant) {
+      list.push({
+        id: 'primary',
+        name: tenant.contactName,
+        email: tenant.contactEmail,
+        title: tenant.contactTitle,
+        isPrimary: true,
+      });
+    }
+    if (tenantId) {
+      const additional = getContacts(tenantId);
+      additional.forEach(c => {
+        list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+      });
+    }
+    return list;
+  }, [tenant, tenantId, contactsVersion]);
 
   useEffect(() => {
     if (tenantId && buildingId) {
@@ -222,6 +245,7 @@ const TenantDetail = () => {
         contactName={tenant?.contactName}
         contactEmail={tenant?.contactEmail}
         subject={`${tenant?.name} — Outreach`}
+        recipients={recipients}
         onClose={() => setActiveEmailKey(null)}
         onUpdateEmail={updateEmail}
       />
@@ -298,6 +322,7 @@ const TenantDetail = () => {
                 title: tenant.contactTitle,
                 email: tenant.contactEmail,
               }}
+              onContactsChange={() => setContactsVersion(v => v + 1)}
             />
           </div>
 
@@ -552,6 +577,7 @@ const TenantDetail = () => {
                       contactName={tenant.contactName}
                       contactEmail={tenant.contactEmail}
                       subject={`${tenant.name} — Custom Outreach`}
+                      recipients={recipients}
                       onClose={() => {
                         setCustomEmailKeys(prev => prev.filter(k => k !== key));
                         setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
@@ -588,6 +614,7 @@ const TenantDetail = () => {
                   sqft={tenant.sqft}
                   leaseExpiration={tenant.leaseExpiration}
                   floor={tenant.floor}
+                  recipients={recipients}
                 />
                 <a href={`mailto:${tenant.contactEmail}`}>
                   <Button size="sm" variant="outline" className="text-xs h-8">

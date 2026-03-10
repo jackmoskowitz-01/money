@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { addActivity } from '@/data/activityData';
+import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {
   emailTemplates,
   categoryLabels,
@@ -25,6 +26,7 @@ interface EmailComposerProps {
   leaseExpiration?: string;
   floor?: string;
   brokerName?: string;
+  recipients?: EmailRecipient[];
 }
 
 const categories: EmailTemplateCategory[] = ['cold_outreach', 'follow_up', 'tour_confirmation', 'check_in', 'market_update'];
@@ -41,6 +43,7 @@ const EmailComposer = ({
   leaseExpiration = '',
   floor = '',
   brokerName = '[Your Name]',
+  recipients,
 }: EmailComposerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EmailTemplateCategory | null>(null);
@@ -79,8 +82,8 @@ const EmailComposer = ({
     setEditableBody(fillTemplate(template.body, templateVars));
   };
 
-  const handleSendEmail = () => {
-    const to = contactEmail || '';
+  const handleSendEmail = (toEmails?: string[]) => {
+    const to = toEmails ? toEmails.join(',') : (contactEmail || '');
     const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(editableSubject)}&body=${encodeURIComponent(editableBody)}`;
     window.open(mailto, '_blank');
 
@@ -250,9 +253,16 @@ const EmailComposer = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" className="text-xs h-8" onClick={handleSendEmail}>
-                      <Send className="mr-1 h-3 w-3" /> Send via Email Client
-                    </Button>
+                    {recipients && recipients.length > 0 ? (
+                      <RecipientPicker
+                        recipients={recipients}
+                        onSend={(emails) => handleSendEmail(emails)}
+                      />
+                    ) : (
+                      <Button size="sm" className="text-xs h-8" onClick={() => handleSendEmail()}>
+                        <Send className="mr-1 h-3 w-3" /> Send via Email Client
+                      </Button>
+                    )}
                     <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleCopy}>
                       {copied ? <Check className="mr-1 h-3 w-3 text-success" /> : <Copy className="mr-1 h-3 w-3" />}
                       {copied ? 'Copied' : 'Copy'}

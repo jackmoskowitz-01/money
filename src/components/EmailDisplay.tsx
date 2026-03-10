@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 
@@ -13,12 +14,13 @@ interface EmailDisplayProps {
   contactName?: string;
   contactEmail?: string;
   subject?: string;
+  recipients?: EmailRecipient[];
   onClose: () => void;
   onDismiss?: () => void;
   onUpdateEmail: (key: string, content: string) => void;
 }
 
-const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', contactName, contactEmail, subject, onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
+const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated Email', contactName, contactEmail, subject, recipients, onClose, onDismiss, onUpdateEmail }: EmailDisplayProps) => {
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -34,10 +36,9 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const openInEmailClient = () => {
-    const to = contactEmail || '';
+  const openInEmailClient = (toEmails?: string[]) => {
+    const to = toEmails ? toEmails.join(',') : (contactEmail || '');
     const subj = subject || (label ? `Re: ${label}` : '');
-    // Strip leading Subject: line from body to avoid duplication
     let body = emailContent;
     const subjectLineMatch = body.match(/^Subject:\s*[^\n]*\n*/i);
     if (subjectLineMatch) {
@@ -165,13 +166,20 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
                   {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); openInEmailClient(); }}
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
-                  title={contactEmail ? `Send to ${contactEmail}` : 'Open in email client'}
-                >
-                  <Send className="h-3 w-3" /> Send
-                </button>
+                {recipients && recipients.length > 0 ? (
+                  <RecipientPicker
+                    recipients={recipients}
+                    onSend={(emails) => openInEmailClient(emails)}
+                  />
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openInEmailClient(); }}
+                    className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
+                    title={contactEmail ? `Send to ${contactEmail}` : 'Open in email client'}
+                  >
+                    <Send className="h-3 w-3" /> Send
+                  </button>
+                )}
               </>
             )}
             {isEditing && (

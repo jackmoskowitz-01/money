@@ -14,15 +14,15 @@ import {
 
 interface Props {
   entityId: string;
-  /** The primary contact from mock data (shown first, not deletable) */
   primaryContact?: {
     name: string;
     title: string;
     email: string;
   };
+  onContactsChange?: () => void;
 }
 
-const CompanyContacts = ({ entityId, primaryContact }: Props) => {
+const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) => {
   const [contacts, setContacts] = useState<CompanyContact[]>(() => getContacts(entityId));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
@@ -56,12 +56,14 @@ const CompanyContacts = ({ entityId, primaryContact }: Props) => {
     setErrors({});
     setShowForm(false);
     toast.success(`${contact.name} added as contact`);
+    onContactsChange?.();
   };
 
   const handleRemove = (id: string) => {
     removeContact(entityId, id);
     setContacts(contacts.filter(c => c.id !== id));
     toast.success('Contact removed');
+    onContactsChange?.();
   };
 
   const totalContacts = (primaryContact ? 1 : 0) + contacts.length;

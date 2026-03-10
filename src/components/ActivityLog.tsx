@@ -190,7 +190,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
                     {typeOptions.map(opt => (
                       <button
                         key={opt.value}
-                        onClick={() => setNewType(opt.value)}
+                        onClick={() => { setNewType(opt.value); setNewTitle(opt.defaultTitle); }}
                         className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                           newType === opt.value
                             ? 'bg-primary/20 text-primary'

@@ -645,7 +645,7 @@ const Dashboard = () => {
                                 <div className="flex items-center gap-2">
                                   {allProspects.length > 0 && (
                                     <button
-                                      onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects)}
+                                      onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects, customs)}
                                       className="text-[10px] text-primary hover:underline"
                                     >
                                       {allSelected ? 'Deselect All' : 'Select All'}

@@ -54,6 +54,9 @@ const EmailDisplay = ({
   const [subjectLines, setSubjectLines] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [abVariant, setAbVariant] = useState('');
+  const [isGeneratingAB, setIsGeneratingAB] = useState(false);
+  const [showABVariant, setShowABVariant] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const copyEmail = () => {

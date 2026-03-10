@@ -59,6 +59,51 @@ const ProspectSearch = () => {
   const [newName, setNewName] = useState('');
   const [newWebsite, setNewWebsite] = useState('');
   const [newAddress, setNewAddress] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState<PlacePrediction[]>([]);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const fetchAddressSuggestions = useCallback(async (input: string) => {
+    if (input.length < 2) {
+      setAddressSuggestions([]);
+      return;
+    }
+    setAddressLoading(true);
+    try {
+      const resp = await fetch(AUTOCOMPLETE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ query: input }),
+      });
+      const data = await resp.json();
+      setAddressSuggestions(data.predictions || []);
+      setShowSuggestions(true);
+    } catch {
+      setAddressSuggestions([]);
+    }
+    setAddressLoading(false);
+  }, []);
+
+  const handleAddressChange = (val: string) => {
+    setNewAddress(val);
+    setShowSuggestions(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchAddressSuggestions(val), 300);
+  };
+
+  const selectSuggestion = (prediction: PlacePrediction) => {
+    setNewAddress(prediction.description);
+    setShowSuggestions(false);
+    setAddressSuggestions([]);
+    // Auto-fill name if empty
+    if (!newName.trim() && prediction.mainText) {
+      setNewName(prediction.mainText);
+    }
+  };
 
   const allResults = useMemo<SearchResult[]>(() => {
     const customResults: SearchResult[] = customProspects.map(cp => ({

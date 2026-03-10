@@ -61,6 +61,7 @@ const Dashboard = () => {
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [manualProspects, setManualProspects] = useState<Record<string, ProspectMatch[]>>({});
+  const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
 

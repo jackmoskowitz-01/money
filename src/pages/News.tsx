@@ -121,7 +121,7 @@ const News = () => {
     fetchLiveNews();
   }, [fetchLiveNews]);
 
-  const currentNews: NewsItem[] = [...customIntelItems, ...(liveNews || staticNewsItems)];
+  const currentNews: NewsItem[] = useMemo(() => [...customIntelItems, ...(liveNews || staticNewsItems)], [customIntelItems, liveNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();

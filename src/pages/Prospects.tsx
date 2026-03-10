@@ -490,6 +490,9 @@ const Prospects = () => {
                                             emailKey={scoopKey}
                                             emailContent={generatedEmails[scoopKey] || ''}
                                             isGenerating={isGeneratingScoop}
+                                            contactName={tenant.contactName}
+                                            contactEmail={tenant.contactEmail}
+                                            subject={`${tenant.name} — Broker Intel`}
                                             onClose={() => setActiveEmailKey(null)}
                                             onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
                                             onUpdateEmail={updateEmail}

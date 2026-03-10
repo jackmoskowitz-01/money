@@ -373,7 +373,7 @@ const Tasks = () => {
                                   </div>
                                 </div>
                                 <button
-                                  onClick={() => handleDelete(task.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
                                   className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />

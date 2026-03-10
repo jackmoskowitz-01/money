@@ -4,6 +4,7 @@ import ProspectSearch from './ProspectSearch';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },
+  { path: '/news', label: 'News', icon: Building2 },
   { path: '/map', label: 'Map', icon: Map },
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },

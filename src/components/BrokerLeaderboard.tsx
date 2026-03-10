@@ -29,7 +29,7 @@ const BrokerLeaderboard = () => {
       const tenantIds = new Set(brokerAssignments.map(a => a.tenantId));
 
       const weekActivities = activities.filter(
-        a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < weekMs
+        a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < rangeMs
       );
 
       // Count outreach activities (emails, calls, ai_emails)

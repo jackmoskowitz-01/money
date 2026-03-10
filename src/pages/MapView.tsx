@@ -189,7 +189,9 @@ const MapView = () => {
             onClick={() => setPanelOpen(!panelOpen)}
             className="flex w-full items-center justify-between p-3"
           >
-            <h2 className="font-display text-sm font-bold">DC Buildings ({filteredBuildings.length})</h2>
+            <h2 className="font-display text-sm font-bold">
+              DC Buildings ({filteredMockBuildings.length + filteredGoogleBuildings.length})
+            </h2>
             {panelOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
 
@@ -202,7 +204,7 @@ const MapView = () => {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-3 pb-2">
+                <div className="px-3 pb-2 space-y-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
@@ -212,12 +214,28 @@ const MapView = () => {
                       className="h-8 pl-8 text-xs"
                     />
                   </div>
+                  {!googleLoaded && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full text-xs"
+                      onClick={fetchGoogleBuildings}
+                      disabled={loadingGoogle}
+                    >
+                      {loadingGoogle ? (
+                        <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Loading real buildings...</>
+                      ) : (
+                        <><MapPin className="mr-1.5 h-3 w-3" /> Load real DC office buildings</>
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <div className="max-h-[55vh] space-y-2 overflow-y-auto px-3 pb-3">
-                  {filteredBuildings.map(b => (
+                  {/* Mock buildings with full data */}
+                  {filteredMockBuildings.map(b => (
                     <button
                       key={b.id}
-                      onClick={() => setSelectedBuilding(b)}
+                      onClick={() => { setSelectedGoogleBuilding(null); setSelectedBuilding(b); }}
                       className={`w-full rounded-md border p-2.5 text-left transition-all ${
                         selectedBuilding?.id === b.id
                           ? 'border-primary/50 bg-primary/10'
@@ -239,7 +257,32 @@ const MapView = () => {
                       </div>
                     </button>
                   ))}
-                  {filteredBuildings.length === 0 && (
+
+                  {/* Google Places buildings */}
+                  {filteredGoogleBuildings.map(b => (
+                    <button
+                      key={b.id}
+                      onClick={() => { setSelectedBuilding(null); setSelectedGoogleBuilding(b); }}
+                      className={`w-full rounded-md border p-2.5 text-left transition-all ${
+                        selectedGoogleBuilding?.id === b.id
+                          ? 'border-primary/50 bg-primary/10'
+                          : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
+                        <p className="text-sm font-semibold text-foreground">{b.name}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground ml-3.5">{b.address}</p>
+                      {b.rating && (
+                        <p className="text-[11px] text-muted-foreground ml-3.5 mt-1">
+                          ⭐ {b.rating} ({b.ratingCount} reviews)
+                        </p>
+                      )}
+                    </button>
+                  ))}
+
+                  {filteredMockBuildings.length === 0 && filteredGoogleBuildings.length === 0 && (
                     <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
                   )}
                 </div>
@@ -249,7 +292,7 @@ const MapView = () => {
         </Card>
       </div>
 
-      {/* Selected Building Detail Panel */}
+      {/* Selected Mock Building Detail Panel */}
       <AnimatePresence>
         {selectedBuilding && (
           <motion.div
@@ -298,7 +341,6 @@ const MapView = () => {
                 </div>
               )}
 
-              {/* Stacking Plan */}
               <div className="mb-4">
                 <StackingPlan building={selectedBuilding} />
               </div>
@@ -333,6 +375,56 @@ const MapView = () => {
                   );
                 })}
               </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Selected Google Building Detail Panel */}
+      <AnimatePresence>
+        {selectedGoogleBuilding && (
+          <motion.div
+            initial={{ x: 320, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 320, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25 }}
+            className="absolute right-4 top-4 z-[1000] w-96"
+          >
+            <Card className="border-border bg-card/95 p-4 backdrop-blur-lg">
+              <div className="mb-3 flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+                    <h3 className="font-display text-lg font-bold">{selectedGoogleBuilding.name}</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground ml-[18px]">{selectedGoogleBuilding.address}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedGoogleBuilding(null)}
+                  className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {selectedGoogleBuilding.rating && (
+                <div className="mb-3 rounded-md bg-secondary p-3 text-center">
+                  <p className="text-2xl font-bold text-foreground">⭐ {selectedGoogleBuilding.rating}</p>
+                  <p className="text-[11px] text-muted-foreground">{selectedGoogleBuilding.ratingCount} reviews</p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-1.5">
+                {selectedGoogleBuilding.types.slice(0, 5).map(t => (
+                  <Badge key={t} variant="outline" className="text-[10px]">
+                    {t.replace(/_/g, ' ')}
+                  </Badge>
+                ))}
+              </div>
+
+              <p className="mt-4 text-xs text-muted-foreground italic">
+                Real building from Google Places — detailed tenant data not yet available.
+              </p>
             </Card>
           </motion.div>
         )}

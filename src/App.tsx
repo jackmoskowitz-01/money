@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import MapView from "./pages/MapView";
 import TenantDetail from "./pages/TenantDetail";
+import CustomProspectDetail from "./pages/CustomProspectDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
 

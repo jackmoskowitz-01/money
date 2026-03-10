@@ -80,7 +80,7 @@ const Tasks = () => {
     if (!newTask.title.trim()) return;
     const task = addTask({ ...newTask, completed: false });
     setTasks([task, ...tasks]);
-    setNewTask({ title: '', description: '', type: 'follow_up', dueDate: format(new Date(), 'yyyy-MM-dd') });
+    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd') });
     setShowForm(false);
   };
 

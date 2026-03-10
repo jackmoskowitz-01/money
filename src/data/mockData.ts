@@ -316,6 +316,32 @@ export const newsItems: NewsItem[] = [
     source: 'Politico', date: '2025-02-20', category: 'market',
     relatedTenants: ['t9'],
   },
+  {
+    id: 'n9', title: 'Nonprofits Shrinking More Than Most in DC Office Market',
+    summary: 'Nonprofit leasing volume fell to 1.3M SF in 2024 — 18% below the historic average. Organizations are cutting footprints by 30-50% as hybrid work normalizes and funding pressures mount. Brokers report some nonprofits going from 70K SF to just 5K SF of meeting-only space.',
+    source: 'Bisnow', date: '2025-03-06', category: 'contraction',
+    relatedTenants: ['t11', 't12', 't13'],
+    relatedBuildings: ['b6'],
+  },
+  {
+    id: 'n10', title: 'Federal Funding Cuts Hit 501(c)(3) Nonprofits — Associations Less Affected',
+    summary: 'New administration funding cuts are disproportionately impacting mission-driven 501(c)(3) nonprofits reliant on government dollars, while trade associations funded by membership dues remain stable. Real estate advisors urge affected orgs to renegotiate leases now while tenant leverage is high.',
+    source: 'Cresa / Nonprofit Benchmarking Report', date: '2025-03-08', category: 'market',
+    relatedTenants: ['t11', 't12', 't13'],
+  },
+  {
+    id: 'n11', title: 'Two-Thirds of Nonprofits Plan to Downsize or Renew — Only 12.5% Expanding',
+    summary: 'Cresa\'s 2025 Nonprofit Benchmarking Report reveals 65% of nonprofits would renew or downsize if their lease expired this year. Assigned seating dropped from 74% to 70% as orgs shift to shared, collaboration-focused layouts. Most spend just 1-5% of revenue on occupancy.',
+    source: 'Cresa', date: '2025-03-09', category: 'contraction',
+    relatedTenants: ['t11', 't12', 't13'],
+    relatedBuildings: ['b6'],
+  },
+  {
+    id: 'n12', title: 'DC Sublease Inventory Surges — Opportunity for Budget-Conscious Nonprofits',
+    summary: 'Large sublease blocks from downsizing corporate tenants are flooding the DC market at 30-40% below direct lease rates. Capitol Hill and East End seeing increased interest from associations seeking proximity to the Hill at reduced costs.',
+    source: 'CoStar', date: '2025-03-02', category: 'vacancy',
+    relatedTenants: ['t11', 't12', 't13'],
+  },
 ];
 
 export const scoopPosts: ScoopPost[] = [

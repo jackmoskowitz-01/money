@@ -650,6 +650,66 @@ const Dashboard = () => {
                 </Button>
               </div>
             </div>
+            {/* Custom Intel Input */}
+            <AnimatePresence>
+              {showCustomIntel ? (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden mb-4"
+                >
+                  <Card className="border-primary/20 bg-card p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">Custom Intel</p>
+                      <button onClick={() => setShowCustomIntel(false)} className="ml-auto rounded p-1 hover:bg-secondary">
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Paste a news article, market data, or type your own intel. This becomes an outreach trigger you can generate emails from.
+                    </p>
+                    <textarea
+                      value={customIntelInput}
+                      onChange={e => setCustomIntelInput(e.target.value)}
+                      placeholder={"Paste an article, URL, or type market intelligence here...\n\nExample: 'The American Bar Association is reportedly exploring a move from their current 50,000 SF space at 1050 Connecticut Ave as their lease expires in Q2 2026...'"}
+                      className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                      autoFocus
+                    />
+                    <div className="flex items-center justify-between mt-3">
+                      <p className="text-[10px] text-muted-foreground">
+                        {customIntelInput.trim().length > 0 ? `${customIntelInput.trim().length} chars` : 'Start typing or paste content'}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={addCustomIntel}
+                        disabled={!customIntelInput.trim()}
+                      >
+                        <Sparkles className="mr-1 h-3 w-3" /> Create Outreach Trigger
+                      </Button>
+                    </div>
+                  </Card>
+                </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-4">
+                  <button
+                    onClick={() => setShowCustomIntel(true)}
+                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+                      <FileText className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-foreground">Drop in your own intel</p>
+                      <p className="text-[10px] text-muted-foreground">Paste a news article or type custom market intelligence to generate outreach</p>
+                    </div>
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="mb-4 flex flex-wrap gap-2">
               {categories.map(cat => (

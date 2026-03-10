@@ -41,6 +41,7 @@ const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: 
 };
 
 const Tasks = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<BrokerTask[]>(() => getTasks());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

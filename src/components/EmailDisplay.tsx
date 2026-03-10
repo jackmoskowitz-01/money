@@ -166,13 +166,20 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
                   {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                   {copied ? 'Copied' : 'Copy'}
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); openInEmailClient(); }}
-                  className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
-                  title={contactEmail ? `Send to ${contactEmail}` : 'Open in email client'}
-                >
-                  <Send className="h-3 w-3" /> Send
-                </button>
+                {recipients && recipients.length > 0 ? (
+                  <RecipientPicker
+                    recipients={recipients}
+                    onSend={(emails) => openInEmailClient(emails)}
+                  />
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openInEmailClient(); }}
+                    className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
+                    title={contactEmail ? `Send to ${contactEmail}` : 'Open in email client'}
+                  >
+                    <Send className="h-3 w-3" /> Send
+                  </button>
+                )}
               </>
             )}
             {isEditing && (

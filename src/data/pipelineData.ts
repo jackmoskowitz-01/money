@@ -133,6 +133,7 @@ export const generateTouchpoints = (item: PipelineItem): Touchpoint[] => {
 };
 
 export const stageLabels: Record<PipelineStage, string> = {
+  hot_prospect: 'Hot Prospect',
   meeting_set: 'Meeting Set',
   meeting_held: 'Meeting Held',
   moving_forward: 'Moving Forward',

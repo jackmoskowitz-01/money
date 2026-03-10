@@ -322,6 +322,7 @@ const TenantDetail = () => {
                 title: tenant.contactTitle,
                 email: tenant.contactEmail,
               }}
+              onContactsChange={() => setContactsVersion(v => v + 1)}
             />
           </div>
 

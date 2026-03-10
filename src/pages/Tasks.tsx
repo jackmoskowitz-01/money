@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -217,12 +217,18 @@ const Tasks = () => {
                     ))}
                     {selectedDate && (
                       <div className="ml-auto flex items-center gap-2">
-                        <Badge className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5">
-                          {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} on {format(selectedDate, 'MMM d')}
-                        </Badge>
-                        <Badge variant="outline" className="cursor-pointer text-xs" onClick={() => setSelectedDate(null)}>
-                          Clear ✕
-                        </Badge>
+                        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5">
+                          <CalendarIcon className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-sm font-bold text-primary">
+                            {filteredTasks.length}
+                          </span>
+                          <span className="text-xs text-primary/80">
+                            task{filteredTasks.length !== 1 ? 's' : ''} on {format(selectedDate, 'MMM d, yyyy')}
+                          </span>
+                        </div>
+                        <button onClick={() => setSelectedDate(null)} className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
                       </div>
                     )}
                   </div>

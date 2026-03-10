@@ -10,6 +10,9 @@ interface EmailDisplayProps {
   emailContent: string;
   isGenerating: boolean;
   label?: string;
+  contactName?: string;
+  contactEmail?: string;
+  subject?: string;
   onClose: () => void;
   onDismiss?: () => void;
   onUpdateEmail: (key: string, content: string) => void;

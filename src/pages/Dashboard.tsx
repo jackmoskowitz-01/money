@@ -150,8 +150,8 @@ const Dashboard = () => {
   }, [assignments, activities]);
 
   const filteredNews = activeCategory === 'all'
-    ? newsItems
-    : newsItems.filter(n => n.category === activeCategory);
+    ? currentNews
+    : currentNews.filter(n => n.category === activeCategory);
 
   // All non-client tenants for manual adding
   const allNonClientProspects = useMemo(() => {

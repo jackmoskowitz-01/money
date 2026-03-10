@@ -1,30 +1,16 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles } from 'lucide-react';
-import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
-import { toast } from 'sonner';
+import { TrendingUp, TrendingDown, Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users } from 'lucide-react';
+import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import SubmarketTrends from '@/components/SubmarketTrends';
-import EmailDisplay from '@/components/EmailDisplay';
-import { getContacts } from '@/data/companyContacts';
-import { type EmailRecipient } from '@/components/RecipientPicker';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
-
-const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
-
-const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
-const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
-
-type ProspectMatch = { tenant: Tenant; building: Building };
-
-const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
   const matches: ProspectMatch[] = [];
   const seen = new Set<string>();
 

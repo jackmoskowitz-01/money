@@ -239,7 +239,7 @@ export const buildings: Building[] = [
         outreachReasons: [],
       },
       {
-        id: 't11', name: 'National Association of Counties', industry: 'Nonprofit/Government', sqft: 35000, floor: '3-4',
+        id: 't11', name: 'National Association of Counties', industry: 'Government', sqft: 35000, floor: '3-4',
         leaseExpiration: '2026-04-30', contactName: 'Mark Peterson', contactTitle: 'COO',
         contactEmail: 'm.peterson@naco.org', headcount: 120,
         outreachReasons: [

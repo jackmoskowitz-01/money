@@ -10,6 +10,7 @@ import TenantDetail from "./pages/TenantDetail";
 import CustomProspectDetail from "./pages/CustomProspectDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
+import News from "./pages/News";
 
 
 import Tasks from "./pages/Tasks";

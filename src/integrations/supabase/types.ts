@@ -14,7 +14,156 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      scoop_comments: {
+        Row: {
+          author_avatar: string
+          author_name: string
+          content: string
+          created_at: string
+          id: string
+          scoop_id: string
+        }
+        Insert: {
+          author_avatar?: string
+          author_name?: string
+          content: string
+          created_at?: string
+          id?: string
+          scoop_id: string
+        }
+        Update: {
+          author_avatar?: string
+          author_name?: string
+          content?: string
+          created_at?: string
+          id?: string
+          scoop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoop_comments_scoop_id_fkey"
+            columns: ["scoop_id"]
+            isOneToOne: false
+            referencedRelation: "scoops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scoop_likes: {
+        Row: {
+          created_at: string
+          id: string
+          scoop_id: string
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scoop_id: string
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scoop_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoop_likes_scoop_id_fkey"
+            columns: ["scoop_id"]
+            isOneToOne: false
+            referencedRelation: "scoops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scoop_verifications: {
+        Row: {
+          created_at: string
+          id: string
+          scoop_id: string
+          session_id: string
+          verifier_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          scoop_id: string
+          session_id: string
+          verifier_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          scoop_id?: string
+          session_id?: string
+          verifier_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scoop_verifications_scoop_id_fkey"
+            columns: ["scoop_id"]
+            isOneToOne: false
+            referencedRelation: "scoops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scoops: {
+        Row: {
+          author_avatar: string
+          author_name: string
+          category: Database["public"]["Enums"]["scoop_category"]
+          comments_count: number
+          content: string
+          created_at: string
+          id: string
+          likes_count: number
+          linked_building_id: string | null
+          linked_building_name: string | null
+          linked_tenant_id: string | null
+          linked_tenant_name: string | null
+          tags: string[]
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          author_avatar?: string
+          author_name?: string
+          category?: Database["public"]["Enums"]["scoop_category"]
+          comments_count?: number
+          content: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          linked_building_id?: string | null
+          linked_building_name?: string | null
+          linked_tenant_id?: string | null
+          linked_tenant_name?: string | null
+          tags?: string[]
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          author_avatar?: string
+          author_name?: string
+          category?: Database["public"]["Enums"]["scoop_category"]
+          comments_count?: number
+          content?: string
+          created_at?: string
+          id?: string
+          likes_count?: number
+          linked_building_id?: string | null
+          linked_building_name?: string | null
+          linked_tenant_id?: string | null
+          linked_tenant_name?: string | null
+          tags?: string[]
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +172,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      scoop_category:
+        | "lease_move"
+        | "rfp"
+        | "expansion"
+        | "contraction"
+        | "personnel"
+        | "concession"
+        | "conversion"
+        | "general"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +307,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      scoop_category: [
+        "lease_move",
+        "rfp",
+        "expansion",
+        "contraction",
+        "personnel",
+        "concession",
+        "conversion",
+        "general",
+      ],
+    },
   },
 } as const

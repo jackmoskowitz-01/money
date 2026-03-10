@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,14 +12,17 @@ const BROKER_COLORS = [
   'hsl(25, 85%, 55%)',
 ];
 
+type TimeRange = 'week' | 'month';
+
 const BrokerLeaderboard = () => {
+  const [timeRange, setTimeRange] = useState<TimeRange>('week');
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();
 
   const { barData, pieData } = useMemo(() => {
     const now = Date.now();
-    const weekMs = 7 * 24 * 3600000;
+    const rangeMs = timeRange === 'week' ? 7 * 24 * 3600000 : 30 * 24 * 3600000;
 
     const brokerStats = brokers.map((broker, i) => {
       const brokerAssignments = assignments.filter(a => a.brokerId === broker.id);

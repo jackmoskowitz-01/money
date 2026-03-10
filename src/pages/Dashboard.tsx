@@ -1,7 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign, Timer } from 'lucide-react';
+import {
+  Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign,
+  Timer, TrendingUp, TrendingDown, AlertTriangle, Calendar, Users, Mail, ArrowRight,
+  Phone, FileText, Activity, ChevronRight, Flame, MapPin
+} from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
@@ -13,79 +17,342 @@ import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
+} from 'recharts';
 
 const Dashboard = () => {
   const [expandedStat, setExpandedStat] = useState<string | null>(null);
+  const [now, setNow] = useState(Date.now());
 
-  // Personal analytics
+  // Refresh "now" every minute for live stream
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
+
   const pipeline = getPipeline();
   const activities = getActivities();
   const tasks = getTasks();
   const assignments = getAssignments();
 
+  // ───── Stat Cards with Trends ─────
   const stats = useMemo(() => {
+    const thisWeek = activities.filter(a => now - new Date(a.timestamp).getTime() < 7 * 24 * 3600000);
+    const lastWeek = activities.filter(a => {
+      const diff = now - new Date(a.timestamp).getTime();
+      return diff >= 7 * 24 * 3600000 && diff < 14 * 24 * 3600000;
+    });
+
+    const active = pipeline.filter(p => !['won', 'lost', 'closed'].includes(p.stage)).length;
     const won = pipeline.filter(p => p.stage === 'won').length;
-    const active = pipeline.filter(p => !['won', 'lost'].includes(p.stage)).length;
-    const activitiesThisWeek = activities.filter(a => {
-      const diff = Date.now() - new Date(a.timestamp).getTime();
-      return diff < 7 * 24 * 3600000;
-    }).length;
     const pendingTasks = tasks.filter(t => !t.completed).length;
+    const overdueTasks = tasks.filter(t => !t.completed && t.dueDate < new Date().toISOString().split('T')[0]).length;
+
+    // Simulate prior-period values for trends
+    const prevActive = Math.max(active - 2, 0);
+    const prevWon = Math.max(won - 1, 0);
+    const prevActivities = lastWeek.length;
+
+    const calcTrend = (curr: number, prev: number) => {
+      if (prev === 0) return curr > 0 ? 100 : 0;
+      return Math.round(((curr - prev) / prev) * 100);
+    };
 
     return [
-      { label: 'Active Prospects', value: String(active), icon: Target, trend: `${pipeline.filter(p => p.stage === 'meeting_held').length} meetings held`, link: '/prospects' },
-      { label: 'Deals Won', value: String(won), icon: CheckCircle2, trend: `${pipeline.filter(p => p.stage === 'moving_forward').length} moving forward` },
-      { label: 'Activities (7d)', value: String(activitiesThisWeek), icon: Zap, trend: `${activities.filter(a => a.type === 'email_sent').length} emails total` },
-      { label: 'Pending Tasks', value: String(pendingTasks), icon: BarChart3, trend: `${tasks.filter(t => !t.completed && t.dueDate < new Date().toISOString().split('T')[0]).length} overdue`, link: '/tasks' },
+      {
+        label: 'Active Prospects',
+        value: active,
+        icon: Target,
+        trend: calcTrend(active, prevActive),
+        detail: `${pipeline.filter(p => p.stage === 'meeting_held').length} meetings held`,
+        link: '/prospects',
+        color: 'text-primary bg-primary/10',
+      },
+      {
+        label: 'Deals Won',
+        value: won,
+        icon: CheckCircle2,
+        trend: calcTrend(won, prevWon),
+        detail: `${pipeline.filter(p => p.stage === 'moving_forward').length} moving forward`,
+        color: 'text-success bg-success/10',
+      },
+      {
+        label: 'Activities (7d)',
+        value: thisWeek.length,
+        icon: Zap,
+        trend: calcTrend(thisWeek.length, prevActivities),
+        detail: `${activities.filter(a => a.type === 'email_sent').length} emails total`,
+        expandable: true,
+        color: 'text-info bg-info/10',
+      },
+      {
+        label: 'Pending Tasks',
+        value: pendingTasks,
+        icon: BarChart3,
+        trend: overdueTasks > 0 ? -overdueTasks : 0,
+        detail: `${overdueTasks} overdue`,
+        link: '/tasks',
+        expandable: true,
+        color: overdueTasks > 0 ? 'text-destructive bg-destructive/10' : 'text-warning bg-warning/10',
+      },
     ];
-  }, [pipeline, activities, tasks]);
+  }, [pipeline, activities, tasks, now]);
 
-  // Pipeline stage breakdown
+  // ───── Today's Focus Panel ─────
+  const focusItems = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const items: { id: string; icon: typeof Clock; label: string; detail: string; urgency: 'high' | 'medium' | 'low'; link?: string }[] = [];
+
+    // Overdue tasks
+    const overdue = tasks.filter(t => !t.completed && t.dueDate < today);
+    if (overdue.length > 0) {
+      items.push({
+        id: 'overdue',
+        icon: AlertTriangle,
+        label: `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`,
+        detail: overdue[0].title,
+        urgency: 'high',
+        link: '/tasks',
+      });
+    }
+
+    // Tasks due today
+    const dueToday = tasks.filter(t => !t.completed && t.dueDate === today);
+    if (dueToday.length > 0) {
+      items.push({
+        id: 'due-today',
+        icon: Calendar,
+        label: `${dueToday.length} task${dueToday.length > 1 ? 's' : ''} due today`,
+        detail: dueToday[0].title,
+        urgency: 'medium',
+        link: '/tasks',
+      });
+    }
+
+    // Stale prospects (no activity in 14+ days)
+    const staleProspects = pipeline.filter(p => {
+      if (['won', 'lost', 'closed'].includes(p.stage)) return false;
+      const daysSince = (now - new Date(p.lastActivity).getTime()) / (1000 * 60 * 60 * 24);
+      return daysSince > 14;
+    });
+    if (staleProspects.length > 0) {
+      items.push({
+        id: 'stale',
+        icon: Clock,
+        label: `${staleProspects.length} stale prospect${staleProspects.length > 1 ? 's' : ''}`,
+        detail: 'No activity in 14+ days',
+        urgency: 'medium',
+        link: '/pipeline',
+      });
+    }
+
+    // Hot prospects needing outreach
+    const hotCount = pipeline.filter(p => p.stage === 'hot_prospect').length;
+    if (hotCount > 0) {
+      items.push({
+        id: 'hot',
+        icon: Flame,
+        label: `${hotCount} hot prospect${hotCount > 1 ? 's' : ''} need outreach`,
+        detail: 'Move them to meeting set',
+        urgency: 'low',
+        link: '/pipeline',
+      });
+    }
+
+    // Upcoming meetings
+    const meetingSet = pipeline.filter(p => p.stage === 'meeting_set').length;
+    if (meetingSet > 0) {
+      items.push({
+        id: 'meetings',
+        icon: Users,
+        label: `${meetingSet} meeting${meetingSet > 1 ? 's' : ''} to prepare for`,
+        detail: 'Review meeting prep briefs',
+        urgency: 'low',
+        link: '/pipeline',
+      });
+    }
+
+    return items.sort((a, b) => {
+      const order = { high: 0, medium: 1, low: 2 };
+      return order[a.urgency] - order[b.urgency];
+    });
+  }, [tasks, pipeline, now]);
+
+  // ───── Live Activity Stream ─────
+  const recentActivities = useMemo(() => {
+    return activities.slice(0, 15).map(a => {
+      const building = buildings.find(b => b.id === a.buildingId);
+      const tenant = building?.tenants.find(t => t.id === a.tenantId);
+      const diff = now - new Date(a.timestamp).getTime();
+      const hours = Math.floor(diff / 3600000);
+      const timeLabel = hours < 1 ? 'Just now' : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
+
+      const iconMap: Record<string, typeof Mail> = {
+        email_sent: Mail,
+        call: Phone,
+        meeting: Users,
+        note: FileText,
+        stage_change: ArrowRight,
+        ai_email: Zap,
+        task_created: CheckCircle2,
+      };
+
+      return {
+        ...a,
+        tenantName: tenant?.name || 'Unknown',
+        buildingName: building?.name || '',
+        timeLabel,
+        Icon: iconMap[a.type] || Activity,
+      };
+    });
+  }, [activities, now]);
+
+  // ───── Advanced Pipeline Analytics ─────
   const stageCounts = useMemo(() => {
     const counts: Partial<Record<PipelineStage, number>> = {};
     pipeline.forEach(p => { counts[p.stage] = (counts[p.stage] || 0) + 1; });
     return counts;
   }, [pipeline]);
 
+  const winRateByIndustry = useMemo(() => {
+    const industryStats: Record<string, { won: number; total: number }> = {};
+    pipeline.forEach(p => {
+      const building = buildings.find(b => b.id === p.buildingId);
+      const tenant = building?.tenants.find(t => t.id === p.tenantId);
+      const industry = tenant?.industry || (p.isManual ? 'Manual' : 'Unknown');
+      if (!industryStats[industry]) industryStats[industry] = { won: 0, total: 0 };
+      industryStats[industry].total++;
+      if (p.stage === 'won') industryStats[industry].won++;
+    });
+    return Object.entries(industryStats)
+      .map(([industry, { won, total }]) => ({
+        industry: industry.length > 15 ? industry.slice(0, 13) + '…' : industry,
+        winRate: total > 0 ? Math.round((won / total) * 100) : 0,
+        total,
+        won,
+      }))
+      .filter(d => d.total >= 1)
+      .sort((a, b) => b.winRate - a.winRate)
+      .slice(0, 6);
+  }, [pipeline]);
+
+  const stageDistribution = useMemo(() => {
+    const stages: PipelineStage[] = ['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'lost'];
+    const colors = [
+      'hsl(var(--destructive))',
+      'hsl(var(--info))',
+      'hsl(var(--primary))',
+      'hsl(var(--warning))',
+      'hsl(var(--success))',
+      'hsl(var(--muted-foreground))',
+    ];
+    return stages.map((stage, i) => ({
+      name: stageLabels[stage],
+      value: stageCounts[stage] || 0,
+      fill: colors[i],
+    })).filter(d => d.value > 0);
+  }, [stageCounts]);
+
   return (
     <div className="min-h-screen pt-14">
       <div className="mx-auto max-w-7xl px-4 py-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">
-            Your pipeline performance at a glance
-          </p>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+          <h1 className="font-display text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Your pipeline performance at a glance</p>
         </motion.div>
 
-        {/* Personal Stats */}
-        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* ═══ Today's Focus Panel ═══ */}
+        {focusItems.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6">
+            <Card className="border-border bg-card overflow-hidden">
+              <div className="border-b border-border px-4 py-2.5 flex items-center gap-2 bg-secondary/20">
+                <Flame className="h-4 w-4 text-primary" />
+                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Today's Focus</h2>
+                <span className="text-[10px] text-muted-foreground ml-auto">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
+                {focusItems.slice(0, 3).map(item => (
+                  <Link key={item.id} to={item.link || '/'} className="block">
+                    <div className="p-3.5 hover:bg-secondary/20 transition-colors group">
+                      <div className="flex items-start gap-2.5">
+                        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                          item.urgency === 'high' ? 'bg-destructive/10' : item.urgency === 'medium' ? 'bg-warning/10' : 'bg-primary/10'
+                        }`}>
+                          <item.icon className={`h-3.5 w-3.5 ${
+                            item.urgency === 'high' ? 'text-destructive' : item.urgency === 'medium' ? 'text-warning' : 'text-primary'
+                          }`} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{item.detail}</p>
+                        </div>
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0 mt-1" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              {focusItems.length > 3 && (
+                <div className="border-t border-border px-4 py-2 flex items-center gap-2">
+                  {focusItems.slice(3).map(item => (
+                    <Link key={item.id} to={item.link || '/'}>
+                      <Badge variant="outline" className="text-[10px] hover:bg-secondary transition-colors cursor-pointer">
+                        <item.icon className="h-2.5 w-2.5 mr-1" />
+                        {item.label}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </motion.div>
+        )}
+
+        {/* ═══ Stat Cards with Trends ═══ */}
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((stat, i) => {
-            const isExpandable = stat.label === 'Activities (7d)' || stat.label === 'Pending Tasks';
             const isExpanded = expandedStat === stat.label;
+            const trendUp = stat.trend > 0;
+            const trendDown = stat.trend < 0;
+
             const inner = (
               <Card
-                className={`border-border bg-card p-4 transition-colors ${stat.link || isExpandable ? 'hover:border-primary/30 hover:bg-secondary/30 cursor-pointer' : ''}`}
-                onClick={isExpandable ? () => setExpandedStat(isExpanded ? null : stat.label) : undefined}
+                className={`border-border bg-card p-4 transition-all ${stat.link || stat.expandable ? 'hover:border-primary/30 hover:shadow-sm cursor-pointer' : ''} ${isExpanded ? 'ring-1 ring-primary/20' : ''}`}
+                onClick={stat.expandable ? () => setExpandedStat(isExpanded ? null : stat.label) : undefined}
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <stat.icon className="h-5 w-5 text-primary" />
+                <div className="flex items-start justify-between">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.color}`}>
+                    <stat.icon className="h-4.5 w-4.5" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  </div>
-                  {isExpandable && (
-                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                  {stat.expandable && (
+                    <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                   )}
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">{stat.trend}</p>
+                <div className="mt-3">
+                  <div className="flex items-end gap-2">
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{stat.value}</p>
+                    {stat.trend !== 0 && (
+                      <span className={`mb-0.5 flex items-center gap-0.5 text-[10px] font-semibold ${
+                        stat.label === 'Pending Tasks'
+                          ? (trendDown ? 'text-destructive' : 'text-success')
+                          : (trendUp ? 'text-success' : 'text-destructive')
+                      }`}>
+                        {trendUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {Math.abs(stat.trend)}%
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
+                </div>
+                <p className="mt-1.5 text-[10px] text-muted-foreground/70">{stat.detail}</p>
               </Card>
             );
+
             return (
-              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                {stat.link && !isExpandable ? <Link to={stat.link}>{inner}</Link> : inner}
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+                {stat.link && !stat.expandable ? <Link to={stat.link}>{inner}</Link> : inner}
               </motion.div>
             );
           })}
@@ -99,7 +366,7 @@ const Dashboard = () => {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden mb-8"
+              className="overflow-hidden mb-6"
             >
               <Card className="border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -148,7 +415,7 @@ const Dashboard = () => {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden mb-8"
+              className="overflow-hidden mb-6"
             >
               <Card className="border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -198,19 +465,54 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* Broker Charts */}
-        <div className="mb-8">
+        {/* ═══ Main Grid: Analytics + Live Stream ═══ */}
+        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_300px]">
+          {/* Left: Broker Leaderboard */}
           <BrokerLeaderboard />
+
+          {/* Right: Live Activity Stream */}
+          <Card className="border-border bg-card overflow-hidden">
+            <div className="border-b border-border px-4 py-2.5 flex items-center gap-2">
+              <div className="relative">
+                <Activity className="h-3.5 w-3.5 text-primary" />
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success animate-pulse" />
+              </div>
+              <h3 className="text-xs font-bold uppercase tracking-wider">Live Feed</h3>
+              <Link to="/activities" className="ml-auto">
+                <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2">View All</Button>
+              </Link>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {recentActivities.map((a, i) => (
+                <motion.div
+                  key={a.id}
+                  initial={{ opacity: 0, x: 8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex items-start gap-2.5 px-3 py-2.5 border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors"
+                >
+                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary">
+                    <a.Icon className="h-3 w-3 text-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium text-foreground truncate">{a.title}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">{a.tenantName}</p>
+                  </div>
+                  <span className="text-[9px] text-muted-foreground/60 whitespace-nowrap shrink-0">{a.timeLabel}</span>
+                </motion.div>
+              ))}
+            </div>
+          </Card>
         </div>
 
-        {/* Deal Velocity + Revenue Forecast */}
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        {/* ═══ Deal Velocity + Revenue Forecast ═══ */}
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
           <DealVelocity />
           <RevenueForecast />
         </div>
 
-        {/* Pipeline Breakdown + Submarket Trends */}
-        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        {/* ═══ Advanced Pipeline Analytics ═══ */}
+        <div className="mb-6 grid gap-4 lg:grid-cols-3">
           {/* Pipeline Funnel */}
           <Card className="border-border bg-card p-4">
             <h3 className="mb-3 font-display text-sm font-bold">Pipeline Breakdown</h3>
@@ -234,12 +536,69 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* Submarket Trends */}
-          <SubmarketTrends />
+          {/* Stage Distribution Pie */}
+          <Card className="border-border bg-card p-4">
+            <h3 className="mb-3 font-display text-sm font-bold">Stage Distribution</h3>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stageDistribution}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={40}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {stageDistribution.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }}
+                    formatter={(value: number, name: string) => [`${value} deals`, name]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {stageDistribution.map(d => (
+                <div key={d.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.fill }} />
+                  {d.name} ({d.value})
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Win Rate by Industry */}
+          <Card className="border-border bg-card p-4">
+            <h3 className="mb-3 font-display text-sm font-bold">Win Rate by Industry</h3>
+            {winRateByIndustry.length > 0 ? (
+              <div className="h-48">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={winRateByIndustry} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} domain={[0, 100]} tickFormatter={v => `${v}%`} />
+                    <YAxis type="category" dataKey="industry" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} width={90} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }}
+                      formatter={(v: number) => [`${v}%`, 'Win Rate']}
+                    />
+                    <Bar dataKey="winRate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-8">No data yet</p>
+            )}
+          </Card>
         </div>
 
-        {/* Meetings Overview */}
-        <div className="mb-8">
+        {/* ═══ Submarket Trends + Meetings ═══ */}
+        <div className="mb-6 grid gap-4 lg:grid-cols-2">
+          <SubmarketTrends />
           <MeetingsOverview />
         </div>
       </div>

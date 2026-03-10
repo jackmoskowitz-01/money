@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { buildings } from '@/data/mockData';
 import {
   getTasks, addTask, updateTask, deleteTask, getTaskCountsByDate,
-  type BrokerTask,
+  type BrokerTask, type TaskPriority,
 } from '@/data/activityData';
 import ProspectLists from '@/components/ProspectLists';
 
@@ -33,12 +33,18 @@ const taskTypeColors: Record<string, string> = {
   other: 'bg-muted text-muted-foreground',
 };
 
+const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: string; class: string; sortOrder: number }> = {
+  high: { icon: AlertTriangle, label: 'High', class: 'text-destructive bg-destructive/10 border-destructive/30', sortOrder: 0 },
+  medium: { icon: ArrowRight, label: 'Med', class: 'text-warning bg-warning/10 border-warning/30', sortOrder: 1 },
+  low: { icon: ArrowDown, label: 'Low', class: 'text-muted-foreground bg-muted border-border', sortOrder: 2 },
+};
+
 const Tasks = () => {
   const [tasks, setTasks] = useState<BrokerTask[]>(() => getTasks());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as BrokerTask['type'], dueDate: format(new Date(), 'yyyy-MM-dd') });
+  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as BrokerTask['type'], priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd') });
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   const taskCounts = useMemo(() => {
@@ -62,14 +68,19 @@ const Tasks = () => {
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
-    return t.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return t.sort((a, b) => {
+      const pa = priorityConfig[a.priority || 'medium'].sortOrder;
+      const pb = priorityConfig[b.priority || 'medium'].sortOrder;
+      if (pa !== pb) return pa - pb;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
   }, [tasks, filter, selectedDate]);
 
   const handleAdd = () => {
     if (!newTask.title.trim()) return;
     const task = addTask({ ...newTask, completed: false });
     setTasks([task, ...tasks]);
-    setNewTask({ title: '', description: '', type: 'follow_up', dueDate: format(new Date(), 'yyyy-MM-dd') });
+    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd') });
     setShowForm(false);
   };
 
@@ -243,6 +254,26 @@ const Tasks = () => {
                           ))}
                         </div>
                         <div className="mb-3">
+                          <label className="mb-1 block text-xs text-muted-foreground">Priority</label>
+                          <div className="flex gap-2">
+                            {(Object.entries(priorityConfig) as [TaskPriority, typeof priorityConfig.high][]).map(([key, cfg]) => {
+                              const PIcon = cfg.icon;
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => setNewTask({ ...newTask, priority: key })}
+                                  className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                                    newTask.priority === key ? cfg.class : 'border-border bg-secondary text-muted-foreground hover:text-foreground'
+                                  }`}
+                                >
+                                  <PIcon className="h-3 w-3" />
+                                  {cfg.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div className="mb-3">
                           <label className="mb-1 block text-xs text-muted-foreground">Due Date</label>
                           <Input
                             type="date"
@@ -297,6 +328,16 @@ const Tasks = () => {
                                       <Icon className="mr-1 h-2.5 w-2.5" />
                                       {task.type.replace('_', ' ')}
                                     </Badge>
+                                    {(() => {
+                                      const p = priorityConfig[task.priority || 'medium'];
+                                      const PIcon = p.icon;
+                                      return (
+                                        <Badge variant="outline" className={`text-[10px] ${p.class}`}>
+                                          <PIcon className="mr-1 h-2.5 w-2.5" />
+                                          {p.label}
+                                        </Badge>
+                                      );
+                                    })()}
                                   </div>
                                   {task.description && (
                                     <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>

@@ -13,6 +13,8 @@ export type ActivityEntry = {
   outreachReasonUsed?: string; // track which reason was used to avoid duplicates
 };
 
+export type TaskPriority = 'high' | 'medium' | 'low';
+
 export type BrokerTask = {
   id: string;
   tenantId?: string;
@@ -20,6 +22,7 @@ export type BrokerTask = {
   title: string;
   description: string;
   type: 'follow_up' | 'call' | 'meeting' | 'email' | 'research' | 'other';
+  priority: TaskPriority;
   dueDate: string; // ISO date string
   completed: boolean;
   createdAt: string;

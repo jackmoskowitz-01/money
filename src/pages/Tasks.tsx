@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';

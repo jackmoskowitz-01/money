@@ -284,8 +284,8 @@ const MapView = () => {
                   <p className="text-[10px] text-muted-foreground">Vacancy</p>
                 </div>
                 <div className="rounded-md bg-secondary p-2">
-                  <p className="text-lg font-bold text-foreground">{selectedBuilding.floors}</p>
-                  <p className="text-[10px] text-muted-foreground">Floors</p>
+                  <p className="text-sm font-bold text-foreground truncate">{selectedBuilding.owner}</p>
+                  <p className="text-[10px] text-muted-foreground">Landlord</p>
                 </div>
               </div>
 

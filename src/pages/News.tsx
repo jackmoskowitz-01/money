@@ -142,9 +142,27 @@ const News = () => {
     toast.success('Custom intel added — add prospects to generate outreach');
   }, [customIntelInput]);
 
-  const filteredNews = activeCategory === 'all'
-    ? currentNews
-    : currentNews.filter(n => n.category === activeCategory);
+  const filteredNews = useMemo(() => {
+    let result = currentNews;
+    if (activeCategory !== 'all') {
+      result = result.filter(n => n.category === activeCategory);
+    }
+    if (activeIndustry !== 'all') {
+      result = result.filter(news => {
+        // Check if any affected prospect matches the industry
+        const prospects = getAffectedProspects(news);
+        return prospects.some(p => p.tenant.industry === activeIndustry) ||
+          // Also check related tenants directly
+          news.relatedTenants?.some(tid => {
+            return buildings.some(b => b.tenants.some(t => t.id === tid && t.industry === activeIndustry));
+          }) ||
+          // Check if news text mentions the industry
+          news.title.toLowerCase().includes(activeIndustry.toLowerCase()) ||
+          news.summary.toLowerCase().includes(activeIndustry.toLowerCase());
+      });
+    }
+    return result;
+  }, [currentNews, activeCategory, activeIndustry]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];

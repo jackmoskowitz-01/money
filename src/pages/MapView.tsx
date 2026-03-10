@@ -153,7 +153,7 @@ const MapView = () => {
         popupAnchor: [1, -34],
       });
 
-      buildings.forEach(building => {
+      mockBuildings.forEach(building => {
         const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
         marker.bindPopup(`
           <div style="min-width:180px">

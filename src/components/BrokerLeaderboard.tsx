@@ -78,14 +78,14 @@ const BrokerLeaderboard = () => {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {/* Bar Chart - Outreach */}
-      <Card className="border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold">Outreach by Broker</h3>
+      <Card className="border-border bg-card p-3 col-span-1">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-xs font-bold">Outreach by Broker</h3>
           <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
         </div>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={160}>
           <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 25%, 16%)" horizontal={false} />
             <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(215, 15%, 50%)' }} axisLine={false} tickLine={false} />
@@ -101,24 +101,24 @@ const BrokerLeaderboard = () => {
       </Card>
 
       {/* Pie Chart - Meetings Set */}
-      <Card className="border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold">Meetings Set by Broker</h3>
+      <Card className="border-border bg-card p-3 col-span-1">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-xs font-bold">Meetings Set</h3>
           <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
         </div>
         {pieData.length === 0 ? (
-          <div className="flex items-center justify-center h-[200px]">
+          <div className="flex items-center justify-center h-[160px]">
             <p className="text-xs text-muted-foreground">No meetings set this week</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                innerRadius={45}
-                outerRadius={75}
+                innerRadius={35}
+                outerRadius={60}
                 paddingAngle={3}
                 dataKey="meetingsSet"
                 nameKey="fullName"

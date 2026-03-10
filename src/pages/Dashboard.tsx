@@ -228,11 +228,6 @@ const Dashboard = () => {
           </p>
         </motion.div>
 
-        {/* Broker Charts - Top of Dashboard */}
-        <div className="mb-8">
-          <BrokerLeaderboard />
-        </div>
-
         {/* Personal Stats */}
         <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, i) => {
@@ -372,6 +367,11 @@ const Dashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Broker Charts */}
+        <div className="mb-8">
+          <BrokerLeaderboard />
+        </div>
 
         {/* Pipeline Breakdown + Submarket Trends */}
         <div className="mb-8 grid gap-4 lg:grid-cols-2">

@@ -375,6 +375,7 @@ const EmailDisplay = ({
                   A/B
                 </button>
 
+                <button
                   onClick={(e) => { e.stopPropagation(); startEditing(); }}
                   className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary"
                   title="Edit email"

@@ -58,6 +58,57 @@ const Dashboard = () => {
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+  const [newsletterContent, setNewsletterContent] = useState('');
+  const [isGeneratingNewsletter, setIsGeneratingNewsletter] = useState(false);
+  const [showNewsletter, setShowNewsletter] = useState(false);
+  const [newsletterContext, setNewsletterContext] = useState('');
+
+  const generateNewsletter = useCallback(async () => {
+    setIsGeneratingNewsletter(true);
+    setNewsletterContent('');
+    setShowNewsletter(true);
+    try {
+      const resp = await fetch(NONPROFIT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ type: 'newsletter', customContext: newsletterContext }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'Generation failed' }));
+        toast.error(err.error || 'Failed to generate newsletter');
+        setIsGeneratingNewsletter(false);
+        return;
+      }
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) { full += content; setNewsletterContent(full); }
+          } catch { /* partial */ }
+        }
+      }
+      toast.success('Newsletter generated!');
+    } catch { toast.error('Failed to generate newsletter'); }
+    setIsGeneratingNewsletter(false);
+  }, [newsletterContext]);
 
   // Personal analytics
   const pipeline = getPipeline();

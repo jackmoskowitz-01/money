@@ -104,6 +104,17 @@ const CustomProspectDetail = () => {
             </p>
           </div>
 
+          {/* Email Composer */}
+          <div className="mb-6">
+            <EmailComposer
+              tenantId={prospectId!}
+              buildingId=""
+              tenantName={prospect.name}
+              contactName={prospect.name}
+              buildingName={prospect.address}
+            />
+          </div>
+
           {/* Activity Log */}
           <div>
             <div className="mb-3 flex items-center justify-between">

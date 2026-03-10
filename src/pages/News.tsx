@@ -582,16 +582,10 @@ const News = () => {
               </div>
             </div>
 
-            {newsLoading && !liveNews && (
-              <div className="space-y-3 mb-3">
-                {[1, 2, 3].map(i => (
-                  <Card key={i} className="border-border bg-card p-4 animate-pulse">
-                    <div className="h-4 w-20 bg-secondary rounded mb-2" />
-                    <div className="h-5 w-3/4 bg-secondary rounded mb-2" />
-                    <div className="h-3 w-full bg-secondary rounded mb-1" />
-                    <div className="h-3 w-2/3 bg-secondary rounded" />
-                  </Card>
-                ))}
+            {newsLoading && (
+              <div className="mb-3 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                <span className="text-xs text-primary">Fetching latest market news...</span>
               </div>
             )}
 

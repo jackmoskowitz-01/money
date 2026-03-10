@@ -748,6 +748,13 @@ const News = () => {
                               >
                                 <Copy className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
                               </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); dismissNews(news.id); }}
+                                className="rounded p-1.5 hover:bg-destructive/10 transition-colors"
+                                title="Dismiss"
+                              >
+                                <X className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
+                              </button>
                               {totalCount > 0 && !isExpanded && (
                                 <button
                                   onClick={(e) => {

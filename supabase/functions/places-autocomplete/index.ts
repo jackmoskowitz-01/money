@@ -22,28 +22,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    const params = new URLSearchParams({
-      input: query,
-      types: 'establishment',
-      key: apiKey,
+    // Use Places API (New) - Autocomplete endpoint
+    const resp = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': apiKey,
+      },
+      body: JSON.stringify({
+        input: query,
+        includedPrimaryTypes: ['establishment'],
+      }),
     });
-
-    const resp = await fetch(`https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`);
     const data = await resp.json();
 
-    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      console.error('Places API error:', data.status, data.error_message);
+    if (data.error) {
+      console.error('Places API error:', data.error.message);
       return new Response(JSON.stringify({ predictions: [] }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const predictions = (data.predictions || []).slice(0, 5).map((p: any) => ({
-      placeId: p.place_id,
-      description: p.description,
-      mainText: p.structured_formatting?.main_text || '',
-      secondaryText: p.structured_formatting?.secondary_text || '',
-    }));
+    const predictions = (data.suggestions || []).slice(0, 5).map((s: any) => {
+      const p = s.placePrediction;
+      return {
+        placeId: p?.placeId || '',
+        description: p?.text?.text || '',
+        mainText: p?.structuredFormat?.mainText?.text || '',
+        secondaryText: p?.structuredFormat?.secondaryText?.text || '',
+      };
+    });
 
     return new Response(JSON.stringify({ predictions }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -68,7 +68,7 @@ const CustomProspectDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-screen pt-20 pb-12">
       <div className="mx-auto max-w-3xl px-4 py-8">
         <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard

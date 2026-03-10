@@ -117,8 +117,8 @@ const BrokerLeaderboard = () => {
                 data={pieData}
                 cx="50%"
                 cy="50%"
-                innerRadius={45}
-                outerRadius={75}
+                innerRadius={35}
+                outerRadius={60}
                 paddingAngle={3}
                 dataKey="meetingsSet"
                 nameKey="fullName"

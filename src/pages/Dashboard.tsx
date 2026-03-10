@@ -113,6 +113,54 @@ const Dashboard = () => {
     ? newsItems
     : newsItems.filter(n => n.category === activeCategory);
 
+  // All non-client tenants for manual adding
+  const allNonClientProspects = useMemo(() => {
+    const results: ProspectMatch[] = [];
+    buildings.forEach(building => {
+      building.tenants.forEach(tenant => {
+        if (!tenant.isClient) results.push({ tenant, building });
+      });
+    });
+    return results;
+  }, []);
+
+  const getSearchResults = (newsId: string, autoProspects: ProspectMatch[]) => {
+    const query = (prospectSearch[newsId] || '').toLowerCase().trim();
+    if (!query) return [];
+    const manual = manualProspects[newsId] || [];
+    const existingIds = new Set([
+      ...autoProspects.map(p => p.tenant.id),
+      ...manual.map(p => p.tenant.id),
+    ]);
+    return allNonClientProspects.filter(p =>
+      !existingIds.has(p.tenant.id) &&
+      (p.tenant.name.toLowerCase().includes(query) ||
+       p.building.name.toLowerCase().includes(query) ||
+       p.tenant.industry.toLowerCase().includes(query))
+    ).slice(0, 5);
+  };
+
+  const addManualProspect = (newsId: string, prospect: ProspectMatch) => {
+    setManualProspects(prev => ({
+      ...prev,
+      [newsId]: [...(prev[newsId] || []), prospect],
+    }));
+    setProspectSearch(prev => ({ ...prev, [newsId]: '' }));
+    setShowSearchFor(null);
+  };
+
+  const removeManualProspect = (newsId: string, tenantId: string) => {
+    setManualProspects(prev => ({
+      ...prev,
+      [newsId]: (prev[newsId] || []).filter(p => p.tenant.id !== tenantId),
+    }));
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      current.delete(tenantId);
+      return { ...prev, [newsId]: current };
+    });
+  };
+
   const toggleProspect = (newsId: string, tenantId: string) => {
     setSelectedProspects(prev => {
       const current = new Set(prev[newsId] || []);

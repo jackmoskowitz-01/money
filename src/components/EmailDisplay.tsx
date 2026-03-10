@@ -6,6 +6,7 @@ import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPick
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 const SMART_DRAFT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-drafting`;
+const SMART_OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-outreach`;
 
 const tones = [
   { id: 'formal', label: 'Formal', icon: '🏛️', desc: 'Polished & professional' },

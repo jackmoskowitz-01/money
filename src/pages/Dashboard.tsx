@@ -368,6 +368,11 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
+        {/* Broker Charts */}
+        <div className="mb-8">
+          <BrokerLeaderboard />
+        </div>
+
         {/* Pipeline Breakdown + Submarket Trends */}
         <div className="mb-8 grid gap-4 lg:grid-cols-2">
           {/* Pipeline Funnel */}

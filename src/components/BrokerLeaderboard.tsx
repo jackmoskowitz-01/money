@@ -85,7 +85,7 @@ const BrokerLeaderboard = () => {
           <h3 className="font-display text-xs font-bold">Outreach by Broker</h3>
           <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
         </div>
-        <ResponsiveContainer width="100%" height={200}>
+        <ResponsiveContainer width="100%" height={160}>
           <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(222, 25%, 16%)" horizontal={false} />
             <XAxis type="number" tick={{ fontSize: 11, fill: 'hsl(215, 15%, 50%)' }} axisLine={false} tickLine={false} />

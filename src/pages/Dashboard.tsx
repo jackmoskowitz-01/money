@@ -741,6 +741,7 @@ const Dashboard = () => {
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {
+                const isCustomIntel = news.id.startsWith('custom-intel-');
                 const autoProspects = getAffectedProspects(news);
                 const manual = manualProspects[news.id] || [];
                 const customs = customProspects[news.id] || [];
@@ -753,7 +754,7 @@ const Dashboard = () => {
 
                 return (
                   <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
-                    <Card className="border-border bg-card transition-colors hover:bg-secondary/10">
+                    <Card className={`border-border bg-card transition-colors hover:bg-secondary/10 ${isCustomIntel ? 'border-primary/20' : ''}`}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">

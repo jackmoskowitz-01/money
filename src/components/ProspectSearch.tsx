@@ -391,7 +391,7 @@ const ProspectSearch = () => {
                         </div>
                         {/* Autocomplete dropdown */}
                         {showSuggestions && addressSuggestions.length > 0 && (
-                          <div className="absolute left-0 right-0 top-full z-10 mt-1 rounded-md border border-border bg-card shadow-lg overflow-hidden">
+                          <div className="absolute left-0 right-0 top-full z-[80] mt-1 max-h-[200px] overflow-y-auto rounded-md border border-border bg-card shadow-lg">
                             {addressSuggestions.map(p => (
                               <button
                                 key={p.placeId}

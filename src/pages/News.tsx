@@ -914,7 +914,7 @@ const News = () => {
                         )}
                       </AnimatePresence>
                     </Card>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Sparkles, Newspaper, Heart } from 'lucide-react';

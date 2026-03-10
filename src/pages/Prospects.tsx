@@ -96,7 +96,77 @@ const Prospects = () => {
     });
   }, [prospects, filterUrgency, filterIndustry]);
 
-  const generateEmail = useCallback(async (tenant: Tenant, building: Building, reason: OutreachReason, key: string) => {
+  // Bulk selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.tenant.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setShowBrokerPicker(false);
+    setShowListPicker(false);
+  };
+
+  const bulkAssignBroker = (broker: Broker) => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    selected.forEach(p => {
+      assignTenant(p.tenant.id, p.building.id, broker.id, broker.name);
+    });
+    toast.success(`Assigned ${selected.length} prospects to ${broker.name}`);
+    setShowBrokerPicker(false);
+    clearSelection();
+  };
+
+  const bulkAddToList = (listId: string) => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    const prospects = selected.map(p => ({
+      tenantId: p.tenant.id,
+      buildingId: p.building.id,
+      tenantName: p.tenant.name,
+    }));
+    const added = addProspectsToList(listId, prospects);
+    toast.success(`Added ${added} prospects to list`);
+    setShowListPicker(false);
+    clearSelection();
+  };
+
+  const bulkCreateListAndAdd = () => {
+    if (!newListName.trim()) return;
+    const { createProspectList } = require('@/data/prospectLists');
+    const list = createProspectList(newListName.trim());
+    bulkAddToList(list.id);
+    setNewListName('');
+  };
+
+  const bulkSendEmail = () => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    const emails = selected
+      .map(p => p.tenant.contactEmail)
+      .filter(Boolean)
+      .join(',');
+    if (!emails) {
+      toast.error('No email addresses found for selected prospects');
+      return;
+    }
+    window.open(`mailto:${emails}`, '_blank');
+    toast.success(`Opening email client for ${selected.length} prospects`);
+    clearSelection();
+  };
+
+
     if (generatedEmails[key]) {
       setActiveEmailKey(activeEmailKey === key ? null : key);
       return;

@@ -122,7 +122,7 @@ const BrokerLeaderboard = () => {
       <Card className="border-border bg-card p-3 col-span-1">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-display text-xs font-bold">Meetings Set</h3>
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{timeRange === 'week' ? 'This Week' : 'This Month'}</Badge>
         </div>
         {pieData.length === 0 ? (
           <div className="flex items-center justify-center h-[160px]">

@@ -43,6 +43,7 @@ const EmailComposer = ({
   leaseExpiration = '',
   floor = '',
   brokerName = '[Your Name]',
+  recipients,
 }: EmailComposerProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EmailTemplateCategory | null>(null);

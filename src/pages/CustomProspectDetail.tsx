@@ -5,6 +5,7 @@ import { ArrowLeft, Globe, MapPin, Calendar } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getCustomProspect } from '@/data/customProspects';
+import EmailComposer from '@/components/EmailComposer';
 import { getActivities, addActivity, activityTypeLabels, activityTypeIcons, type ActivityType, type ActivityEntry } from '@/data/activityData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

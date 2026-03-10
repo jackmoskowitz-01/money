@@ -14,6 +14,12 @@ import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
+const allIndustries = (() => {
+  const set = new Set<string>();
+  buildings.forEach(b => b.tenants.forEach(t => { if (t.industry) set.add(t.industry); }));
+  return Array.from(set).sort();
+})();
+
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
 

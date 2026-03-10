@@ -245,6 +245,7 @@ const TenantDetail = () => {
         contactName={tenant?.contactName}
         contactEmail={tenant?.contactEmail}
         subject={`${tenant?.name} — Outreach`}
+        recipients={recipients}
         onClose={() => setActiveEmailKey(null)}
         onUpdateEmail={updateEmail}
       />

@@ -603,7 +603,7 @@ const News = () => {
                 const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (
-                  <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
+                  <div key={news.id}>
                     <Card className={`border-border bg-card transition-colors hover:bg-secondary/10 ${isCustomIntel ? 'border-primary/20' : ''}`}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-3">

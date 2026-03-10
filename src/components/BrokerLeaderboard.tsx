@@ -157,6 +157,7 @@ const BrokerLeaderboard = () => {
           </ResponsiveContainer>
         )}
       </Card>
+      </div>
     </div>
   );
 };

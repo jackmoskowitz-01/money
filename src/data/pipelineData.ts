@@ -143,6 +143,7 @@ export const stageLabels: Record<PipelineStage, string> = {
 };
 
 export const stageColors: Record<PipelineStage, string> = {
+  hot_prospect: 'bg-destructive/20 text-destructive',
   meeting_set: 'bg-info/20 text-info',
   meeting_held: 'bg-primary/20 text-primary',
   moving_forward: 'bg-warning/20 text-warning',

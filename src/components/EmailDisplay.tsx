@@ -36,10 +36,9 @@ const EmailDisplay = ({ emailKey, emailContent, isGenerating, label = 'Generated
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const openInEmailClient = () => {
-    const to = contactEmail || '';
+  const openInEmailClient = (toEmails?: string[]) => {
+    const to = toEmails ? toEmails.join(',') : (contactEmail || '');
     const subj = subject || (label ? `Re: ${label}` : '');
-    // Strip leading Subject: line from body to avoid duplication
     let body = emailContent;
     const subjectLineMatch = body.match(/^Subject:\s*[^\n]*\n*/i);
     if (subjectLineMatch) {

@@ -184,7 +184,7 @@ export const buildings: Building[] = [
     class: 'A',
     tenants: [
       {
-        id: 't8', name: 'Booz Allen Hamilton', industry: 'Defense/Consulting', sqft: 95000, floor: '6-8',
+        id: 't8', name: 'Booz Allen Hamilton', industry: 'Defense', sqft: 95000, floor: '6-8',
         leaseExpiration: '2027-06-30', contactName: 'Karen Sullivan', contactTitle: 'VP Real Estate',
         contactEmail: 'k.sullivan@bah.com', headcount: 350,
         outreachReasons: [

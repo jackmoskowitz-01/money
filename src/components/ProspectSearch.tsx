@@ -225,7 +225,7 @@ const ProspectSearch = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8, scale: 0.96 }}
               transition={{ duration: 0.15 }}
-              className="fixed left-1/2 top-16 z-[70] w-[94vw] max-w-xl -translate-x-1/2 rounded-lg border border-border bg-card shadow-2xl"
+              className="fixed inset-x-0 top-16 z-[70] mx-auto w-[94vw] max-w-xl rounded-lg border border-border bg-card shadow-2xl"
             >
               <AnimatePresence mode="wait">
                 {view === 'search' ? (

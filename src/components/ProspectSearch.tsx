@@ -372,7 +372,7 @@ const ProspectSearch = () => {
                         </div>
                       </div>
 
-                      <div className="relative">
+                      <div className="relative pb-2">
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Address <span className="text-destructive">*</span>
                         </label>

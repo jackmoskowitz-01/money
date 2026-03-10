@@ -785,6 +785,108 @@ const Prospects = () => {
             );
           })}
         </div>
+
+        {/* Floating Bulk Action Bar */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+            >
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary text-primary-foreground text-xs px-2.5">
+                    {selectedIds.size}
+                  </Badge>
+                  <span className="text-xs font-medium text-foreground">selected</span>
+                </div>
+
+                <div className="h-5 w-px bg-border" />
+
+                {/* Assign Broker */}
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => { setShowBrokerPicker(!showBrokerPicker); setShowListPicker(false); }}
+                  >
+                    <UserPlus className="mr-1 h-3 w-3" /> Assign Broker
+                  </Button>
+                  {showBrokerPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 w-48 rounded-md border border-border bg-card p-1 shadow-lg">
+                      {brokers.map(broker => (
+                        <button
+                          key={broker.id}
+                          onClick={() => bulkAssignBroker(broker)}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-secondary"
+                        >
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold ${broker.color}`}>
+                            {broker.initials}
+                          </span>
+                          {broker.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Add to List */}
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => { setShowListPicker(!showListPicker); setShowBrokerPicker(false); }}
+                  >
+                    <ListPlus className="mr-1 h-3 w-3" /> Add to List
+                  </Button>
+                  {showListPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 w-56 rounded-md border border-border bg-card p-2 shadow-lg space-y-1">
+                      {getProspectLists().map(list => (
+                        <button
+                          key={list.id}
+                          onClick={() => bulkAddToList(list.id)}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-secondary"
+                        >
+                          <span className="text-foreground">{list.name}</span>
+                          <Badge variant="outline" className="text-[9px]">{list.entries.length}</Badge>
+                        </button>
+                      ))}
+                      <div className="border-t border-border pt-1.5 mt-1.5">
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={newListName}
+                            onChange={e => setNewListName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && bulkCreateListAndAdd()}
+                            placeholder="New list name..."
+                            className="flex-1 rounded-md border border-border bg-secondary/50 px-2 py-1 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                          />
+                          <Button size="sm" className="text-[10px] h-6 px-2" onClick={bulkCreateListAndAdd} disabled={!newListName.trim()}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Batch Email */}
+                <Button size="sm" variant="outline" className="text-xs h-8" onClick={bulkSendEmail}>
+                  <Mail className="mr-1 h-3 w-3" /> Email All
+                </Button>
+
+                {/* Clear */}
+                <button onClick={clearSelection} className="rounded p-1 hover:bg-secondary">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

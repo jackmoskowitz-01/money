@@ -44,21 +44,7 @@ const RecipientPicker = ({ recipients, onSend, buttonClass, size = 'sm' }: Props
     setOpen(false);
   };
 
-  // If only one recipient, skip the picker
-  if (recipients.length <= 1) {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onSend(recipients.map(r => r.email).filter(Boolean));
-        }}
-        className={buttonClass || "flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"}
-      >
-        <Send className="h-3 w-3" /> Send
-      </button>
-    );
-  }
-
+  // Always show the picker dropdown
   return (
     <div className="relative">
       <button

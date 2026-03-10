@@ -216,9 +216,14 @@ const Tasks = () => {
                       </button>
                     ))}
                     {selectedDate && (
-                      <Badge variant="outline" className="ml-auto cursor-pointer text-xs" onClick={() => setSelectedDate(null)}>
-                        {format(selectedDate, 'MMM d, yyyy')} ✕
-                      </Badge>
+                      <div className="ml-auto flex items-center gap-2">
+                        <Badge className="bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5">
+                          {filteredTasks.length} task{filteredTasks.length !== 1 ? 's' : ''} on {format(selectedDate, 'MMM d')}
+                        </Badge>
+                        <Badge variant="outline" className="cursor-pointer text-xs" onClick={() => setSelectedDate(null)}>
+                          Clear ✕
+                        </Badge>
+                      </div>
                     )}
                   </div>
 

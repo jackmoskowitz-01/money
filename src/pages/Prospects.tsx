@@ -309,6 +309,16 @@ const Prospects = () => {
               <option key={i} value={i}>{i === 'all' ? 'All Industries' : i}</option>
             ))}
           </select>
+          <button
+            onClick={selectAll}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ml-auto ${
+              selectedIds.size === filtered.length && filtered.length > 0
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            {selectedIds.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
         </div>
 
         {/* Prospect List */}
@@ -316,6 +326,7 @@ const Prospects = () => {
           {filtered.map((entry, i) => {
             const { tenant, building } = entry;
             const isExpanded = expandedId === tenant.id;
+            const isSelected = selectedIds.has(tenant.id);
             const highCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
             const medCount = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
             const clientsInBuilding = building.tenants.filter(t => t.isClient);
@@ -327,11 +338,23 @@ const Prospects = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
               >
-                <Card className="border-border bg-card overflow-hidden">
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : tenant.id)}
-                    className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/30"
-                  >
+                <Card className={`border-border bg-card overflow-hidden transition-colors ${isSelected ? 'ring-1 ring-primary border-primary/40' : ''}`}>
+                  <div className="flex items-center gap-0">
+                    {/* Checkbox */}
+                    <div
+                      className="flex items-center justify-center pl-4 pr-1 py-4 shrink-0 cursor-pointer"
+                      onClick={e => { e.stopPropagation(); toggleSelect(tenant.id); }}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(tenant.id)}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : tenant.id)}
+                      className="flex flex-1 items-center gap-4 p-4 pl-2 text-left transition-colors hover:bg-secondary/30"
+                    >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-semibold text-foreground truncate">{tenant.name}</p>

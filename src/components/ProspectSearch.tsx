@@ -167,6 +167,8 @@ const ProspectSearch = () => {
     setNewName('');
     setNewWebsite('');
     setNewAddress('');
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   };
 
   const selectResult = (result: SearchResult) => {

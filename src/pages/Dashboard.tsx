@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X } from 'lucide-react';
+import { Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign, Timer } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';

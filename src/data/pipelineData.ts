@@ -1,5 +1,5 @@
 // Pipeline types and helpers
-export type PipelineStage = 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
+export type PipelineStage = 'hot_prospect' | 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
 
 export type Touchpoint = {
   id: string;

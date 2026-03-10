@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
 import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { buildings as mockBuildings, type Building } from '@/data/mockData';
+import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -105,7 +106,16 @@ const MapView = () => {
   };
 
   const allBuildingsList = useMemo(() => {
-    return [...mockBuildings, ...googleBuildings];
+    const seen = new Set<string>();
+    const result: Building[] = [];
+    for (const b of [...mockBuildings, ...costarBuildings, ...googleBuildings]) {
+      const key = b.name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(b);
+      }
+    }
+    return result;
   }, [googleBuildings]);
 
   const filteredBuildings = useMemo(() => {
@@ -142,7 +152,7 @@ const MapView = () => {
         popupAnchor: [1, -34],
       });
 
-      mockBuildings.forEach(building => {
+      [...mockBuildings, ...costarBuildings].forEach(building => {
         const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
         marker.bindPopup(`
           <div style="min-width:180px">

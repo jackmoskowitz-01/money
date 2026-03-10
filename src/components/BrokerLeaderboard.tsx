@@ -101,17 +101,17 @@ const BrokerLeaderboard = () => {
       </Card>
 
       {/* Pie Chart - Meetings Set */}
-      <Card className="border-border bg-card p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-display text-sm font-bold">Meetings Set by Broker</h3>
+      <Card className="border-border bg-card p-3 col-span-1">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-display text-xs font-bold">Meetings Set</h3>
           <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>
         </div>
         {pieData.length === 0 ? (
-          <div className="flex items-center justify-center h-[200px]">
+          <div className="flex items-center justify-center h-[160px]">
             <p className="text-xs text-muted-foreground">No meetings set this week</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={160}>
             <PieChart>
               <Pie
                 data={pieData}

@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.places-autocomplete]
 verify_jwt = false
+
+[functions.meeting-prep]
+verify_jwt = false

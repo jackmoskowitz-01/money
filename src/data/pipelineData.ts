@@ -1,12 +1,132 @@
 // Pipeline types and helpers
 export type PipelineStage = 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
 
+export type Touchpoint = {
+  id: string;
+  type: 'market_update' | 'lease_comp' | 'space_available' | 'building_news' | 'check_in' | 'intro_colleague' | 'event_invite';
+  title: string;
+  description: string;
+  suggested: boolean;
+};
+
 export type PipelineItem = {
   tenantId: string;
   buildingId: string;
   stage: PipelineStage;
   notes: string[];
   lastActivity: string;
+  // Manual prospect fields (when not linked to a mock tenant)
+  isManual?: boolean;
+  prospectName?: string;
+  prospectCompany?: string;
+  prospectEmail?: string;
+  prospectPhone?: string;
+  prospectSqft?: number;
+  touchpoints?: Touchpoint[];
+};
+
+export const touchpointLabels: Record<Touchpoint['type'], string> = {
+  market_update: 'Market Update',
+  lease_comp: 'Lease Comp Share',
+  space_available: 'New Space Available',
+  building_news: 'Building News',
+  check_in: 'Check-In',
+  intro_colleague: 'Introduce Colleague',
+  event_invite: 'Event Invitation',
+};
+
+export const touchpointDescriptions: Record<Touchpoint['type'], string> = {
+  market_update: 'Share a relevant submarket trend, vacancy shift, or rental rate movement',
+  lease_comp: 'Forward a recent comparable lease deal that validates their strategy or creates urgency',
+  space_available: 'Alert them to a new space option that fits their requirements',
+  building_news: 'Share ownership changes, renovations, or amenity upgrades at their building',
+  check_in: 'Casual follow-up to maintain the relationship and gauge timing',
+  intro_colleague: 'Connect them with a specialist (capital markets, project mgmt, etc.)',
+  event_invite: 'Invite to a firm event, market briefing, or industry panel',
+};
+
+export const generateTouchpoints = (item: PipelineItem): Touchpoint[] => {
+  const touchpoints: Touchpoint[] = [];
+  const types: Touchpoint['type'][] = ['market_update', 'lease_comp', 'space_available', 'building_news', 'check_in', 'intro_colleague', 'event_invite'];
+
+  // Generate contextual touchpoints based on stage
+  if (item.stage === 'meeting_set' || item.stage === 'meeting_held') {
+    touchpoints.push({
+      id: `tp-${item.tenantId}-1`,
+      type: 'market_update',
+      title: 'Share Q1 2026 submarket report',
+      description: 'Send the latest vacancy and rental rate data for their submarket to demonstrate expertise before/after the meeting.',
+      suggested: true,
+    });
+    touchpoints.push({
+      id: `tp-${item.tenantId}-2`,
+      type: 'lease_comp',
+      title: 'Share relevant lease comp',
+      description: 'Send a recent comparable deal to frame market expectations and build credibility.',
+      suggested: true,
+    });
+    touchpoints.push({
+      id: `tp-${item.tenantId}-3`,
+      type: 'check_in',
+      title: 'Post-meeting follow-up',
+      description: 'Send a brief recap of key discussion points and proposed next steps.',
+      suggested: true,
+    });
+  }
+
+  if (item.stage === 'moving_forward') {
+    touchpoints.push({
+      id: `tp-${item.tenantId}-4`,
+      type: 'space_available',
+      title: 'New space option alert',
+      description: 'A new listing just hit the market that fits their size requirements — share before competitors.',
+      suggested: true,
+    });
+    touchpoints.push({
+      id: `tp-${item.tenantId}-5`,
+      type: 'intro_colleague',
+      title: 'Introduce project management team',
+      description: 'Connect them with your firm\'s project management group to discuss buildout timelines and TI coordination.',
+      suggested: true,
+    });
+    touchpoints.push({
+      id: `tp-${item.tenantId}-6`,
+      type: 'building_news',
+      title: 'Building amenity upgrade news',
+      description: 'Share recent building improvements or planned renovations that could affect their decision.',
+      suggested: true,
+    });
+  }
+
+  if (item.stage === 'won' || item.stage === 'closed') {
+    touchpoints.push({
+      id: `tp-${item.tenantId}-7`,
+      type: 'event_invite',
+      title: 'Invite to client appreciation event',
+      description: 'Strengthen the relationship by inviting them to an upcoming firm event or market briefing.',
+      suggested: true,
+    });
+    touchpoints.push({
+      id: `tp-${item.tenantId}-8`,
+      type: 'check_in',
+      title: 'Quarterly check-in',
+      description: 'Touch base on how the space is working out and if any needs have changed.',
+      suggested: true,
+    });
+  }
+
+  // Always add a generic check-in if not already present
+  if (!touchpoints.find(t => t.type === 'check_in')) {
+    touchpoints.push({
+      id: `tp-${item.tenantId}-9`,
+      type: 'check_in',
+      title: 'Relationship check-in',
+      description: 'Maintain the relationship with a casual touchpoint — ask about their business, upcoming plans, or space satisfaction.',
+      suggested: false,
+    });
+  }
+
+  return touchpoints;
 };
 
 export const stageLabels: Record<PipelineStage, string> = {

@@ -7,6 +7,8 @@ export type Touchpoint = {
   title: string;
   description: string;
   suggested: boolean;
+  sentAt?: string; // ISO date when touchpoint was sent
+  followUpDate?: string; // ISO date for follow-up reminder
 };
 
 export type PipelineItem = {
@@ -23,6 +25,7 @@ export type PipelineItem = {
   prospectPhone?: string;
   prospectSqft?: number;
   touchpoints?: Touchpoint[];
+  sentTouchpoints?: Touchpoint[]; // touchpoints that have been sent
 };
 
 export const touchpointLabels: Record<Touchpoint['type'], string> = {
@@ -197,6 +200,32 @@ export const addPipelineNote = (tenantId: string, buildingId: string, note: stri
     pipeline.push({ tenantId, buildingId, stage: 'meeting_set', notes: [note], lastActivity: new Date().toISOString() });
   }
   savePipeline(pipeline);
+};
+
+export const markTouchpointSent = (tenantId: string, buildingId: string, touchpoint: Touchpoint) => {
+  const pipeline = getPipeline();
+  const idx = pipeline.findIndex(p => p.tenantId === tenantId && p.buildingId === buildingId);
+  if (idx >= 0) {
+    if (!pipeline[idx].sentTouchpoints) pipeline[idx].sentTouchpoints = [];
+    const sent: Touchpoint = { ...touchpoint, sentAt: new Date().toISOString(), followUpDate: new Date(Date.now() + 7 * 86400000).toISOString() };
+    pipeline[idx].sentTouchpoints!.push(sent);
+    pipeline[idx].lastActivity = new Date().toISOString();
+    savePipeline(pipeline);
+  }
+  return getPipeline();
+};
+
+export const getOverdueTouchpoints = (): { item: PipelineItem; touchpoint: Touchpoint }[] => {
+  const now = new Date().toISOString();
+  const results: { item: PipelineItem; touchpoint: Touchpoint }[] = [];
+  getPipeline().forEach(item => {
+    (item.sentTouchpoints || []).forEach(tp => {
+      if (tp.followUpDate && tp.followUpDate < now) {
+        results.push({ item, touchpoint: tp });
+      }
+    });
+  });
+  return results;
 };
 
 // Comp data

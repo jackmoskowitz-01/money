@@ -145,7 +145,6 @@ const Prospects = () => {
 
   const bulkCreateListAndAdd = () => {
     if (!newListName.trim()) return;
-    const { createProspectList } = require('@/data/prospectLists');
     const list = createProspectList(newListName.trim());
     bulkAddToList(list.id);
     setNewListName('');

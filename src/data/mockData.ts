@@ -184,7 +184,7 @@ export const buildings: Building[] = [
     class: 'A',
     tenants: [
       {
-        id: 't8', name: 'Booz Allen Hamilton', industry: 'Defense/Consulting', sqft: 95000, floor: '6-8',
+        id: 't8', name: 'Booz Allen Hamilton', industry: 'Defense', sqft: 95000, floor: '6-8',
         leaseExpiration: '2027-06-30', contactName: 'Karen Sullivan', contactTitle: 'VP Real Estate',
         contactEmail: 'k.sullivan@bah.com', headcount: 350,
         outreachReasons: [
@@ -232,14 +232,14 @@ export const buildings: Building[] = [
     class: 'B',
     tenants: [
       {
-        id: 't10', name: 'American Academy of Nursing', industry: 'Healthcare/Nonprofit', sqft: 12000, floor: '6',
+        id: 't10', name: 'American Academy of Nursing', industry: 'Healthcare', sqft: 12000, floor: '6',
         leaseExpiration: '2027-08-31', contactName: 'Christine Henshaw', contactTitle: 'Executive Director',
         contactEmail: 'c.henshaw@aannet.org', headcount: 45,
         isClient: true,
         outreachReasons: [],
       },
       {
-        id: 't11', name: 'National Association of Counties', industry: 'Nonprofit/Government', sqft: 35000, floor: '3-4',
+        id: 't11', name: 'National Association of Counties', industry: 'Government', sqft: 35000, floor: '3-4',
         leaseExpiration: '2026-04-30', contactName: 'Mark Peterson', contactTitle: 'COO',
         contactEmail: 'm.peterson@naco.org', headcount: 120,
         outreachReasons: [
@@ -248,7 +248,7 @@ export const buildings: Building[] = [
         ],
       },
       {
-        id: 't12', name: 'Center for American Progress', industry: 'Think Tank/Nonprofit', sqft: 28000, floor: '7-8',
+        id: 't12', name: 'Center for American Progress', industry: 'Nonprofit/Association', sqft: 28000, floor: '7-8',
         leaseExpiration: '2025-11-30', contactName: 'Danielle Rosen', contactTitle: 'Director of Operations',
         contactEmail: 'd.rosen@americanprogress.org', headcount: 95,
         outreachReasons: [

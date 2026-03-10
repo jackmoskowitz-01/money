@@ -65,6 +65,9 @@ const Dashboard = () => {
   const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
+  const [customIntelInput, setCustomIntelInput] = useState('');
+  const [customIntelItems, setCustomIntelItems] = useState<NewsItem[]>([]);
+  const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
   const [newsLoading, setNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);

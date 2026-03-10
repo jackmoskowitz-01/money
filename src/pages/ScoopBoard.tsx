@@ -132,25 +132,6 @@ const ScoopBoard = () => {
             </button>
           </div>
 
-          {/* Popular tags */}
-          {popularTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] text-muted-foreground mr-1">Trending:</span>
-              {popularTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => setSearchQuery(searchQuery === tag ? '' : tag)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
-                    searchQuery === tag
-                      ? 'bg-primary/15 text-primary border-primary/30'
-                      : 'bg-secondary/30 text-muted-foreground border-transparent hover:border-border'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Stats bar */}

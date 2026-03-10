@@ -1,16 +1,18 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink, UserPlus, ListPlus } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
-import { buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
+import { buildingSubmarkets, getSubmarketNews, brokers, assignTenant, type Broker } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { getProspectLists, addProspectsToList, createProspectList, type ProspectList } from '@/data/prospectLists';
 
 type ProspectEntry = {
   tenant: Tenant;
@@ -44,16 +46,18 @@ const Prospects = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
-  // Track which reason is generating: key = `${tenantId}-${reasonIndex}`
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
-  
-  // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');
-  // Track custom email keys per tenant
   const [customEmailKeys, setCustomEmailKeys] = useState<Record<string, string[]>>({});
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBrokerPicker, setShowBrokerPicker] = useState(false);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [newListName, setNewListName] = useState('');
 
   const pipeline = getPipeline();
 
@@ -91,6 +95,75 @@ const Prospects = () => {
       return true;
     });
   }, [prospects, filterUrgency, filterIndustry]);
+
+  // Bulk selection helpers
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(p => p.tenant.id)));
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setShowBrokerPicker(false);
+    setShowListPicker(false);
+  };
+
+  const bulkAssignBroker = (broker: Broker) => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    selected.forEach(p => {
+      assignTenant(p.tenant.id, p.building.id, broker.id, broker.name);
+    });
+    toast.success(`Assigned ${selected.length} prospects to ${broker.name}`);
+    setShowBrokerPicker(false);
+    clearSelection();
+  };
+
+  const bulkAddToList = (listId: string) => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    const prospects = selected.map(p => ({
+      tenantId: p.tenant.id,
+      buildingId: p.building.id,
+      tenantName: p.tenant.name,
+    }));
+    const added = addProspectsToList(listId, prospects);
+    toast.success(`Added ${added} prospects to list`);
+    setShowListPicker(false);
+    clearSelection();
+  };
+
+  const bulkCreateListAndAdd = () => {
+    if (!newListName.trim()) return;
+    const list = createProspectList(newListName.trim());
+    bulkAddToList(list.id);
+    setNewListName('');
+  };
+
+  const bulkSendEmail = () => {
+    const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
+    const emails = selected
+      .map(p => p.tenant.contactEmail)
+      .filter(Boolean)
+      .join(',');
+    if (!emails) {
+      toast.error('No email addresses found for selected prospects');
+      return;
+    }
+    window.open(`mailto:${emails}`, '_blank');
+    toast.success(`Opening email client for ${selected.length} prospects`);
+    clearSelection();
+  };
 
   const generateEmail = useCallback(async (tenant: Tenant, building: Building, reason: OutreachReason, key: string) => {
     if (generatedEmails[key]) {
@@ -236,6 +309,16 @@ const Prospects = () => {
               <option key={i} value={i}>{i === 'all' ? 'All Industries' : i}</option>
             ))}
           </select>
+          <button
+            onClick={selectAll}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ml-auto ${
+              selectedIds.size === filtered.length && filtered.length > 0
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+            }`}
+          >
+            {selectedIds.size === filtered.length && filtered.length > 0 ? 'Deselect All' : 'Select All'}
+          </button>
         </div>
 
         {/* Prospect List */}
@@ -243,6 +326,7 @@ const Prospects = () => {
           {filtered.map((entry, i) => {
             const { tenant, building } = entry;
             const isExpanded = expandedId === tenant.id;
+            const isSelected = selectedIds.has(tenant.id);
             const highCount = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
             const medCount = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
             const clientsInBuilding = building.tenants.filter(t => t.isClient);
@@ -254,11 +338,23 @@ const Prospects = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
               >
-                <Card className="border-border bg-card overflow-hidden">
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : tenant.id)}
-                    className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-secondary/30"
-                  >
+                <Card className={`border-border bg-card overflow-hidden transition-colors ${isSelected ? 'ring-1 ring-primary border-primary/40' : ''}`}>
+                  <div className="flex items-center gap-0">
+                    {/* Checkbox */}
+                    <div
+                      className="flex items-center justify-center pl-4 pr-1 py-4 shrink-0 cursor-pointer"
+                      onClick={e => { e.stopPropagation(); toggleSelect(tenant.id); }}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(tenant.id)}
+                        className="h-4 w-4"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : tenant.id)}
+                      className="flex flex-1 items-center gap-4 p-4 pl-2 text-left transition-colors hover:bg-secondary/30"
+                    >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="text-sm font-semibold text-foreground truncate">{tenant.name}</p>
@@ -286,7 +382,8 @@ const Prospects = () => {
                       </div>
                     </div>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
+                    </button>
+                  </div>
 
                   <AnimatePresence>
                     {isExpanded && (
@@ -688,6 +785,108 @@ const Prospects = () => {
             );
           })}
         </div>
+
+        {/* Floating Bulk Action Bar */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+            >
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 shadow-2xl">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary text-primary-foreground text-xs px-2.5">
+                    {selectedIds.size}
+                  </Badge>
+                  <span className="text-xs font-medium text-foreground">selected</span>
+                </div>
+
+                <div className="h-5 w-px bg-border" />
+
+                {/* Assign Broker */}
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => { setShowBrokerPicker(!showBrokerPicker); setShowListPicker(false); }}
+                  >
+                    <UserPlus className="mr-1 h-3 w-3" /> Assign Broker
+                  </Button>
+                  {showBrokerPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 w-48 rounded-md border border-border bg-card p-1 shadow-lg">
+                      {brokers.map(broker => (
+                        <button
+                          key={broker.id}
+                          onClick={() => bulkAssignBroker(broker)}
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-secondary"
+                        >
+                          <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold ${broker.color}`}>
+                            {broker.initials}
+                          </span>
+                          {broker.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Add to List */}
+                <div className="relative">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs h-8"
+                    onClick={() => { setShowListPicker(!showListPicker); setShowBrokerPicker(false); }}
+                  >
+                    <ListPlus className="mr-1 h-3 w-3" /> Add to List
+                  </Button>
+                  {showListPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 w-56 rounded-md border border-border bg-card p-2 shadow-lg space-y-1">
+                      {getProspectLists().map(list => (
+                        <button
+                          key={list.id}
+                          onClick={() => bulkAddToList(list.id)}
+                          className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-secondary"
+                        >
+                          <span className="text-foreground">{list.name}</span>
+                          <Badge variant="outline" className="text-[9px]">{list.entries.length}</Badge>
+                        </button>
+                      ))}
+                      <div className="border-t border-border pt-1.5 mt-1.5">
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={newListName}
+                            onChange={e => setNewListName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && bulkCreateListAndAdd()}
+                            placeholder="New list name..."
+                            className="flex-1 rounded-md border border-border bg-secondary/50 px-2 py-1 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none"
+                          />
+                          <Button size="sm" className="text-[10px] h-6 px-2" onClick={bulkCreateListAndAdd} disabled={!newListName.trim()}>
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Batch Email */}
+                <Button size="sm" variant="outline" className="text-xs h-8" onClick={bulkSendEmail}>
+                  <Mail className="mr-1 h-3 w-3" /> Email All
+                </Button>
+
+                {/* Clear */}
+                <button onClick={clearSelection} className="rounded p-1 hover:bg-secondary">
+                  <X className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

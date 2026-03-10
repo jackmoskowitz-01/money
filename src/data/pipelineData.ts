@@ -1,5 +1,5 @@
 // Pipeline types and helpers
-export type PipelineStage = 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
+export type PipelineStage = 'hot_prospect' | 'meeting_set' | 'meeting_held' | 'moving_forward' | 'won' | 'closed' | 'lost';
 
 export type Touchpoint = {
   id: string;
@@ -133,6 +133,7 @@ export const generateTouchpoints = (item: PipelineItem): Touchpoint[] => {
 };
 
 export const stageLabels: Record<PipelineStage, string> = {
+  hot_prospect: 'Hot Prospect',
   meeting_set: 'Meeting Set',
   meeting_held: 'Meeting Held',
   moving_forward: 'Moving Forward',
@@ -142,6 +143,7 @@ export const stageLabels: Record<PipelineStage, string> = {
 };
 
 export const stageColors: Record<PipelineStage, string> = {
+  hot_prospect: 'bg-destructive/20 text-destructive',
   meeting_set: 'bg-info/20 text-info',
   meeting_held: 'bg-primary/20 text-primary',
   moving_forward: 'bg-warning/20 text-warning',

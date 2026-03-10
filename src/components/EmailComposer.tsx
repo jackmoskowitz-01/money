@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { addActivity } from '@/data/activityData';
+import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {
   emailTemplates,
   categoryLabels,

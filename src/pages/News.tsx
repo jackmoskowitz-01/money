@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles, ChevronDown, X } from 'lucide-react';
+import { TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search, RefreshCw, FileText, Sparkles, ChevronDown, X, Filter } from 'lucide-react';
 import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';

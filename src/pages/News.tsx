@@ -130,6 +130,18 @@ const News = () => {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const dismissNews = (id: string) => {
+    setDismissedIds(prev => new Set(prev).add(id));
+    if (expandedNewsId === id) setExpandedNewsId(null);
+    toast('News item dismissed', {
+      action: {
+        label: 'Undo',
+        onClick: () => setDismissedIds(prev => { const n = new Set(prev); n.delete(id); return n; }),
+      },
+    });
+  };
 
   const toggleBookmark = (id: string) => {
     setBookmarkedIds(prev => {

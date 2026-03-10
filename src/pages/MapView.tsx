@@ -2,68 +2,67 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, MapPin } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { buildings as mockBuildings, type Building } from '@/data/mockData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-type GoogleBuilding = {
-  id: string;
-  name: string;
-  address: string;
-  lat: number;
-  lng: number;
-  rating: number | null;
-  ratingCount: number;
-  types: string[];
-  businessStatus: string;
-};
-
 const MapView = () => {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
-  const [selectedGoogleBuilding, setSelectedGoogleBuilding] = useState<GoogleBuilding | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
-  const [googleBuildings, setGoogleBuildings] = useState<GoogleBuilding[]>([]);
+  const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState('');
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
+  const fetchedRef = useRef(false);
 
   const fetchGoogleBuildings = useCallback(async () => {
-    if (googleLoaded) return;
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
     setLoadingGoogle(true);
-    try {
-      const allBuildings: GoogleBuilding[] = [];
-      let pageToken: string | null = null;
 
-      // Fetch up to 3 pages (60 buildings)
-      for (let i = 0; i < 3; i++) {
+    try {
+      const allBuildings: Building[] = [];
+      const seenIds = new Set<string>();
+
+      // Add mock building IDs to prevent duplicates
+      mockBuildings.forEach(b => seenIds.add(b.name.toLowerCase()));
+
+      const totalQueries = 7;
+      for (let i = 0; i < totalQueries; i++) {
+        setLoadingProgress(`Searching... (${i + 1}/${totalQueries})`);
+
         const { data, error } = await supabase.functions.invoke('fetch-dc-buildings', {
-          body: { pageToken },
+          body: { queryIndex: i },
         });
 
-        if (error) throw new Error(error.message);
-        if (!data?.success) throw new Error(data?.error || 'Failed to fetch');
+        if (error) {
+          console.error(`Query ${i} failed:`, error.message);
+          continue;
+        }
+        if (!data?.success) {
+          console.error(`Query ${i} failed:`, data?.error);
+          continue;
+        }
 
-        allBuildings.push(...(data.buildings || []));
-        pageToken = data.nextPageToken;
-
-        if (!pageToken) break;
-        // Google requires a short delay between page token requests
-        await new Promise(r => setTimeout(r, 2000));
+        for (const b of (data.buildings || [])) {
+          const key = b.name.toLowerCase();
+          if (!seenIds.has(key) && b.lat && b.lng) {
+            seenIds.add(key);
+            allBuildings.push(b as Building);
+          }
+        }
       }
 
       setGoogleBuildings(allBuildings);
-      setGoogleLoaded(true);
       toast.success(`Loaded ${allBuildings.length} real DC office buildings`);
 
-      // Add markers to map
       if (mapInstanceRef.current) {
         addGoogleMarkersToMap(allBuildings);
       }
@@ -72,60 +71,50 @@ const MapView = () => {
       toast.error('Failed to fetch buildings from Google Places');
     } finally {
       setLoadingGoogle(false);
+      setLoadingProgress('');
     }
-  }, [googleLoaded]);
+  }, []);
 
-  const addGoogleMarkersToMap = async (gBuildings: GoogleBuilding[]) => {
+  const addGoogleMarkersToMap = async (blds: Building[]) => {
     const L = await import('leaflet');
 
-    // Clear existing google markers
     googleMarkersRef.current.forEach(m => m.remove());
     googleMarkersRef.current = [];
 
-    const googleIcon = L.divIcon({
-      html: `<div style="background:#3b82f6;width:10px;height:10px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.4)"></div>`,
-      className: '',
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
+    const icon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
     });
 
-    gBuildings.forEach(b => {
-      if (!b.lat || !b.lng) return;
-      const marker = L.marker([b.lat, b.lng], { icon: googleIcon }).addTo(mapInstanceRef.current);
+    blds.forEach(b => {
+      const marker = L.marker([b.lat, b.lng], { icon }).addTo(mapInstanceRef.current);
       marker.bindPopup(`
         <div style="min-width:180px">
           <strong>${b.name}</strong><br/>
           <span style="font-size:11px;opacity:0.7">${b.address}</span><br/>
-          ${b.rating ? `<span style="font-size:11px">⭐ ${b.rating} (${b.ratingCount} reviews)</span>` : ''}
+          <span style="font-size:11px">${b.tenants.length} tenants · ${b.vacancyRate}% vacant</span>
         </div>
       `);
-      marker.on('click', () => {
-        setSelectedBuilding(null);
-        setSelectedGoogleBuilding(b);
-      });
+      marker.on('click', () => setSelectedBuilding(b));
       googleMarkersRef.current.push(marker);
     });
   };
 
-  const allBuildings = useMemo(() => {
-    return mockBuildings;
-  }, []);
+  const allBuildingsList = useMemo(() => {
+    return [...mockBuildings, ...googleBuildings];
+  }, [googleBuildings]);
 
-  const filteredMockBuildings = useMemo(() => {
-    if (!searchQuery.trim()) return allBuildings;
+  const filteredBuildings = useMemo(() => {
+    if (!searchQuery.trim()) return allBuildingsList;
     const q = searchQuery.toLowerCase();
-    return allBuildings.filter(b =>
+    return allBuildingsList.filter(b =>
       b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
     );
-  }, [searchQuery, allBuildings]);
-
-  const filteredGoogleBuildings = useMemo(() => {
-    if (!searchQuery.trim()) return googleBuildings;
-    const q = searchQuery.toLowerCase();
-    return googleBuildings.filter(b =>
-      b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
-    );
-  }, [searchQuery, googleBuildings]);
+  }, [searchQuery, allBuildingsList]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -136,7 +125,7 @@ const MapView = () => {
 
       const map = L.map(mapRef.current!, {
         center: [38.9010, -77.0340],
-        zoom: 15,
+        zoom: 14,
         zoomControl: false,
       });
 
@@ -166,8 +155,6 @@ const MapView = () => {
       });
 
       mapInstanceRef.current = map;
-
-      // Auto-fetch Google buildings after map loads
       fetchGoogleBuildings();
     };
 
@@ -193,7 +180,8 @@ const MapView = () => {
             className="flex w-full items-center justify-between p-3"
           >
             <h2 className="font-display text-sm font-bold">
-              DC Buildings ({filteredMockBuildings.length + filteredGoogleBuildings.length})
+              DC Buildings ({filteredBuildings.length})
+              {loadingGoogle && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
             </h2>
             {panelOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
@@ -217,28 +205,18 @@ const MapView = () => {
                       className="h-8 pl-8 text-xs"
                     />
                   </div>
-                  {!googleLoaded && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full text-xs"
-                      onClick={fetchGoogleBuildings}
-                      disabled={loadingGoogle}
-                    >
-                      {loadingGoogle ? (
-                        <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Loading real buildings...</>
-                      ) : (
-                        <><MapPin className="mr-1.5 h-3 w-3" /> Load real DC office buildings</>
-                      )}
-                    </Button>
+                  {loadingGoogle && loadingProgress && (
+                    <p className="text-[11px] text-muted-foreground text-center py-1">
+                      <Loader2 className="inline h-3 w-3 animate-spin mr-1" />
+                      {loadingProgress}
+                    </p>
                   )}
                 </div>
                 <div className="max-h-[55vh] space-y-2 overflow-y-auto px-3 pb-3">
-                  {/* Mock buildings with full data */}
-                  {filteredMockBuildings.map(b => (
+                  {filteredBuildings.map(b => (
                     <button
                       key={b.id}
-                      onClick={() => { setSelectedGoogleBuilding(null); setSelectedBuilding(b); }}
+                      onClick={() => setSelectedBuilding(b)}
                       className={`w-full rounded-md border p-2.5 text-left transition-all ${
                         selectedBuilding?.id === b.id
                           ? 'border-primary/50 bg-primary/10'
@@ -260,32 +238,7 @@ const MapView = () => {
                       </div>
                     </button>
                   ))}
-
-                  {/* Google Places buildings */}
-                  {filteredGoogleBuildings.map(b => (
-                    <button
-                      key={b.id}
-                      onClick={() => { setSelectedBuilding(null); setSelectedGoogleBuilding(b); }}
-                      className={`w-full rounded-md border p-2.5 text-left transition-all ${
-                        selectedGoogleBuilding?.id === b.id
-                          ? 'border-primary/50 bg-primary/10'
-                          : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
-                        <p className="text-sm font-semibold text-foreground">{b.name}</p>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground ml-3.5">{b.address}</p>
-                      {b.rating && (
-                        <p className="text-[11px] text-muted-foreground ml-3.5 mt-1">
-                          ⭐ {b.rating} ({b.ratingCount} reviews)
-                        </p>
-                      )}
-                    </button>
-                  ))}
-
-                  {filteredMockBuildings.length === 0 && filteredGoogleBuildings.length === 0 && (
+                  {filteredBuildings.length === 0 && (
                     <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
                   )}
                 </div>
@@ -295,7 +248,7 @@ const MapView = () => {
         </Card>
       </div>
 
-      {/* Selected Mock Building Detail Panel */}
+      {/* Selected Building Detail Panel */}
       <AnimatePresence>
         {selectedBuilding && (
           <motion.div
@@ -378,56 +331,6 @@ const MapView = () => {
                   );
                 })}
               </div>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Selected Google Building Detail Panel */}
-      <AnimatePresence>
-        {selectedGoogleBuilding && (
-          <motion.div
-            initial={{ x: 320, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 320, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25 }}
-            className="absolute right-4 top-4 z-[1000] w-96"
-          >
-            <Card className="border-border bg-card/95 p-4 backdrop-blur-lg">
-              <div className="mb-3 flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                    <h3 className="font-display text-lg font-bold">{selectedGoogleBuilding.name}</h3>
-                  </div>
-                  <p className="text-xs text-muted-foreground ml-[18px]">{selectedGoogleBuilding.address}</p>
-                </div>
-                <button
-                  onClick={() => setSelectedGoogleBuilding(null)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              {selectedGoogleBuilding.rating && (
-                <div className="mb-3 rounded-md bg-secondary p-3 text-center">
-                  <p className="text-2xl font-bold text-foreground">⭐ {selectedGoogleBuilding.rating}</p>
-                  <p className="text-[11px] text-muted-foreground">{selectedGoogleBuilding.ratingCount} reviews</p>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-1.5">
-                {selectedGoogleBuilding.types.slice(0, 5).map(t => (
-                  <Badge key={t} variant="outline" className="text-[10px]">
-                    {t.replace(/_/g, ' ')}
-                  </Badge>
-                ))}
-              </div>
-
-              <p className="mt-4 text-xs text-muted-foreground italic">
-                Real building from Google Places — detailed tenant data not yet available.
-              </p>
             </Card>
           </motion.div>
         )}

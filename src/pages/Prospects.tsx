@@ -46,18 +46,18 @@ const Prospects = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
-  // Track which reason is generating: key = `${tenantId}-${reasonIndex}`
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
-  
-  // Custom reason input per tenant
   const [customReasonOpen, setCustomReasonOpen] = useState<string | null>(null);
   const [customReasonText, setCustomReasonText] = useState('');
-  // Track custom email keys per tenant
   const [customEmailKeys, setCustomEmailKeys] = useState<Record<string, string[]>>({});
 
-  const pipeline = getPipeline();
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBrokerPicker, setShowBrokerPicker] = useState(false);
+  const [showListPicker, setShowListPicker] = useState(false);
+  const [newListName, setNewListName] = useState('');
 
   const prospects = useMemo<ProspectEntry[]>(() => {
     const all: ProspectEntry[] = [];

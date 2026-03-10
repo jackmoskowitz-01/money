@@ -736,6 +736,75 @@ const Dashboard = () => {
                                 );
                               })}
 
+                              {/* Custom (typed-in) prospects */}
+                              {customs.map(custom => {
+                                const emailKey = `news-${news.id}-${custom.id}`;
+                                const isChecked = selected.has(custom.id);
+                                const isGenerating = generatingKeys.has(emailKey);
+                                const hasEmail = generatedEmails[emailKey] !== undefined;
+
+                                return (
+                                  <div key={custom.id} className="space-y-1">
+                                    <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                                      <Checkbox
+                                        checked={isChecked}
+                                        onCheckedChange={() => toggleProspect(news.id, custom.id)}
+                                        className="h-4 w-4"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-semibold text-foreground truncate">
+                                            {custom.name}
+                                          </span>
+                                          <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
+                                            Custom
+                                          </Badge>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">Not in database — AI will research and tailor</p>
+                                      </div>
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => removeCustomProspect(news.id, custom.id)}
+                                          className="shrink-0 rounded p-1 hover:bg-destructive/10"
+                                        >
+                                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                        </button>
+                                      )}
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => generateEmailForCustom(custom.name, news, emailKey)}
+                                          className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                                        >
+                                          <Mail className="h-3 w-3" /> Generate
+                                        </button>
+                                      )}
+                                      {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                                      {hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                                          className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                                        >
+                                          <Check className="h-3 w-3" /> View
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <AnimatePresence>
+                                      {activeEmailKey === emailKey && hasEmail && (
+                                        <EmailDisplay
+                                          emailKey={emailKey}
+                                          emailContent={generatedEmails[emailKey]}
+                                          isGenerating={isGenerating}
+                                          label={`Email to ${custom.name}`}
+                                          onClose={() => setActiveEmailKey(null)}
+                                          onUpdateEmail={updateEmail}
+                                        />
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })}
+
                               {/* Add Prospect Search */}
                               <div className="pt-2 border-t border-border/50">
                                 {showSearchFor === news.id ? (
@@ -745,9 +814,18 @@ const Dashboard = () => {
                                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                         <input
                                           type="text"
-                                          placeholder="Search by name, building, or industry..."
+                                          placeholder="Search or type a name to add..."
                                           value={prospectSearch[news.id] || ''}
                                           onChange={e => setProspectSearch(prev => ({ ...prev, [news.id]: e.target.value }))}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter' && (prospectSearch[news.id] || '').trim()) {
+                                              if (searchResults.length > 0) {
+                                                addManualProspect(news.id, searchResults[0]);
+                                              } else {
+                                                addCustomProspect(news.id, prospectSearch[news.id]);
+                                              }
+                                            }
+                                          }}
                                           className="w-full rounded-md border border-input bg-background pl-7 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                           autoFocus
                                         />
@@ -779,7 +857,16 @@ const Dashboard = () => {
                                       </div>
                                     )}
                                     {(prospectSearch[news.id] || '').trim() && searchResults.length === 0 && (
-                                      <p className="text-[10px] text-muted-foreground text-center py-2">No matching prospects found</p>
+                                      <button
+                                        onClick={() => addCustomProspect(news.id, prospectSearch[news.id])}
+                                        className="flex w-full items-center gap-3 rounded-md bg-primary/5 p-2.5 text-left hover:bg-primary/10 transition-colors"
+                                      >
+                                        <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium text-primary">Add "{(prospectSearch[news.id] || '').trim()}" as custom prospect</p>
+                                          <p className="text-[10px] text-muted-foreground">AI will tailor outreach based on the news and what it knows about them</p>
+                                        </div>
+                                      </button>
                                     )}
                                   </div>
                                 ) : (

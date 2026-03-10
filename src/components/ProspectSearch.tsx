@@ -336,7 +336,7 @@ const ProspectSearch = () => {
                     </div>
 
                     {/* Create Form */}
-                    <div className="p-4 space-y-3">
+                    <div className="p-4 space-y-3 overflow-visible">
                       <div>
                         <label className="mb-1 block text-[11px] font-medium text-muted-foreground">
                           Name <span className="text-destructive">*</span>

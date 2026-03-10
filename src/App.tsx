@@ -14,7 +14,6 @@ import Pipeline from "./pages/Pipeline";
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
-import NonprofitOutreach from "./pages/NonprofitOutreach";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

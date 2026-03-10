@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Heart } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: Newspaper },
@@ -7,7 +7,6 @@ const navItems = [
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
-  { path: '/nonprofit', label: 'Non-Profit', icon: Heart },
 ];
 
 const Navbar = () => {

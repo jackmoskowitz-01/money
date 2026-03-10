@@ -7,6 +7,8 @@ export type Touchpoint = {
   title: string;
   description: string;
   suggested: boolean;
+  sentAt?: string; // ISO date when touchpoint was sent
+  followUpDate?: string; // ISO date for follow-up reminder
 };
 
 export type PipelineItem = {

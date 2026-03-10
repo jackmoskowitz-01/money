@@ -106,7 +106,16 @@ const MapView = () => {
   };
 
   const allBuildingsList = useMemo(() => {
-    return [...mockBuildings, ...googleBuildings];
+    const seen = new Set<string>();
+    const result: Building[] = [];
+    for (const b of [...mockBuildings, ...costarBuildings, ...googleBuildings]) {
+      const key = b.name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(b);
+      }
+    }
+    return result;
   }, [googleBuildings]);
 
   const filteredBuildings = useMemo(() => {

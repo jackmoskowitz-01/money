@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X } from 'lucide-react';
+import { Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign, Timer } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
+import DealVelocity from '@/components/DealVelocity';
+import RevenueForecast from '@/components/RevenueForecast';
 
 const Dashboard = () => {
   const [expandedStat, setExpandedStat] = useState<string | null>(null);
@@ -199,6 +201,12 @@ const Dashboard = () => {
         {/* Broker Charts */}
         <div className="mb-8">
           <BrokerLeaderboard />
+        </div>
+
+        {/* Deal Velocity + Revenue Forecast */}
+        <div className="mb-8 grid gap-4 lg:grid-cols-2">
+          <DealVelocity />
+          <RevenueForecast />
         </div>
 
         {/* Pipeline Breakdown + Submarket Trends */}

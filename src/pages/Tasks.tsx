@@ -68,7 +68,12 @@ const Tasks = () => {
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
-    return t.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    return t.sort((a, b) => {
+      const pa = priorityConfig[a.priority || 'medium'].sortOrder;
+      const pb = priorityConfig[b.priority || 'medium'].sortOrder;
+      if (pa !== pb) return pa - pb;
+      return a.dueDate.localeCompare(b.dueDate);
+    });
   }, [tasks, filter, selectedDate]);
 
   const handleAdd = () => {

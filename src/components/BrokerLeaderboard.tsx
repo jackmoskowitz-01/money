@@ -78,9 +78,9 @@ const BrokerLeaderboard = () => {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
       {/* Bar Chart - Outreach */}
-      <Card className="border-border bg-card p-4">
+      <Card className="border-border bg-card p-3 col-span-1">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display text-sm font-bold">Outreach by Broker</h3>
           <Badge variant="outline" className="text-[9px] px-1.5 py-0">This Week</Badge>

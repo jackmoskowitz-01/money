@@ -61,6 +61,7 @@ const Dashboard = () => {
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [manualProspects, setManualProspects] = useState<Record<string, ProspectMatch[]>>({});
+  const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
 
@@ -149,6 +150,28 @@ const Dashboard = () => {
     setShowSearchFor(null);
   };
 
+  const addCustomProspect = (newsId: string, name: string) => {
+    const id = `custom-${Date.now()}`;
+    setCustomProspects(prev => ({
+      ...prev,
+      [newsId]: [...(prev[newsId] || []), { id, name: name.trim() }],
+    }));
+    setProspectSearch(prev => ({ ...prev, [newsId]: '' }));
+    setShowSearchFor(null);
+  };
+
+  const removeCustomProspect = (newsId: string, customId: string) => {
+    setCustomProspects(prev => ({
+      ...prev,
+      [newsId]: (prev[newsId] || []).filter(c => c.id !== customId),
+    }));
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      current.delete(customId);
+      return { ...prev, [newsId]: current };
+    });
+  };
+
   const removeManualProspect = (newsId: string, tenantId: string) => {
     setManualProspects(prev => ({
       ...prev,
@@ -170,10 +193,10 @@ const Dashboard = () => {
     });
   };
 
-  const selectAll = (newsId: string, prospects: ProspectMatch[]) => {
+  const selectAll = (newsId: string, prospects: ProspectMatch[], customs: { id: string; name: string }[]) => {
     setSelectedProspects(prev => ({
       ...prev,
-      [newsId]: new Set(prospects.map(p => p.tenant.id)),
+      [newsId]: new Set([...prospects.map(p => p.tenant.id), ...customs.map(c => c.id)]),
     }));
   };
 
@@ -256,7 +279,78 @@ const Dashboard = () => {
     setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
   }, [generatedEmails]);
 
-  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[]) => {
+  const generateEmailForCustom = useCallback(async (
+    customName: string,
+    news: NewsItem,
+    key: string,
+  ) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: customName,
+          buildingName: 'Unknown',
+          contactName: '',
+          contactTitle: '',
+          industry: '',
+          sqft: 0,
+          leaseExpiration: '',
+          outreachReason: `Market news: ${news.title} — ${news.summary}`,
+          vacancyRate: 0,
+          headcount: 0,
+          clientsInBuilding: [],
+          isCustomProspect: true,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[], customs: { id: string; name: string }[]) => {
     const selected = selectedProspects[newsId];
     if (!selected || selected.size === 0) return;
 
@@ -265,7 +359,12 @@ const Dashboard = () => {
       const key = `news-${newsId}-${tenant.id}`;
       generateEmailForProspect(tenant, building, news, key);
     }
-  }, [selectedProspects, generateEmailForProspect]);
+    const customToSend = customs.filter(c => selected.has(c.id));
+    for (const custom of customToSend) {
+      const key = `news-${newsId}-${custom.id}`;
+      generateEmailForCustom(custom.name, news, key);
+    }
+  }, [selectedProspects, generateEmailForProspect, generateEmailForCustom]);
 
   const updateEmail = useCallback((key: string, content: string) => {
     setGeneratedEmails(prev => ({ ...prev, [key]: content }));
@@ -491,10 +590,12 @@ const Dashboard = () => {
               {filteredNews.map((news, i) => {
                 const autoProspects = getAffectedProspects(news);
                 const manual = manualProspects[news.id] || [];
+                const customs = customProspects[news.id] || [];
                 const allProspects = [...autoProspects, ...manual];
+                const totalCount = allProspects.length + customs.length;
                 const isExpanded = expandedNewsId === news.id;
                 const selected = selectedProspects[news.id] || new Set();
-                const allSelected = allProspects.length > 0 && selected.size === allProspects.length;
+                const allSelected = totalCount > 0 && selected.size === totalCount;
                 const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (
@@ -520,8 +621,8 @@ const Dashboard = () => {
                         >
                           <Users className="h-3.5 w-3.5 text-primary" />
                           <span className="flex-1 text-xs font-medium text-primary">
-                            {allProspects.length > 0
-                              ? `${allProspects.length} prospect${allProspects.length !== 1 ? 's' : ''} ${manual.length > 0 ? `(${manual.length} added manually)` : 'affected'}`
+                            {totalCount > 0
+                              ? `${totalCount} prospect${totalCount !== 1 ? 's' : ''} ${(manual.length + customs.length) > 0 ? `(${manual.length + customs.length} added manually)` : 'affected'}`
                               : 'Add prospects for outreach'
                             }
                           </span>
@@ -544,7 +645,7 @@ const Dashboard = () => {
                                 <div className="flex items-center gap-2">
                                   {allProspects.length > 0 && (
                                     <button
-                                      onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects)}
+                                      onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects, customs)}
                                       className="text-[10px] text-primary hover:underline"
                                     >
                                       {allSelected ? 'Deselect All' : 'Select All'}
@@ -635,6 +736,75 @@ const Dashboard = () => {
                                 );
                               })}
 
+                              {/* Custom (typed-in) prospects */}
+                              {customs.map(custom => {
+                                const emailKey = `news-${news.id}-${custom.id}`;
+                                const isChecked = selected.has(custom.id);
+                                const isGenerating = generatingKeys.has(emailKey);
+                                const hasEmail = generatedEmails[emailKey] !== undefined;
+
+                                return (
+                                  <div key={custom.id} className="space-y-1">
+                                    <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                                      <Checkbox
+                                        checked={isChecked}
+                                        onCheckedChange={() => toggleProspect(news.id, custom.id)}
+                                        className="h-4 w-4"
+                                      />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-xs font-semibold text-foreground truncate">
+                                            {custom.name}
+                                          </span>
+                                          <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
+                                            Custom
+                                          </Badge>
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">Not in database — AI will research and tailor</p>
+                                      </div>
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => removeCustomProspect(news.id, custom.id)}
+                                          className="shrink-0 rounded p-1 hover:bg-destructive/10"
+                                        >
+                                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                        </button>
+                                      )}
+                                      {!hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => generateEmailForCustom(custom.name, news, emailKey)}
+                                          className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                                        >
+                                          <Mail className="h-3 w-3" /> Generate
+                                        </button>
+                                      )}
+                                      {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                                      {hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                                          className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                                        >
+                                          <Check className="h-3 w-3" /> View
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    <AnimatePresence>
+                                      {activeEmailKey === emailKey && hasEmail && (
+                                        <EmailDisplay
+                                          emailKey={emailKey}
+                                          emailContent={generatedEmails[emailKey]}
+                                          isGenerating={isGenerating}
+                                          label={`Email to ${custom.name}`}
+                                          onClose={() => setActiveEmailKey(null)}
+                                          onUpdateEmail={updateEmail}
+                                        />
+                                      )}
+                                    </AnimatePresence>
+                                  </div>
+                                );
+                              })}
+
                               {/* Add Prospect Search */}
                               <div className="pt-2 border-t border-border/50">
                                 {showSearchFor === news.id ? (
@@ -644,9 +814,18 @@ const Dashboard = () => {
                                         <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                                         <input
                                           type="text"
-                                          placeholder="Search by name, building, or industry..."
+                                          placeholder="Search or type a name to add..."
                                           value={prospectSearch[news.id] || ''}
                                           onChange={e => setProspectSearch(prev => ({ ...prev, [news.id]: e.target.value }))}
+                                          onKeyDown={e => {
+                                            if (e.key === 'Enter' && (prospectSearch[news.id] || '').trim()) {
+                                              if (searchResults.length > 0) {
+                                                addManualProspect(news.id, searchResults[0]);
+                                              } else {
+                                                addCustomProspect(news.id, prospectSearch[news.id]);
+                                              }
+                                            }
+                                          }}
                                           className="w-full rounded-md border border-input bg-background pl-7 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                                           autoFocus
                                         />
@@ -678,7 +857,16 @@ const Dashboard = () => {
                                       </div>
                                     )}
                                     {(prospectSearch[news.id] || '').trim() && searchResults.length === 0 && (
-                                      <p className="text-[10px] text-muted-foreground text-center py-2">No matching prospects found</p>
+                                      <button
+                                        onClick={() => addCustomProspect(news.id, prospectSearch[news.id])}
+                                        className="flex w-full items-center gap-3 rounded-md bg-primary/5 p-2.5 text-left hover:bg-primary/10 transition-colors"
+                                      >
+                                        <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium text-primary">Add "{(prospectSearch[news.id] || '').trim()}" as custom prospect</p>
+                                          <p className="text-[10px] text-muted-foreground">AI will tailor outreach based on the news and what it knows about them</p>
+                                        </div>
+                                      </button>
                                     )}
                                   </div>
                                 ) : (
@@ -696,7 +884,7 @@ const Dashboard = () => {
                                   <Button
                                     size="sm"
                                     className="text-xs h-8 flex-1"
-                                    onClick={() => sendToSelected(news.id, news, allProspects)}
+                                    onClick={() => sendToSelected(news.id, news, allProspects, customs)}
                                     disabled={generatingKeys.size > 0}
                                   >
                                     {generatingKeys.size > 0 ? (

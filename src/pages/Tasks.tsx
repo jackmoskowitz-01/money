@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
@@ -40,6 +41,7 @@ const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: 
 };
 
 const Tasks = () => {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<BrokerTask[]>(() => getTasks());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -320,10 +322,15 @@ const Tasks = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.02 }}
                           >
-                            <Card className={`border-border bg-card p-3 transition-colors ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''}`}>
+                            <Card
+                              className={`border-border bg-card p-3 transition-colors ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''} ${info ? 'cursor-pointer hover:border-primary/30' : ''}`}
+                              onClick={() => {
+                                if (info) navigate(`/building/${task.buildingId}/tenant/${task.tenantId}`);
+                              }}
+                            >
                               <div className="flex items-start gap-3">
                                 <button
-                                  onClick={() => handleToggle(task.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleToggle(task.id); }}
                                   className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${
                                     task.completed ? 'border-success bg-success/20 text-success' : 'border-border hover:border-primary'
                                   }`}
@@ -366,7 +373,7 @@ const Tasks = () => {
                                   </div>
                                 </div>
                                 <button
-                                  onClick={() => handleDelete(task.id)}
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
                                   className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />

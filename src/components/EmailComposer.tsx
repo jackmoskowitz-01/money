@@ -252,8 +252,16 @@ const EmailComposer = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 pt-1">
-                    <Button size="sm" className="text-xs h-8" onClick={handleSendEmail}>
-                      <Send className="mr-1 h-3 w-3" /> Send via Email Client
+                    {recipients && recipients.length > 0 ? (
+                      <RecipientPicker
+                        recipients={recipients}
+                        onSend={(emails) => handleSendEmail(emails)}
+                      />
+                    ) : (
+                      <Button size="sm" className="text-xs h-8" onClick={() => handleSendEmail()}>
+                        <Send className="mr-1 h-3 w-3" /> Send via Email Client
+                      </Button>
+                    )}
                     </Button>
                     <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleCopy}>
                       {copied ? <Check className="mr-1 h-3 w-3 text-success" /> : <Copy className="mr-1 h-3 w-3" />}

@@ -13,11 +13,11 @@ import {
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
 
-const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] = [
-  { value: 'email_sent', label: 'Email', icon: Mail },
-  { value: 'call', label: 'Call', icon: Phone },
-  { value: 'meeting', label: 'Meeting', icon: Users },
-  { value: 'note', label: 'Note', icon: StickyNote },
+const typeOptions: { value: ActivityType; label: string; icon: typeof Mail; defaultTitle: string }[] = [
+  { value: 'email_sent', label: 'Email', icon: Mail, defaultTitle: 'Sent email' },
+  { value: 'call', label: 'Call', icon: Phone, defaultTitle: 'Phone call' },
+  { value: 'meeting', label: 'Meeting', icon: Users, defaultTitle: 'Meeting held' },
+  { value: 'note', label: 'Note', icon: StickyNote, defaultTitle: 'Note added' },
 ];
 
 // Types that require contact selection
@@ -190,7 +190,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
                     {typeOptions.map(opt => (
                       <button
                         key={opt.value}
-                        onClick={() => setNewType(opt.value)}
+                        onClick={() => { setNewType(opt.value); setNewTitle(opt.defaultTitle); }}
                         className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                           newType === opt.value
                             ? 'bg-primary/20 text-primary'

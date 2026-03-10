@@ -603,8 +603,30 @@ const Dashboard = () => {
           {/* News Feed */}
           <div className="lg:col-span-2">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Market News</h2>
-              <Filter className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold">Market News</h2>
+                {liveNews && (
+                  <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[10px]">
+                    Live
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {lastRefreshed && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={fetchLiveNews}
+                  disabled={newsLoading}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">

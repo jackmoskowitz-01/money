@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import Dashboard from "./pages/Dashboard";
 import MapView from "./pages/MapView";
 import TenantDetail from "./pages/TenantDetail";
+import CustomProspectDetail from "./pages/CustomProspectDetail";
 import ScoopBoard from "./pages/ScoopBoard";
 import Pipeline from "./pages/Pipeline";
 
@@ -29,6 +30,7 @@ const App = () => (
           <Route path="/" element={<Dashboard />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/building/:buildingId/tenant/:tenantId" element={<TenantDetail />} />
+          <Route path="/prospect/:prospectId" element={<CustomProspectDetail />} />
           <Route path="/scoop" element={<ScoopBoard />} />
           <Route path="/pipeline" element={<Pipeline />} />
           

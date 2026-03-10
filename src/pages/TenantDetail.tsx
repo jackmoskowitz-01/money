@@ -17,6 +17,8 @@ import OwnershipHistoryCard from '@/components/OwnershipHistoryCard';
 import BrokerAssignment from '@/components/BrokerAssignment';
 import EmailComposer from '@/components/EmailComposer';
 import CompanyContacts from '@/components/CompanyContacts';
+import ResearchBrief from '@/components/ResearchBrief';
+import SequenceBuilder from '@/components/SequenceBuilder';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 

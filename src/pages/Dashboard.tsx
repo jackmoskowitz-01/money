@@ -193,10 +193,10 @@ const Dashboard = () => {
     });
   };
 
-  const selectAll = (newsId: string, prospects: ProspectMatch[]) => {
+  const selectAll = (newsId: string, prospects: ProspectMatch[], customs: { id: string; name: string }[]) => {
     setSelectedProspects(prev => ({
       ...prev,
-      [newsId]: new Set(prospects.map(p => p.tenant.id)),
+      [newsId]: new Set([...prospects.map(p => p.tenant.id), ...customs.map(c => c.id)]),
     }));
   };
 

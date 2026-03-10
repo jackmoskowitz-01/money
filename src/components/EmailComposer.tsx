@@ -26,6 +26,7 @@ interface EmailComposerProps {
   leaseExpiration?: string;
   floor?: string;
   brokerName?: string;
+  recipients?: EmailRecipient[];
 }
 
 const categories: EmailTemplateCategory[] = ['cold_outreach', 'follow_up', 'tour_confirmation', 'check_in', 'market_update'];

@@ -760,6 +760,11 @@ const Dashboard = () => {
                           <div className="flex-1">
                             <div className="mb-2 flex items-center gap-2">
                               <Badge variant="outline" className={getCategoryColor(news.category)}>{news.category}</Badge>
+                              {isCustomIntel && (
+                                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[8px]">
+                                  Your Intel
+                                </Badge>
+                              )}
                               <span className="text-xs text-muted-foreground">{news.date}</span>
                             </div>
                             <h3 className="mb-1 text-sm font-semibold text-foreground">{news.title}</h3>

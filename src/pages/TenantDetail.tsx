@@ -19,6 +19,7 @@ import EmailComposer from '@/components/EmailComposer';
 import CompanyContacts from '@/components/CompanyContacts';
 import ResearchBrief from '@/components/ResearchBrief';
 import SequenceBuilder from '@/components/SequenceBuilder';
+import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
@@ -628,6 +629,26 @@ const TenantDetail = () => {
 
             {/* Sidebar */}
             <div className="space-y-4">
+              <MeetingPrepBrief
+                tenantName={tenant.name}
+                industry={tenant.industry}
+                sqft={tenant.sqft}
+                headcount={tenant.headcount}
+                leaseExpiration={tenant.leaseExpiration}
+                floor={tenant.floor}
+                contactName={tenant.contactName}
+                contactTitle={tenant.contactTitle}
+                contactEmail={tenant.contactEmail}
+                buildingName={building.name}
+                buildingClass={building.class}
+                buildingFloors={building.floors}
+                buildingYearBuilt={building.yearBuilt}
+                vacancyRate={building.vacancyRate}
+                owner={building.owner}
+                outreachReasons={tenant.outreachReasons}
+                submarketNews={submarketNews.slice(0, 4).map(n => ({ title: n.title, summary: n.summary }))}
+                scoopIntel={matchedScoops.slice(0, 3).map(s => ({ author: s.author, content: s.content }))}
+              />
               <ResearchBrief
                 tenantName={tenant.name}
                 industry={tenant.industry}

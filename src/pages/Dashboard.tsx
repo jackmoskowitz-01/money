@@ -279,7 +279,78 @@ const Dashboard = () => {
     setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
   }, [generatedEmails]);
 
-  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[]) => {
+  const generateEmailForCustom = useCallback(async (
+    customName: string,
+    news: NewsItem,
+    key: string,
+  ) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: customName,
+          buildingName: 'Unknown',
+          contactName: '',
+          contactTitle: '',
+          industry: '',
+          sqft: 0,
+          leaseExpiration: '',
+          outreachReason: `Market news: ${news.title} — ${news.summary}`,
+          vacancyRate: 0,
+          headcount: 0,
+          clientsInBuilding: [],
+          isCustomProspect: true,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const sendToSelected = useCallback(async (newsId: string, news: NewsItem, prospects: ProspectMatch[], customs: { id: string; name: string }[]) => {
     const selected = selectedProspects[newsId];
     if (!selected || selected.size === 0) return;
 
@@ -288,7 +359,12 @@ const Dashboard = () => {
       const key = `news-${newsId}-${tenant.id}`;
       generateEmailForProspect(tenant, building, news, key);
     }
-  }, [selectedProspects, generateEmailForProspect]);
+    const customToSend = customs.filter(c => selected.has(c.id));
+    for (const custom of customToSend) {
+      const key = `news-${newsId}-${custom.id}`;
+      generateEmailForCustom(custom.name, news, key);
+    }
+  }, [selectedProspects, generateEmailForProspect, generateEmailForCustom]);
 
   const updateEmail = useCallback((key: string, content: string) => {
     setGeneratedEmails(prev => ({ ...prev, [key]: content }));

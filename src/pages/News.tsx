@@ -130,6 +130,18 @@ const News = () => {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const dismissNews = (id: string) => {
+    setDismissedIds(prev => new Set(prev).add(id));
+    if (expandedNewsId === id) setExpandedNewsId(null);
+    toast('News item dismissed', {
+      action: {
+        label: 'Undo',
+        onClick: () => setDismissedIds(prev => { const n = new Set(prev); n.delete(id); return n; }),
+      },
+    });
+  };
 
   const toggleBookmark = (id: string) => {
     setBookmarkedIds(prev => {
@@ -195,7 +207,7 @@ const News = () => {
   }, [customIntelInput]);
 
   const filteredNews = useMemo(() => {
-    let result = currentNews;
+    let result = currentNews.filter(n => !dismissedIds.has(n.id));
     if (activeCategory !== 'all') {
       result = result.filter(n => n.category === activeCategory);
     }
@@ -735,6 +747,13 @@ const News = () => {
                                 title="Copy"
                               >
                                 <Copy className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); dismissNews(news.id); }}
+                                className="rounded p-1.5 hover:bg-destructive/10 transition-colors"
+                                title="Dismiss"
+                              >
+                                <X className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
                               </button>
                               {totalCount > 0 && !isExpanded && (
                                 <button

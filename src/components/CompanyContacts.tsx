@@ -56,12 +56,14 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
     setErrors({});
     setShowForm(false);
     toast.success(`${contact.name} added as contact`);
+    onContactsChange?.();
   };
 
   const handleRemove = (id: string) => {
     removeContact(entityId, id);
     setContacts(contacts.filter(c => c.id !== id));
     toast.success('Contact removed');
+    onContactsChange?.();
   };
 
   const totalContacts = (primaryContact ? 1 : 0) + contacts.length;

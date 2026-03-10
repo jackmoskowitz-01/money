@@ -2,3 +2,6 @@ project_id = "fvdncnxgmfzxlqtqxitl"
 
 [functions.generate-outreach]
 verify_jwt = false
+
+[functions.fetch-dc-buildings]
+verify_jwt = false

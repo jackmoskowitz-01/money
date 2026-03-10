@@ -65,6 +65,44 @@ const Dashboard = () => {
   const [customProspects, setCustomProspects] = useState<Record<string, { id: string; name: string }[]>>({});
   const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
   const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
+  const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const fetchLiveNews = useCallback(async () => {
+    setNewsLoading(true);
+    try {
+      const resp = await fetch(NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({}),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to fetch news');
+      }
+      const data = await resp.json();
+      if (data.news && Array.isArray(data.news)) {
+        setLiveNews(data.news);
+        setLastRefreshed(new Date());
+        toast.success('Market news updated');
+      }
+    } catch (e) {
+      console.error('Failed to fetch live news:', e);
+      toast.error('Failed to fetch live news — showing cached data');
+    } finally {
+      setNewsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveNews();
+  }, [fetchLiveNews]);
+
+  const currentNews: NewsItem[] = liveNews || staticNewsItems;
 
   // Personal analytics
   const pipeline = getPipeline();

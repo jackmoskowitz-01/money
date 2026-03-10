@@ -262,7 +262,6 @@ const EmailComposer = ({
                         <Send className="mr-1 h-3 w-3" /> Send via Email Client
                       </Button>
                     )}
-                    </Button>
                     <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleCopy}>
                       {copied ? <Check className="mr-1 h-3 w-3 text-success" /> : <Copy className="mr-1 h-3 w-3" />}
                       {copied ? 'Copied' : 'Copy'}

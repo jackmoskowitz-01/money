@@ -1,7 +1,7 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send } from 'lucide-react';
+import { TrendingUp, TrendingDown, Building2, Clock, ExternalLink, Filter, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, Users, Mail, Loader2, Copy, Check, Send, Plus, Search } from 'lucide-react';
 import { newsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
 import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
@@ -60,6 +60,9 @@ const Dashboard = () => {
   const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
+  const [manualProspects, setManualProspects] = useState<Record<string, ProspectMatch[]>>({});
+  const [prospectSearch, setProspectSearch] = useState<Record<string, string>>({});
+  const [showSearchFor, setShowSearchFor] = useState<string | null>(null);
 
   // Personal analytics
   const pipeline = getPipeline();
@@ -109,6 +112,54 @@ const Dashboard = () => {
   const filteredNews = activeCategory === 'all'
     ? newsItems
     : newsItems.filter(n => n.category === activeCategory);
+
+  // All non-client tenants for manual adding
+  const allNonClientProspects = useMemo(() => {
+    const results: ProspectMatch[] = [];
+    buildings.forEach(building => {
+      building.tenants.forEach(tenant => {
+        if (!tenant.isClient) results.push({ tenant, building });
+      });
+    });
+    return results;
+  }, []);
+
+  const getSearchResults = (newsId: string, autoProspects: ProspectMatch[]) => {
+    const query = (prospectSearch[newsId] || '').toLowerCase().trim();
+    if (!query) return [];
+    const manual = manualProspects[newsId] || [];
+    const existingIds = new Set([
+      ...autoProspects.map(p => p.tenant.id),
+      ...manual.map(p => p.tenant.id),
+    ]);
+    return allNonClientProspects.filter(p =>
+      !existingIds.has(p.tenant.id) &&
+      (p.tenant.name.toLowerCase().includes(query) ||
+       p.building.name.toLowerCase().includes(query) ||
+       p.tenant.industry.toLowerCase().includes(query))
+    ).slice(0, 5);
+  };
+
+  const addManualProspect = (newsId: string, prospect: ProspectMatch) => {
+    setManualProspects(prev => ({
+      ...prev,
+      [newsId]: [...(prev[newsId] || []), prospect],
+    }));
+    setProspectSearch(prev => ({ ...prev, [newsId]: '' }));
+    setShowSearchFor(null);
+  };
+
+  const removeManualProspect = (newsId: string, tenantId: string) => {
+    setManualProspects(prev => ({
+      ...prev,
+      [newsId]: (prev[newsId] || []).filter(p => p.tenant.id !== tenantId),
+    }));
+    setSelectedProspects(prev => {
+      const current = new Set(prev[newsId] || []);
+      current.delete(tenantId);
+      return { ...prev, [newsId]: current };
+    });
+  };
 
   const toggleProspect = (newsId: string, tenantId: string) => {
     setSelectedProspects(prev => {
@@ -438,10 +489,13 @@ const Dashboard = () => {
 
             <div className="space-y-3">
               {filteredNews.map((news, i) => {
-                const affectedProspects = getAffectedProspects(news);
+                const autoProspects = getAffectedProspects(news);
+                const manual = manualProspects[news.id] || [];
+                const allProspects = [...autoProspects, ...manual];
                 const isExpanded = expandedNewsId === news.id;
                 const selected = selectedProspects[news.id] || new Set();
-                const allSelected = affectedProspects.length > 0 && selected.size === affectedProspects.length;
+                const allSelected = allProspects.length > 0 && selected.size === allProspects.length;
+                const searchResults = getSearchResults(news.id, autoProspects);
 
                 return (
                   <motion.div key={news.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}>
@@ -460,18 +514,19 @@ const Dashboard = () => {
                           <ExternalLink className="mt-1 h-4 w-4 shrink-0 text-muted-foreground/40" />
                         </div>
 
-                        {affectedProspects.length > 0 && (
-                          <button
-                            onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
-                            className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
-                          >
-                            <Users className="h-3.5 w-3.5 text-primary" />
-                            <span className="flex-1 text-xs font-medium text-primary">
-                              {affectedProspects.length} prospect{affectedProspects.length !== 1 ? 's' : ''} affected
-                            </span>
-                            <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => setExpandedNewsId(isExpanded ? null : news.id)}
+                          className="mt-3 flex w-full items-center gap-2 rounded-md bg-primary/5 px-3 py-2 text-left transition-colors hover:bg-primary/10"
+                        >
+                          <Users className="h-3.5 w-3.5 text-primary" />
+                          <span className="flex-1 text-xs font-medium text-primary">
+                            {allProspects.length > 0
+                              ? `${allProspects.length} prospect${allProspects.length !== 1 ? 's' : ''} ${manual.length > 0 ? `(${manual.length} added manually)` : 'affected'}`
+                              : 'Add prospects for outreach'
+                            }
+                          </span>
+                          <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
                       </div>
 
                       <AnimatePresence>
@@ -487,21 +542,24 @@ const Dashboard = () => {
                               <div className="flex items-center justify-between mb-1">
                                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
                                 <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, affectedProspects)}
-                                    className="text-[10px] text-primary hover:underline"
-                                  >
-                                    {allSelected ? 'Deselect All' : 'Select All'}
-                                  </button>
+                                  {allProspects.length > 0 && (
+                                    <button
+                                      onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects)}
+                                      className="text-[10px] text-primary hover:underline"
+                                    >
+                                      {allSelected ? 'Deselect All' : 'Select All'}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
 
-                              {affectedProspects.map(({ tenant, building }) => {
+                              {allProspects.map(({ tenant, building: bldg }, idx) => {
                                 const emailKey = `news-${news.id}-${tenant.id}`;
                                 const isChecked = selected.has(tenant.id);
                                 const isGenerating = generatingKeys.has(emailKey);
                                 const hasEmail = generatedEmails[emailKey] !== undefined;
-                                const hasClient = building.tenants.some(t => t.isClient && t.id !== tenant.id);
+                                const hasClient = bldg.tenants.some(t => t.isClient && t.id !== tenant.id);
+                                const isManual = idx >= autoProspects.length;
 
                                 return (
                                   <div key={tenant.id} className="space-y-1">
@@ -514,7 +572,7 @@ const Dashboard = () => {
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
                                           <Link
-                                            to={`/building/${building.id}/tenant/${tenant.id}`}
+                                            to={`/building/${bldg.id}/tenant/${tenant.id}`}
                                             className="text-xs font-semibold text-foreground hover:text-primary truncate"
                                           >
                                             {tenant.name}
@@ -524,14 +582,27 @@ const Dashboard = () => {
                                               ✓ Client in bldg
                                             </Badge>
                                           )}
+                                          {isManual && (
+                                            <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
+                                              Added
+                                            </Badge>
+                                          )}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground truncate">
-                                          {building.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
+                                          {bldg.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
                                         </p>
                                       </div>
+                                      {isManual && !hasEmail && !isGenerating && (
+                                        <button
+                                          onClick={() => removeManualProspect(news.id, tenant.id)}
+                                          className="shrink-0 rounded p-1 hover:bg-destructive/10"
+                                        >
+                                          <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                                        </button>
+                                      )}
                                       {!hasEmail && !isGenerating && (
                                         <button
-                                          onClick={() => generateEmailForProspect(tenant, building, news, emailKey)}
+                                          onClick={() => generateEmailForProspect(tenant, bldg, news, emailKey)}
                                           className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
                                         >
                                           <Mail className="h-3 w-3" /> Generate
@@ -564,12 +635,68 @@ const Dashboard = () => {
                                 );
                               })}
 
+                              {/* Add Prospect Search */}
+                              <div className="pt-2 border-t border-border/50">
+                                {showSearchFor === news.id ? (
+                                  <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="relative flex-1">
+                                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                                        <input
+                                          type="text"
+                                          placeholder="Search by name, building, or industry..."
+                                          value={prospectSearch[news.id] || ''}
+                                          onChange={e => setProspectSearch(prev => ({ ...prev, [news.id]: e.target.value }))}
+                                          className="w-full rounded-md border border-input bg-background pl-7 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                          autoFocus
+                                        />
+                                      </div>
+                                      <button
+                                        onClick={() => { setShowSearchFor(null); setProspectSearch(prev => ({ ...prev, [news.id]: '' })); }}
+                                        className="shrink-0 rounded p-1 hover:bg-secondary"
+                                      >
+                                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                                      </button>
+                                    </div>
+                                    {searchResults.length > 0 && (
+                                      <div className="space-y-1">
+                                        {searchResults.map(prospect => (
+                                          <button
+                                            key={prospect.tenant.id}
+                                            onClick={() => addManualProspect(news.id, prospect)}
+                                            className="flex w-full items-center gap-3 rounded-md bg-secondary/20 p-2 text-left hover:bg-secondary/40 transition-colors"
+                                          >
+                                            <Plus className="h-3 w-3 text-primary shrink-0" />
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-xs font-medium text-foreground truncate">{prospect.tenant.name}</p>
+                                              <p className="text-[10px] text-muted-foreground truncate">
+                                                {prospect.building.name} · {prospect.tenant.industry} · {prospect.tenant.sqft.toLocaleString()} SF
+                                              </p>
+                                            </div>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                    {(prospectSearch[news.id] || '').trim() && searchResults.length === 0 && (
+                                      <p className="text-[10px] text-muted-foreground text-center py-2">No matching prospects found</p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setShowSearchFor(news.id)}
+                                    className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                                  >
+                                    <Plus className="h-3 w-3" /> Add prospect manually
+                                  </button>
+                                )}
+                              </div>
+
                               {selected.size > 0 && (
                                 <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                                   <Button
                                     size="sm"
                                     className="text-xs h-8 flex-1"
-                                    onClick={() => sendToSelected(news.id, news, affectedProspects)}
+                                    onClick={() => sendToSelected(news.id, news, allProspects)}
                                     disabled={generatingKeys.size > 0}
                                   >
                                     {generatingKeys.size > 0 ? (

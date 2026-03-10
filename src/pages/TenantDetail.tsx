@@ -570,6 +570,18 @@ const TenantDetail = () => {
 
               {/* Actions */}
               <div className="flex items-center gap-2 pt-1">
+                <EmailComposer
+                  tenantId={tenantId!}
+                  buildingId={buildingId!}
+                  tenantName={tenant.name}
+                  contactName={tenant.contactName}
+                  contactEmail={tenant.contactEmail}
+                  buildingName={building.name}
+                  submarket={submarket}
+                  sqft={tenant.sqft}
+                  leaseExpiration={tenant.leaseExpiration}
+                  floor={tenant.floor}
+                />
                 <a href={`mailto:${tenant.contactEmail}`}>
                   <Button size="sm" variant="outline" className="text-xs h-8">
                     <Mail className="mr-1 h-3 w-3" /> Email {tenant.contactName.split(' ')[0]}

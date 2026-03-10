@@ -17,6 +17,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
+const NONPROFIT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-nonprofit-outreach`;
 
 type ProspectMatch = { tenant: Tenant; building: Building };
 

@@ -269,13 +269,7 @@ const TenantDetail = () => {
             </div>
           </Card>
 
-          {/* Contact & Space Info - Same as Prospects */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-6">
-            <div className="rounded-md bg-secondary/50 p-2.5">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Contact</p>
-              <p className="text-xs font-medium text-foreground">{tenant.contactName}</p>
-              <p className="text-[10px] text-muted-foreground">{tenant.contactTitle}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-4">
             <div className="rounded-md bg-secondary/50 p-2.5">
               <p className="text-[10px] text-muted-foreground mb-0.5">Headcount</p>
               <p className="text-xs font-medium text-foreground">{tenant.headcount}</p>
@@ -293,6 +287,18 @@ const TenantDetail = () => {
               </p>
               <p className="text-[10px] text-muted-foreground">Class {building.class}</p>
             </div>
+          </div>
+
+          {/* Company Contacts */}
+          <div className="mb-6">
+            <CompanyContacts
+              entityId={tenantId!}
+              primaryContact={{
+                name: tenant.contactName,
+                title: tenant.contactTitle,
+                email: tenant.contactEmail,
+              }}
+            />
           </div>
 
           <div className="grid gap-8 lg:grid-cols-3">

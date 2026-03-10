@@ -14,15 +14,15 @@ import {
 
 interface Props {
   entityId: string;
-  /** The primary contact from mock data (shown first, not deletable) */
   primaryContact?: {
     name: string;
     title: string;
     email: string;
   };
+  onContactsChange?: () => void;
 }
 
-const CompanyContacts = ({ entityId, primaryContact }: Props) => {
+const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) => {
   const [contacts, setContacts] = useState<CompanyContact[]>(() => getContacts(entityId));
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });

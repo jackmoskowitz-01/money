@@ -66,7 +66,7 @@ const EmailComposer = ({
     sqft: sqft ? sqft.toLocaleString() : '',
     leaseExpiration,
     floor,
-    brokerName,
+    brokerName: resolvedBrokerName,
     buildingAddress: buildingName,
     tourDate: '[Date]',
     tourTime: '[Time]',

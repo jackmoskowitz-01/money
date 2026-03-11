@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search,
   RefreshCw, FileText, Sparkles, ChevronDown, X, Filter, Clock, Bookmark, BookmarkCheck,
-  Zap, AlertTriangle, ArrowUpRight, BarChart3, Calendar, MapPin
+  Zap, AlertTriangle, BarChart3
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
@@ -45,6 +45,21 @@ type CompanyNewsItem = NewsItem & {
   url?: string;
 };
 
+// Module-level cache so news persists across navigations
+let cachedLiveNews: NewsItem[] | null = null;
+let cachedCompanyNews: CompanyNewsItem[] = [];
+let cachedLastRefreshed: Date | null = null;
+// Accumulated history — news items are never removed, only added
+let newsHistory: Map<string, NewsItem> = new Map();
+
+const mergeIntoHistory = (items: NewsItem[]) => {
+  items.forEach(item => {
+    if (!newsHistory.has(item.id)) {
+      newsHistory.set(item.id, item);
+    }
+  });
+};
+
 type ProspectMatch = { tenant: Tenant; building: Building };
 
 const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
@@ -64,25 +79,15 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
       const summary = news.summary.toLowerCase();
 
       const categoryMatch =
-        // Vacancy news → tenants in high-vacancy buildings
         (news.category === 'vacancy' && building.vacancyRate > 15) ||
-        // Lease news → tenants with leases expiring within 18 months
         (news.category === 'lease' && new Date(tenant.leaseExpiration) < new Date('2026-09-30')) ||
-        // Legal sector matching
         (ind.includes('legal') && (title.includes('law') || title.includes('legal') || title.includes('firm'))) ||
-        // Lobbying / government matching
         ((ind.includes('lobby') || ind.includes('government')) && (title.includes('lobby') || title.includes('k street') || title.includes('hybrid'))) ||
-        // Consulting sector matching
         (ind.includes('consult') && (title.includes('consult') || title.includes('hybrid') || title.includes('cut'))) ||
-        // Nonprofit / association matching
         ((ind.includes('nonprofit') || ind.includes('association') || ind.includes('healthcare')) && (title.includes('nonprofit') || title.includes('non-profit') || title.includes('funding') || title.includes('501') || title.includes('downsize'))) ||
-        // Contraction news → tenants in buildings with high vacancy
         (news.category === 'contraction' && building.vacancyRate > 18) ||
-        // Sale news → all tenants in the sold building
         (news.category === 'sale' && news.relatedBuildings?.includes(building.id)) ||
-        // Expansion news → defense/tech tenants
         (news.category === 'expansion' && (ind.includes('defense') || ind.includes('technology')) && (title.includes('expand') || title.includes('growth') || title.includes('government'))) ||
-        // Sublease / vacancy opportunity → budget-conscious orgs
         (summary.includes('sublease') && (ind.includes('nonprofit') || ind.includes('association') || ind.includes('government')));
 
       if (directTenant || directBuilding || categoryMatch) {
@@ -120,23 +125,6 @@ const getTimeSince = (dateStr: string) => {
   return dateStr;
 };
 
-const getUrgencyScore = (tenant: Tenant): number => {
-  let score = 0;
-  const highReasons = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
-  const medReasons = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
-  score += highReasons * 30 + medReasons * 10;
-  // Lease proximity bonus
-  const leaseDate = new Date(tenant.leaseExpiration);
-  const monthsLeft = (leaseDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
-  if (monthsLeft < 6) score += 40;
-  else if (monthsLeft < 12) score += 25;
-  else if (monthsLeft < 18) score += 10;
-  // SF bonus
-  if (tenant.sqft > 20000) score += 15;
-  else if (tenant.sqft > 10000) score += 8;
-  return Math.min(score, 100);
-};
-
 const News = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeIndustry, setActiveIndustry] = useState<string>('all');
@@ -153,11 +141,11 @@ const News = () => {
   const [customIntelInput, setCustomIntelInput] = useState('');
   const [customIntelItems, setCustomIntelItems] = useState<NewsItem[]>([]);
   const [showCustomIntel, setShowCustomIntel] = useState(false);
-  const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
-  const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>([]);
+  const [liveNews, setLiveNews] = useState<NewsItem[] | null>(cachedLiveNews);
+  const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>(cachedCompanyNews);
   const [newsLoading, setNewsLoading] = useState(false);
   const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(cachedLastRefreshed);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
@@ -185,7 +173,6 @@ const News = () => {
   const fetchCompanyNews = useCallback(async () => {
     setCompanyNewsLoading(true);
     try {
-      // Build company list from all non-client tenants
       const companies = buildings.flatMap(b =>
         b.tenants.filter(t => !t.isClient).map(t => ({
           id: t.id,
@@ -208,13 +195,16 @@ const News = () => {
       }
       const data = await resp.json();
       if (data.companyNews && Array.isArray(data.companyNews)) {
-        // Map company news to have relatedTenants for prospect matching
         const mapped: CompanyNewsItem[] = data.companyNews.map((cn: CompanyNewsItem) => ({
           ...cn,
           relatedTenants: cn.matchedCompanyId ? [cn.matchedCompanyId] : undefined,
           relatedBuildings: cn.matchedBuildingId ? [cn.matchedBuildingId] : undefined,
         }));
-        setCompanyNews(mapped);
+        // Accumulate into history
+        mergeIntoHistory(mapped);
+        const allCompany = Array.from(newsHistory.values()).filter(n => n.id.startsWith('cn')) as CompanyNewsItem[];
+        setCompanyNews(allCompany);
+        cachedCompanyNews = allCompany;
         toast.success(`Found news for ${mapped.length} companies`);
       }
     } catch (e) {
@@ -242,8 +232,14 @@ const News = () => {
       }
       const data = await resp.json();
       if (data.news && Array.isArray(data.news)) {
-        setLiveNews(data.news);
-        setLastRefreshed(new Date());
+        // Accumulate into history
+        mergeIntoHistory(data.news);
+        const allLive = Array.from(newsHistory.values()).filter(n => !n.id.startsWith('cn') && !n.id.startsWith('custom-intel-'));
+        setLiveNews(allLive);
+        cachedLiveNews = allLive;
+        const now = new Date();
+        setLastRefreshed(now);
+        cachedLastRefreshed = now;
         toast.success('Market news updated');
       }
     } catch (e) {
@@ -254,17 +250,15 @@ const News = () => {
     }
   }, []);
 
-  // Initial fetch + auto-refresh every 3 minutes for real-time news
+  // Initial fetch only if no cache; auto-refresh every 3 minutes
   useEffect(() => {
-    fetchLiveNews();
-    fetchCompanyNews();
+    if (!cachedLiveNews) fetchLiveNews();
+    if (cachedCompanyNews.length === 0) fetchCompanyNews();
 
     const interval = setInterval(() => {
-      console.log('Auto-refreshing news feed...');
       fetchLiveNews();
       fetchCompanyNews();
-      setLastRefreshed(new Date());
-    }, 3 * 60 * 1000); // every 3 minutes
+    }, 3 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);
@@ -568,14 +562,6 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: content }));
   }, []);
 
-  // Hot prospects with scores
-  const hotProspects = useMemo(() => {
-    return buildings.flatMap(b =>
-      b.tenants.filter(t =>
-        !t.isClient && t.outreachReasons.some(r => r.urgency === 'high')
-      ).map(t => ({ tenant: t, building: b, score: getUrgencyScore(t) }))
-    ).sort((a, b) => b.score - a.score).slice(0, 8);
-  }, []);
 
   return (
     <div className="min-h-screen pt-14">
@@ -617,7 +603,7 @@ const News = () => {
           </div>
         </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <div>
           {/* News Feed */}
           <div>
             {/* Custom Intel Input */}
@@ -1209,100 +1195,6 @@ const News = () => {
                     </motion.div>
                   );
                 })}
-              </div>
-            </div>
-          </div>
-
-          {/* Hot Prospects Sidebar — upgraded */}
-          <div>
-            <div className="sticky top-20">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-destructive/10">
-                    <Zap className="h-3.5 w-3.5 text-destructive" />
-                  </div>
-                  <h2 className="text-sm font-bold">Hot Prospects</h2>
-                </div>
-                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[10px]">
-                  {hotProspects.length}
-                </Badge>
-              </div>
-
-              <div className="space-y-2.5">
-                {hotProspects.map(({ tenant, building, score }, i) => {
-                  const highReasons = tenant.outreachReasons.filter(r => r.urgency === 'high');
-                  const topReason = highReasons[0];
-
-                  return (
-                    <motion.div
-                      key={tenant.id}
-                      initial={{ opacity: 0, x: 10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                    >
-                      <Link to={`/building/${building.id}/tenant/${tenant.id}`}>
-                        <Card className="border-border bg-card p-3 transition-all hover:border-primary/30 hover:shadow-[var(--shadow-glow)] group">
-                          {/* Score bar */}
-                          <div className="mb-2.5 flex items-center gap-2">
-                            <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  score >= 70 ? 'bg-destructive' : score >= 40 ? 'bg-warning' : 'bg-primary'
-                                }`}
-                                style={{ width: `${score}%` }}
-                              />
-                            </div>
-                            <span className={`text-[10px] font-bold tabular-nums ${
-                              score >= 70 ? 'text-destructive' : score >= 40 ? 'text-warning' : 'text-primary'
-                            }`}>{score}</span>
-                          </div>
-
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">{tenant.name}</p>
-                              <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
-                                <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                {building.name}
-                              </p>
-                            </div>
-                            <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0 mt-0.5" />
-                          </div>
-
-                          {/* Key stats */}
-                          <div className="mt-2 flex items-center gap-3 text-[10px] text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-2.5 w-2.5" />
-                              {tenant.leaseExpiration}
-                            </span>
-                            <span>{tenant.sqft.toLocaleString()} SF</span>
-                          </div>
-
-                          {/* Top reason */}
-                          {topReason && (
-                            <div className="mt-2 rounded-md bg-destructive/5 border border-destructive/10 px-2 py-1.5">
-                              <p className="text-[10px] font-medium text-destructive flex items-center gap-1">
-                                <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
-                                {topReason.title}
-                              </p>
-                            </div>
-                          )}
-
-                          {highReasons.length > 1 && (
-                            <p className="mt-1.5 text-[10px] text-primary font-medium">
-                              +{highReasons.length - 1} more urgent reason{highReasons.length - 1 > 1 ? 's' : ''} →
-                            </p>
-                          )}
-                        </Card>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-
-                <Link to="/map">
-                  <Button variant="outline" className="mt-2 w-full text-xs h-8">
-                    <MapPin className="mr-1.5 h-3 w-3" /> View All on Map
-                  </Button>
-                </Link>
               </div>
             </div>
           </div>

@@ -179,34 +179,6 @@ const Dashboard = () => {
     });
   }, [tasks, pipeline, now]);
 
-  // ───── Live Activity Stream ─────
-  const recentActivities = useMemo(() => {
-    return activities.slice(0, 15).map(a => {
-      const building = buildings.find(b => b.id === a.buildingId);
-      const tenant = building?.tenants.find(t => t.id === a.tenantId);
-      const diff = now - new Date(a.timestamp).getTime();
-      const hours = Math.floor(diff / 3600000);
-      const timeLabel = hours < 1 ? 'Just now' : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
-
-      const iconMap: Record<string, typeof Mail> = {
-        email_sent: Mail,
-        call: Phone,
-        meeting: Users,
-        note: FileText,
-        stage_change: ArrowRight,
-        ai_email: Zap,
-        task_created: CheckCircle2,
-      };
-
-      return {
-        ...a,
-        tenantName: tenant?.name || 'Unknown',
-        buildingName: building?.name || '',
-        timeLabel,
-        Icon: iconMap[a.type] || Activity,
-      };
-    });
-  }, [activities, now]);
 
   // ───── Advanced Pipeline Analytics ─────
   const stageCounts = useMemo(() => {

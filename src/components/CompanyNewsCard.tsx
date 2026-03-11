@@ -24,6 +24,7 @@ type Props = {
   companyName: string;
   buildingId?: string;
   onOutreachTrigger?: (title: string, summary: string) => void;
+  onNewsLoaded?: (news: CompanyNewsItem[]) => void;
 };
 
 const categoryColors: Record<string, string> = {
@@ -35,7 +36,7 @@ const categoryColors: Record<string, string> = {
   contraction: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger }: Props) => {
+const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger, onNewsLoaded }: Props) => {
   const [news, setNews] = useState<CompanyNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
@@ -62,6 +63,7 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
       const data = await resp.json();
       if (data.companyNews && Array.isArray(data.companyNews)) {
         setNews(data.companyNews);
+        onNewsLoaded?.(data.companyNews);
       }
       setHasLoaded(true);
     } catch (e) {

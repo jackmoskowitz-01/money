@@ -6,7 +6,7 @@ import {
   RefreshCw, FileText, Sparkles, ChevronDown, X, Filter, Clock, Bookmark, BookmarkCheck,
   Zap, AlertTriangle, ArrowUpRight, BarChart3, Calendar, MapPin
 } from 'lucide-react';
-import { newsItems as staticNewsItems, buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
+import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';

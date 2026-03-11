@@ -4,6 +4,7 @@ import { Mail, Send, X, ChevronRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { addActivity } from '@/data/activityData';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {

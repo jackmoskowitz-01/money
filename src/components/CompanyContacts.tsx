@@ -33,7 +33,19 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
     setContacts(data);
   }, [entityId]);
 
-  useEffect(() => { loadContacts(); }, [loadContacts]);
+  useEffect(() => {
+    loadContacts();
+
+    // Realtime subscription for contact changes
+    const channel = supabase
+      .channel(`contacts-${entityId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'company_contacts', filter: `entity_id=eq.${entityId}` }, () => {
+        loadContacts();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [loadContacts, entityId]);
 
   const validate = () => {
     const e: Record<string, string> = {};

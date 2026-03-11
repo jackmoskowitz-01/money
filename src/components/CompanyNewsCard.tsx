@@ -36,7 +36,7 @@ const categoryColors: Record<string, string> = {
   contraction: 'bg-red-500/10 text-red-600 border-red-500/20',
 };
 
-const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger }: Props) => {
+const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger, onNewsLoaded }: Props) => {
   const [news, setNews] = useState<CompanyNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);

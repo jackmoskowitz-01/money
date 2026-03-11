@@ -620,7 +620,7 @@ const News = () => {
           </div>
         </motion.div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
+        <div>
           {/* News Feed */}
           <div>
             {/* Custom Intel Input */}

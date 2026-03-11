@@ -26,6 +26,45 @@ const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward'
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
+type AutoOutreachReason = { id: string; title: string; description: string; urgency: 'high' | 'medium' | 'low' };
+
+const buildReasonsFromEnrichment = (enrichment?: ProspectEnrichment): AutoOutreachReason[] => {
+  if (!enrichment) return [];
+  const reasons: AutoOutreachReason[] = [];
+
+  // CRE signals → high urgency outreach reasons
+  enrichment.creSignals?.forEach((signal, i) => {
+    reasons.push({
+      id: `cre-signal-${i}`,
+      title: signal.length > 60 ? signal.slice(0, 57) + '...' : signal,
+      description: signal,
+      urgency: 'high',
+    });
+  });
+
+  // Recent news → medium urgency outreach reasons
+  enrichment.recentNews?.forEach((news, i) => {
+    reasons.push({
+      id: `news-${i}`,
+      title: news.headline,
+      description: news.summary,
+      urgency: news.signal === 'growth' || news.signal === 'opportunity' ? 'high' : 'medium',
+    });
+  });
+
+  // Space details → outreach angles
+  if (enrichment.spaceDetails?.leaseExpiration) {
+    reasons.push({
+      id: 'lease-exp',
+      title: `Lease expiring: ${enrichment.spaceDetails.leaseExpiration}`,
+      description: `Current lease is set to expire ${enrichment.spaceDetails.leaseExpiration}. This is a prime opportunity to discuss space options.`,
+      urgency: 'high',
+    });
+  }
+
+  return reasons;
+};
+
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
   const prospect = prospectId ? getCustomProspect(prospectId) : undefined;

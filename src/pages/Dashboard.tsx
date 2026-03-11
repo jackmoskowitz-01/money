@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign,
   Timer, TrendingUp, TrendingDown, AlertTriangle, Calendar, Users, Mail, ArrowRight,
-  Phone, FileText, Activity, ChevronRight, Flame, MapPin
+  Phone, FileText, ChevronRight, Flame, MapPin
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
@@ -179,34 +179,6 @@ const Dashboard = () => {
     });
   }, [tasks, pipeline, now]);
 
-  // ───── Live Activity Stream ─────
-  const recentActivities = useMemo(() => {
-    return activities.slice(0, 15).map(a => {
-      const building = buildings.find(b => b.id === a.buildingId);
-      const tenant = building?.tenants.find(t => t.id === a.tenantId);
-      const diff = now - new Date(a.timestamp).getTime();
-      const hours = Math.floor(diff / 3600000);
-      const timeLabel = hours < 1 ? 'Just now' : hours < 24 ? `${hours}h ago` : `${Math.floor(hours / 24)}d ago`;
-
-      const iconMap: Record<string, typeof Mail> = {
-        email_sent: Mail,
-        call: Phone,
-        meeting: Users,
-        note: FileText,
-        stage_change: ArrowRight,
-        ai_email: Zap,
-        task_created: CheckCircle2,
-      };
-
-      return {
-        ...a,
-        tenantName: tenant?.name || 'Unknown',
-        buildingName: building?.name || '',
-        timeLabel,
-        Icon: iconMap[a.type] || Activity,
-      };
-    });
-  }, [activities, now]);
 
   // ───── Advanced Pipeline Analytics ─────
   const stageCounts = useMemo(() => {
@@ -465,44 +437,9 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* ═══ Main Grid: Analytics + Live Stream ═══ */}
-        <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_300px]">
-          {/* Left: Broker Leaderboard */}
+        {/* ═══ Main Grid: Broker Leaderboard ═══ */}
+        <div className="mb-6">
           <BrokerLeaderboard />
-
-          {/* Right: Live Activity Stream */}
-          <Card className="border-border bg-card overflow-hidden">
-            <div className="border-b border-border px-4 py-2.5 flex items-center gap-2">
-              <div className="relative">
-                <Activity className="h-3.5 w-3.5 text-primary" />
-                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success animate-pulse" />
-              </div>
-              <h3 className="text-xs font-bold uppercase tracking-wider">Live Feed</h3>
-              <Link to="/activities" className="ml-auto">
-                <Button variant="ghost" size="sm" className="text-[10px] h-6 px-2">View All</Button>
-              </Link>
-            </div>
-            <div className="max-h-[400px] overflow-y-auto">
-              {recentActivities.map((a, i) => (
-                <motion.div
-                  key={a.id}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                  className="flex items-start gap-2.5 px-3 py-2.5 border-b border-border/50 last:border-0 hover:bg-secondary/20 transition-colors"
-                >
-                  <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary">
-                    <a.Icon className="h-3 w-3 text-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-medium text-foreground truncate">{a.title}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{a.tenantName}</p>
-                  </div>
-                  <span className="text-[9px] text-muted-foreground/60 whitespace-nowrap shrink-0">{a.timeLabel}</span>
-                </motion.div>
-              ))}
-            </div>
-          </Card>
         </div>
 
         {/* ═══ Deal Velocity + Revenue Forecast ═══ */}

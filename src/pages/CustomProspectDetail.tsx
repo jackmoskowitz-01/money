@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { getCustomProspect } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
+import ProspectEnrichmentCard from '@/components/ProspectEnrichmentCard';
 import { getActivities, addActivity, activityTypeLabels, activityTypeIcons, type ActivityType, type ActivityEntry } from '@/data/activityData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';

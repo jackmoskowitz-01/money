@@ -134,11 +134,11 @@ const EmailComposer = ({
     <div>
       <Button
         size="sm"
-        variant="outline"
-        className="text-xs h-8"
+        variant="default"
+        className="text-xs h-9 shadow-sm hover:shadow-md transition-shadow"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <FileText className="mr-1 h-3 w-3" /> Email Templates
+        <Mail className="mr-1.5 h-4 w-4" /> Email Templates
       </Button>
 
       <AnimatePresence>

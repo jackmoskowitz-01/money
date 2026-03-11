@@ -116,6 +116,14 @@ const CustomProspectDetail = () => {
             />
           </div>
 
+          {/* Real-Time Company News */}
+          <div className="mb-6">
+            <CompanyNewsCard
+              companyId={prospectId!}
+              companyName={prospect.name}
+            />
+          </div>
+
           {/* Activity Log */}
           <div>
             <div className="mb-3 flex items-center justify-between">

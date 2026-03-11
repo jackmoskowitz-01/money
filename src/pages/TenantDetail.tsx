@@ -596,6 +596,16 @@ const TenantDetail = () => {
                 </Collapsible>
               )}
 
+              {/* Real-Time Company News */}
+              <CompanyNewsCard
+                companyId={tenantId!}
+                companyName={tenant.name}
+                buildingId={buildingId}
+                onOutreachTrigger={(title, summary) => {
+                  setCustomReasonText(`${title} — ${summary}`);
+                  setCustomReasonOpen(true);
+                }}
+              />
 
               <div className="mt-4">
                 <ActivityLog

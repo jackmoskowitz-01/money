@@ -442,6 +442,7 @@ const CustomProspectDetail = () => {
                 website={prospect.website}
                 address={prospect.address}
                 cachedEnrichment={prospect.enrichment}
+                onEnriched={handleEnriched}
               />
             </div>
           </div>

@@ -190,7 +190,6 @@ const News = () => {
   const fetchCompanyNews = useCallback(async () => {
     setCompanyNewsLoading(true);
     try {
-      // Build company list from all non-client tenants
       const companies = buildings.flatMap(b =>
         b.tenants.filter(t => !t.isClient).map(t => ({
           id: t.id,
@@ -213,13 +212,16 @@ const News = () => {
       }
       const data = await resp.json();
       if (data.companyNews && Array.isArray(data.companyNews)) {
-        // Map company news to have relatedTenants for prospect matching
         const mapped: CompanyNewsItem[] = data.companyNews.map((cn: CompanyNewsItem) => ({
           ...cn,
           relatedTenants: cn.matchedCompanyId ? [cn.matchedCompanyId] : undefined,
           relatedBuildings: cn.matchedBuildingId ? [cn.matchedBuildingId] : undefined,
         }));
-        setCompanyNews(mapped);
+        // Accumulate into history
+        mergeIntoHistory(mapped);
+        const allCompany = Array.from(newsHistory.values()).filter(n => n.id.startsWith('cn')) as CompanyNewsItem[];
+        setCompanyNews(allCompany);
+        cachedCompanyNews = allCompany;
         toast.success(`Found news for ${mapped.length} companies`);
       }
     } catch (e) {

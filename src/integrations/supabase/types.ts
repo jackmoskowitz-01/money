@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      pipeline_deals: {
+        Row: {
+          building_id: string
+          created_at: string
+          id: string
+          is_manual: boolean
+          last_activity: string
+          notes: string[]
+          prospect_company: string | null
+          prospect_email: string | null
+          prospect_name: string | null
+          prospect_phone: string | null
+          prospect_sqft: number | null
+          sent_touchpoints: Json
+          stage: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          id?: string
+          is_manual?: boolean
+          last_activity?: string
+          notes?: string[]
+          prospect_company?: string | null
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          prospect_sqft?: number | null
+          sent_touchpoints?: Json
+          stage?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          id?: string
+          is_manual?: boolean
+          last_activity?: string
+          notes?: string[]
+          prospect_company?: string | null
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          prospect_sqft?: number | null
+          sent_touchpoints?: Json
+          stage?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       scoop_comments: {
         Row: {
           author_avatar: string

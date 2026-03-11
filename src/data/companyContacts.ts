@@ -1,4 +1,6 @@
-// Company contacts — localStorage-backed multi-contact support per tenant
+// Company contacts — Supabase-backed multi-contact support per tenant
+
+import { supabase } from '@/integrations/supabase/client';
 
 export type CompanyContact = {
   id: string;
@@ -10,55 +12,77 @@ export type CompanyContact = {
   addedAt: string;
 };
 
-const STORAGE_KEY = 'dealflow-company-contacts';
-
-const getAll = (): Record<string, CompanyContact[]> => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : {};
-  } catch {
-    return {};
-  }
+type DbContact = {
+  id: string;
+  entity_id: string;
+  name: string;
+  email: string;
+  title: string;
+  mobile_phone: string | null;
+  direct_phone: string | null;
+  created_at: string;
 };
 
-const saveAll = (data: Record<string, CompanyContact[]>) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+const toContact = (row: DbContact): CompanyContact => ({
+  id: row.id,
+  name: row.name,
+  email: row.email,
+  title: row.title,
+  mobilePhone: row.mobile_phone ?? undefined,
+  directPhone: row.direct_phone ?? undefined,
+  addedAt: row.created_at,
+});
+
+/** Get contacts for a specific tenant (by tenantId or prospectId) — async */
+export const getContactsAsync = async (entityId: string): Promise<CompanyContact[]> => {
+  const { data, error } = await supabase
+    .from('company_contacts')
+    .select('*')
+    .eq('entity_id', entityId)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('getContacts error:', error); return []; }
+  return (data as DbContact[]).map(toContact);
 };
 
-/** Get contacts for a specific tenant (by tenantId or prospectId) */
-export const getContacts = (entityId: string): CompanyContact[] => {
-  return getAll()[entityId] || [];
+/** Synchronous fallback for non-async contexts — returns empty, use async version when possible */
+export const getContacts = (_entityId: string): CompanyContact[] => {
+  // Deprecated sync fallback — callers should migrate to getContactsAsync
+  return [];
 };
 
 /** Add a contact to an entity */
-export const addContact = (entityId: string, contact: Omit<CompanyContact, 'id' | 'addedAt'>): CompanyContact => {
-  const all = getAll();
-  const newContact: CompanyContact = {
-    ...contact,
-    id: `cc-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
-    addedAt: new Date().toISOString(),
-  };
-  if (!all[entityId]) all[entityId] = [];
-  all[entityId].push(newContact);
-  saveAll(all);
-  return newContact;
+export const addContact = async (entityId: string, contact: Omit<CompanyContact, 'id' | 'addedAt'>): Promise<CompanyContact> => {
+  const { data, error } = await supabase
+    .from('company_contacts')
+    .insert({
+      entity_id: entityId,
+      name: contact.name,
+      email: contact.email,
+      title: contact.title,
+      mobile_phone: contact.mobilePhone ?? null,
+      direct_phone: contact.directPhone ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return toContact(data as DbContact);
 };
 
 /** Remove a contact */
-export const removeContact = (entityId: string, contactId: string) => {
-  const all = getAll();
-  if (!all[entityId]) return;
-  all[entityId] = all[entityId].filter(c => c.id !== contactId);
-  saveAll(all);
+export const removeContact = async (_entityId: string, contactId: string) => {
+  const { error } = await supabase.from('company_contacts').delete().eq('id', contactId);
+  if (error) throw error;
 };
 
 /** Update a contact */
-export const updateContact = (entityId: string, contactId: string, updates: Partial<Omit<CompanyContact, 'id' | 'addedAt'>>) => {
-  const all = getAll();
-  if (!all[entityId]) return;
-  const idx = all[entityId].findIndex(c => c.id === contactId);
-  if (idx >= 0) {
-    all[entityId][idx] = { ...all[entityId][idx], ...updates };
-    saveAll(all);
-  }
+export const updateContact = async (_entityId: string, contactId: string, updates: Partial<Omit<CompanyContact, 'id' | 'addedAt'>>) => {
+  const updateData: Record<string, unknown> = {};
+  if (updates.name !== undefined) updateData.name = updates.name;
+  if (updates.email !== undefined) updateData.email = updates.email;
+  if (updates.title !== undefined) updateData.title = updates.title;
+  if (updates.mobilePhone !== undefined) updateData.mobile_phone = updates.mobilePhone;
+  if (updates.directPhone !== undefined) updateData.direct_phone = updates.directPhone;
+
+  const { error } = await supabase.from('company_contacts').update(updateData).eq('id', contactId);
+  if (error) throw error;
 };

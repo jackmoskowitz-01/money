@@ -14,6 +14,11 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // Calculate "week of" date two weeks from now
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+    const weekOfDate = twoWeeksFromNow.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
     const systemPrompt = `You are an expert commercial real estate broker writing personalized outreach emails. Write in PLAIN TEXT only — no markdown, no asterisks, no bold, no formatting characters whatsoever. You write compelling, professional emails that are:
 - Specific to the tenant's situation and market conditions
 - Not generic or template-sounding
@@ -21,6 +26,8 @@ serve(async (req) => {
 - Action-oriented with a clear CTA (meeting request)
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
+
+CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?"
 
 ${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}
 

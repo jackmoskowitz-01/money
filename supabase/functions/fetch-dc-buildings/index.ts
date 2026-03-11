@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
         floors,
         yearBuilt: 1960 + Math.floor(Math.random() * 60),
         vacancyRate,
-        owner: ['Brookfield Properties', 'Boston Properties', 'Vornado Realty', 'Columbia Property Trust', 'Carr Properties', 'JBG SMITH', 'Tishman Speyer'][Math.floor(Math.random() * 7)],
+        owner: ['Boston Properties', 'Brookfield Properties', 'Vornado Realty Trust', 'Columbia Property Trust', 'Carr Properties', 'JBG SMITH', 'Tishman Speyer', 'Brandywine Realty Trust', 'Paramount Group', 'Douglas Development'][Math.floor(Math.random() * 10)],
         class: buildingClass,
         tenants,
       };

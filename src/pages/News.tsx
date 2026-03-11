@@ -249,8 +249,14 @@ const News = () => {
       }
       const data = await resp.json();
       if (data.news && Array.isArray(data.news)) {
-        setLiveNews(data.news);
-        setLastRefreshed(new Date());
+        // Accumulate into history
+        mergeIntoHistory(data.news);
+        const allLive = Array.from(newsHistory.values()).filter(n => !n.id.startsWith('cn') && !n.id.startsWith('custom-intel-'));
+        setLiveNews(allLive);
+        cachedLiveNews = allLive;
+        const now = new Date();
+        setLastRefreshed(now);
+        cachedLastRefreshed = now;
         toast.success('Market news updated');
       }
     } catch (e) {

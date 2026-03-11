@@ -182,6 +182,49 @@ const News = () => {
     });
   };
 
+  const fetchCompanyNews = useCallback(async () => {
+    setCompanyNewsLoading(true);
+    try {
+      // Build company list from all non-client tenants
+      const companies = buildings.flatMap(b =>
+        b.tenants.filter(t => !t.isClient).map(t => ({
+          id: t.id,
+          name: t.name,
+          buildingId: b.id,
+        }))
+      );
+
+      const resp = await fetch(COMPANY_NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ companies }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to scan company news');
+      }
+      const data = await resp.json();
+      if (data.companyNews && Array.isArray(data.companyNews)) {
+        // Map company news to have relatedTenants for prospect matching
+        const mapped: CompanyNewsItem[] = data.companyNews.map((cn: CompanyNewsItem) => ({
+          ...cn,
+          relatedTenants: cn.matchedCompanyId ? [cn.matchedCompanyId] : undefined,
+          relatedBuildings: cn.matchedBuildingId ? [cn.matchedBuildingId] : undefined,
+        }));
+        setCompanyNews(mapped);
+        toast.success(`Found news for ${mapped.length} companies`);
+      }
+    } catch (e) {
+      console.error('Failed to scan company news:', e);
+      toast.error('Company news scan failed');
+    } finally {
+      setCompanyNewsLoading(false);
+    }
+  }, []);
+
   const fetchLiveNews = useCallback(async () => {
     setNewsLoading(true);
     try {
@@ -213,9 +256,14 @@ const News = () => {
 
   useEffect(() => {
     fetchLiveNews();
-  }, [fetchLiveNews]);
+    fetchCompanyNews();
+  }, [fetchLiveNews, fetchCompanyNews]);
 
-  const currentNews: NewsItem[] = useMemo(() => [...customIntelItems, ...(liveNews || staticNewsItems)], [customIntelItems, liveNews]);
+  const currentNews: NewsItem[] = useMemo(() => {
+    // Merge: custom intel first, then company-specific news, then market news
+    const marketNews = liveNews || staticNewsItems;
+    return [...customIntelItems, ...companyNews, ...marketNews];
+  }, [customIntelItems, companyNews, liveNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();

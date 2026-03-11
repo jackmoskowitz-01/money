@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CATEGORY_OPTIONS } from './ScoopCategoryBadge';
 import type { ScoopCategory } from '@/hooks/useScoops';
 import { buildings } from '@/data/mockData';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
   onSubmit: (data: {
@@ -23,10 +24,11 @@ interface Props {
 }
 
 const ScoopForm = ({ onSubmit, onCancel }: Props) => {
+  const { profile } = useAuth();
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<ScoopCategory>('general');
   const [tagsInput, setTagsInput] = useState('');
-  const [authorName, setAuthorName] = useState('');
+  const [authorName, setAuthorName] = useState(profile?.full_name || '');
   const [linkedBuilding, setLinkedBuilding] = useState('');
   const [linkedTenant, setLinkedTenant] = useState('');
   const [submitting, setSubmitting] = useState(false);

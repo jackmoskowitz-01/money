@@ -4,6 +4,7 @@ import { Mail, Send, X, ChevronRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { addActivity } from '@/data/activityData';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {
@@ -42,9 +43,11 @@ const EmailComposer = ({
   sqft = 0,
   leaseExpiration = '',
   floor = '',
-  brokerName = '[Your Name]',
+  brokerName,
   recipients,
 }: EmailComposerProps) => {
+  const { profile } = useAuth();
+  const resolvedBrokerName = brokerName || profile?.full_name || '[Your Name]';
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EmailTemplateCategory | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -63,7 +66,7 @@ const EmailComposer = ({
     sqft: sqft ? sqft.toLocaleString() : '',
     leaseExpiration,
     floor,
-    brokerName,
+    brokerName: resolvedBrokerName,
     buildingAddress: buildingName,
     tourDate: '[Date]',
     tourTime: '[Time]',

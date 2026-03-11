@@ -16,6 +16,7 @@ import News from "./pages/News";
 import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/prospects" element={<Prospects />} />
           <Route path="/activities" element={<ActivityLogger />} />
+          <Route path="/settings" element={<Settings />} />
           
           <Route path="*" element={<NotFound />} />
         </Routes>

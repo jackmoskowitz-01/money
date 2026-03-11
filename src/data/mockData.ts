@@ -9,6 +9,7 @@ export type Building = {
   yearBuilt: number;
   vacancyRate: number;
   owner: string;
+  leasingBroker?: string;
   class: 'A' | 'B' | 'C';
   recentSale?: { date: string; price: string };
   tenants: Tenant[];

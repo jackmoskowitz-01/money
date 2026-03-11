@@ -562,7 +562,8 @@ function buildCostarBuildings(): Building[] {
       floors,
       yearBuilt,
       vacancyRate: Math.round(vacancyRate * 10) / 10,
-      owner: owner || 'Private Owner',
+      owner: generateOwner(index),
+      leasingBroker: leasingBroker || undefined,
       class: cls as 'A' | 'B' | 'C',
       tenants,
     };

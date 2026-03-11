@@ -63,6 +63,7 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
       const data = await resp.json();
       if (data.companyNews && Array.isArray(data.companyNews)) {
         setNews(data.companyNews);
+        onNewsLoaded?.(data.companyNews);
       }
       setHasLoaded(true);
     } catch (e) {

@@ -14,30 +14,25 @@ const BROKER_COLORS = [
 
 type TimeRange = 'week' | 'month';
 
-const BrokerLeaderboard = () => {
-  const [timeRange, setTimeRange] = useState<TimeRange>('week');
+const useStats = (rangeMs: number) => {
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();
+  const now = Date.now();
 
-  const { barData, pieData } = useMemo(() => {
-    const now = Date.now();
-    const rangeMs = timeRange === 'week' ? 7 * 24 * 3600000 : 30 * 24 * 3600000;
-
+  return useMemo(() => {
     const brokerStats = brokers.map((broker, i) => {
       const brokerAssignments = assignments.filter(a => a.brokerId === broker.id);
       const tenantIds = new Set(brokerAssignments.map(a => a.tenantId));
 
-      const weekActivities = activities.filter(
+      const rangeActivities = activities.filter(
         a => tenantIds.has(a.tenantId) && now - new Date(a.timestamp).getTime() < rangeMs
       );
 
-      // Count outreach activities (emails, calls, ai_emails)
-      const outreach = weekActivities.filter(
+      const outreach = rangeActivities.filter(
         a => a.type === 'email_sent' || a.type === 'call' || a.type === 'ai_email'
       ).length;
 
-      // Meetings set this week
       const meetingsSet = pipeline.filter(p => {
         if (p.stage !== 'meeting_set' && p.stage !== 'meeting_held') return false;
         return brokerAssignments.some(
@@ -58,50 +53,37 @@ const BrokerLeaderboard = () => {
       barData: [...brokerStats].sort((a, b) => b.outreach - a.outreach),
       pieData: brokerStats.filter(b => b.meetingsSet > 0),
     };
-  }, [activities, assignments, pipeline, timeRange]);
+  }, [activities, assignments, pipeline, rangeMs]);
+};
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
-        <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName || label}</p>
-        <p className="text-[11px] text-muted-foreground">{payload[0]?.value} outreach activities</p>
-      </div>
-    );
-  };
-
-  const PieTooltip = ({ active, payload }: any) => {
-    if (!active || !payload?.length) return null;
-    return (
-      <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
-        <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName}</p>
-        <p className="text-[11px] text-muted-foreground">{payload[0]?.value} meetings set</p>
-      </div>
-    );
-  };
-
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload?.length) return null;
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-3">
-        <button
-          onClick={() => setTimeRange('week')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${timeRange === 'week' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-        >
-          This Week
-        </button>
-        <button
-          onClick={() => setTimeRange('month')}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${timeRange === 'month' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'}`}
-        >
-          This Month
-        </button>
-      </div>
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-      {/* Bar Chart - Outreach */}
-      <Card className="border-border bg-card p-3 col-span-1">
+    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName || label}</p>
+      <p className="text-[11px] text-muted-foreground">{payload[0]?.value} outreach activities</p>
+    </div>
+  );
+};
+
+const PieTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-xs font-semibold text-foreground">{payload[0]?.payload?.fullName}</p>
+      <p className="text-[11px] text-muted-foreground">{payload[0]?.value} meetings set</p>
+    </div>
+  );
+};
+
+const ActivityPanel = ({ label, barData, pieData }: { label: string; barData: any[]; pieData: any[] }) => (
+  <div className="flex-1 min-w-0">
+    <h3 className="font-display text-xs font-bold mb-3">{label}</h3>
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <Card className="border-border bg-card p-3">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-display text-xs font-bold">Outreach by Broker</h3>
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{timeRange === 'week' ? 'This Week' : 'This Month'}</Badge>
+          <h4 className="text-[11px] font-semibold text-muted-foreground">Outreach by Broker</h4>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{label}</Badge>
         </div>
         <ResponsiveContainer width="100%" height={160}>
           <BarChart data={barData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 0 }}>
@@ -118,46 +100,41 @@ const BrokerLeaderboard = () => {
         </ResponsiveContainer>
       </Card>
 
-      {/* Pie Chart - Meetings Set */}
-      <Card className="border-border bg-card p-3 col-span-1">
+      <Card className="border-border bg-card p-3">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-display text-xs font-bold">Meetings Set</h3>
-          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{timeRange === 'week' ? 'This Week' : 'This Month'}</Badge>
+          <h4 className="text-[11px] font-semibold text-muted-foreground">Meetings Set</h4>
+          <Badge variant="outline" className="text-[9px] px-1.5 py-0">{label}</Badge>
         </div>
         {pieData.length === 0 ? (
           <div className="flex items-center justify-center h-[160px]">
-            <p className="text-xs text-muted-foreground">No meetings set this week</p>
+            <p className="text-xs text-muted-foreground">No meetings set</p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={160}>
             <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={35}
-                outerRadius={60}
-                paddingAngle={3}
-                dataKey="meetingsSet"
-                nameKey="fullName"
-              >
+              <Pie data={pieData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={3} dataKey="meetingsSet" nameKey="fullName">
                 {pieData.map((entry, i) => (
                   <Cell key={i} fill={entry.color} stroke="hsl(222, 40%, 9%)" strokeWidth={2} />
                 ))}
               </Pie>
               <Tooltip content={<PieTooltip />} />
-              <Legend
-                formatter={(value: string) => (
-                  <span className="text-[11px] text-foreground">{value}</span>
-                )}
-                iconSize={8}
-                wrapperStyle={{ fontSize: 11 }}
-              />
+              <Legend formatter={(value: string) => <span className="text-[11px] text-foreground">{value}</span>} iconSize={8} wrapperStyle={{ fontSize: 11 }} />
             </PieChart>
           </ResponsiveContainer>
         )}
       </Card>
-      </div>
+    </div>
+  </div>
+);
+
+const BrokerLeaderboard = () => {
+  const weekStats = useStats(7 * 24 * 3600000);
+  const monthStats = useStats(30 * 24 * 3600000);
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <ActivityPanel label="This Week" barData={weekStats.barData} pieData={weekStats.pieData} />
+      <ActivityPanel label="This Month" barData={monthStats.barData} pieData={monthStats.pieData} />
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, User, Mail, Phone, X, ChevronDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';

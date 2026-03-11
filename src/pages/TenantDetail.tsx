@@ -297,25 +297,6 @@ const TenantDetail = () => {
             </div>
           </Card>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-4">
-            <div className="rounded-md bg-secondary/50 p-2.5">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Headcount</p>
-              <p className="text-xs font-medium text-foreground">{tenant.headcount}</p>
-              <p className="text-[10px] text-muted-foreground">{Math.round(tenant.sqft / tenant.headcount)} SF/person</p>
-            </div>
-            <div className="rounded-md bg-secondary/50 p-2.5">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Floor(s)</p>
-              <p className="text-xs font-medium text-foreground">{tenant.floor}</p>
-              <p className="text-[10px] text-muted-foreground">{tenant.sqft.toLocaleString()} SF</p>
-            </div>
-            <div className="rounded-md bg-secondary/50 p-2.5">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Building Vacancy</p>
-              <p className={`text-xs font-medium ${building.vacancyRate > 20 ? 'text-destructive' : 'text-foreground'}`}>
-                {building.vacancyRate}%
-              </p>
-              <p className="text-[10px] text-muted-foreground">Class {building.class}</p>
-            </div>
-          </div>
 
           {/* Company Contacts */}
           <div className="mb-6">

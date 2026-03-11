@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getActivities, getAssignments, brokers } from '@/data/activityData';
+import { getActivities, getAssignments } from '@/data/activityData';
 import { getPipeline } from '@/data/pipelineData';
+import { useBrokers } from '@/hooks/useBrokers';
 
 const BROKER_COLORS = [
   'hsl(38, 92%, 55%)',
@@ -14,7 +15,7 @@ const BROKER_COLORS = [
 
 type TimeRange = 'week' | 'month';
 
-const useStats = (rangeMs: number) => {
+const useStats = (brokers: ReturnType<typeof useBrokers>, rangeMs: number) => {
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();
@@ -128,8 +129,9 @@ const ActivityPanel = ({ label, barData, pieData }: { label: string; barData: an
 );
 
 const BrokerLeaderboard = () => {
-  const weekStats = useStats(7 * 24 * 3600000);
-  const monthStats = useStats(30 * 24 * 3600000);
+  const brokers = useBrokers();
+  const weekStats = useStats(brokers, 7 * 24 * 3600000);
+  const monthStats = useStats(brokers, 30 * 24 * 3600000);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

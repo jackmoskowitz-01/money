@@ -49,13 +49,32 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
 
       const directTenant = news.relatedTenants?.includes(tenant.id);
       const directBuilding = news.relatedBuildings?.includes(building.id);
+
+      const ind = tenant.industry.toLowerCase();
+      const title = news.title.toLowerCase();
+      const summary = news.summary.toLowerCase();
+
       const categoryMatch =
+        // Vacancy news → tenants in high-vacancy buildings
         (news.category === 'vacancy' && building.vacancyRate > 15) ||
-        (news.category === 'market' && tenant.industry.toLowerCase().includes('legal') && news.title.toLowerCase().includes('law')) ||
-        (news.category === 'market' && tenant.industry.toLowerCase().includes('lobby') && news.title.toLowerCase().includes('lobby')) ||
-        (news.category === 'contraction' && tenant.industry.toLowerCase().includes('consult') && news.title.toLowerCase().includes('consult')) ||
-        (news.category === 'contraction' && (tenant.industry.toLowerCase().includes('nonprofit') || tenant.industry.toLowerCase().includes('association') || tenant.industry.toLowerCase().includes('think tank')) && (news.title.toLowerCase().includes('nonprofit') || news.title.toLowerCase().includes('non-profit'))) ||
-        (news.category === 'market' && (tenant.industry.toLowerCase().includes('nonprofit') || tenant.industry.toLowerCase().includes('association')) && (news.title.toLowerCase().includes('nonprofit') || news.title.toLowerCase().includes('funding') || news.title.toLowerCase().includes('501')));
+        // Lease news → tenants with leases expiring within 18 months
+        (news.category === 'lease' && new Date(tenant.leaseExpiration) < new Date('2026-09-30')) ||
+        // Legal sector matching
+        (ind.includes('legal') && (title.includes('law') || title.includes('legal') || title.includes('firm'))) ||
+        // Lobbying / government matching
+        ((ind.includes('lobby') || ind.includes('government')) && (title.includes('lobby') || title.includes('k street') || title.includes('hybrid'))) ||
+        // Consulting sector matching
+        (ind.includes('consult') && (title.includes('consult') || title.includes('hybrid') || title.includes('cut'))) ||
+        // Nonprofit / association matching
+        ((ind.includes('nonprofit') || ind.includes('association') || ind.includes('healthcare')) && (title.includes('nonprofit') || title.includes('non-profit') || title.includes('funding') || title.includes('501') || title.includes('downsize'))) ||
+        // Contraction news → tenants in buildings with high vacancy
+        (news.category === 'contraction' && building.vacancyRate > 18) ||
+        // Sale news → all tenants in the sold building
+        (news.category === 'sale' && news.relatedBuildings?.includes(building.id)) ||
+        // Expansion news → defense/tech tenants
+        (news.category === 'expansion' && (ind.includes('defense') || ind.includes('technology')) && (title.includes('expand') || title.includes('growth') || title.includes('government'))) ||
+        // Sublease / vacancy opportunity → budget-conscious orgs
+        (summary.includes('sublease') && (ind.includes('nonprofit') || ind.includes('association') || ind.includes('government')));
 
       if (directTenant || directBuilding || categoryMatch) {
         seen.add(tenant.id);

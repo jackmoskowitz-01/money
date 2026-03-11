@@ -1,23 +1,23 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GripVertical, Plus, StickyNote, ChevronRight, X, UserPlus,
   Mail, Phone, Building2, MessageSquare, Sparkles, Send,
-  Check, Clock, Loader2, Copy, AlertTriangle,
+  Check, Clock, Loader2, Copy, AlertTriangle, Trash2,
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import {
-  getPipeline, savePipeline, updatePipelineStage, addPipelineNote,
   stageLabels, stageColors, generateTouchpoints, touchpointLabels,
-  markTouchpointSent, getOverdueTouchpoints,
   type PipelineStage, type PipelineItem, type Touchpoint,
 } from '@/data/pipelineData';
+import { usePipeline } from '@/hooks/usePipeline';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const stages: PipelineStage[] = ['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -34,7 +34,7 @@ const touchpointIcons: Record<Touchpoint['type'], typeof Mail> = {
 };
 
 const Pipeline = () => {
-  const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
+  const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal } = usePipeline();
   const [noteInput, setNoteInput] = useState('');
   const [noteTarget, setNoteTarget] = useState<{ tenantId: string; buildingId: string } | null>(null);
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);
@@ -54,21 +54,12 @@ const Pipeline = () => {
   const [copied, setCopied] = useState(false);
 
   // Overdue touchpoints
-  const overdue = getOverdueTouchpoints();
-
-  useEffect(() => {
-    let items = getPipeline();
-    const allTenants = buildings.flatMap(b => b.tenants.map(t => ({ tenantId: t.id, buildingId: b.id })));
-    let changed = false;
-    allTenants.forEach(({ tenantId, buildingId }) => {
-      if (!items.find(p => p.tenantId === tenantId && p.buildingId === buildingId)) {
-        items.push({ tenantId, buildingId, stage: 'meeting_set', notes: [], lastActivity: new Date().toISOString() });
-        changed = true;
-      }
-    });
-    if (changed) savePipeline(items);
-    setPipeline(items);
-  }, []);
+  const now = new Date().toISOString();
+  const overdue = pipeline.flatMap(item =>
+    (item.sentTouchpoints || [])
+      .filter(tp => tp.followUpDate && tp.followUpDate < now)
+      .map(touchpoint => ({ item, touchpoint }))
+  );
 
   const getTenantInfo = (tenantId: string, buildingId: string) => {
     const building = buildings.find(b => b.id === buildingId);
@@ -100,43 +91,27 @@ const Pipeline = () => {
     return `${tenant.sqft.toLocaleString()} SF · Expires ${tenant.leaseExpiration}`;
   };
 
-  const handleStageChange = (tenantId: string, buildingId: string, newStage: PipelineStage) => {
-    updatePipelineStage(tenantId, buildingId, newStage);
-    setPipeline(getPipeline());
+  const handleStageChange = async (tenantId: string, buildingId: string, newStage: PipelineStage) => {
+    await updateStage(tenantId, buildingId, newStage);
     if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
       setSelectedItem({ ...selectedItem, stage: newStage });
     }
   };
 
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteTarget || !noteInput.trim()) return;
-    addPipelineNote(noteTarget.tenantId, noteTarget.buildingId, noteInput.trim());
-    setPipeline(getPipeline());
+    await addNote(noteTarget.tenantId, noteTarget.buildingId, noteInput.trim());
     setNoteInput('');
     setNoteTarget(null);
   };
 
-  const handleAddProspect = () => {
+  const handleAddProspect = async () => {
     if (!newProspect.name.trim()) return;
-    const id = `manual-${Date.now()}`;
-    const item: PipelineItem = {
-      tenantId: id,
-      buildingId: 'manual',
-      stage: 'meeting_set',
-      notes: [],
-      lastActivity: new Date().toISOString(),
-      isManual: true,
-      prospectName: newProspect.name.trim(),
-      prospectCompany: newProspect.company.trim(),
-      prospectEmail: newProspect.email.trim(),
-      prospectPhone: newProspect.phone.trim(),
-      prospectSqft: newProspect.sqft ? parseInt(newProspect.sqft) : undefined,
-    };
-    const items = [...getPipeline(), item];
-    savePipeline(items);
-    setPipeline(items);
-    setNewProspect({ name: '', company: '', email: '', phone: '', sqft: '' });
-    setAddOpen(false);
+    const success = await addProspect(newProspect);
+    if (success) {
+      setNewProspect({ name: '', company: '', email: '', phone: '', sqft: '' });
+      setAddOpen(false);
+    }
   };
 
   // Drag-and-drop handlers
@@ -216,24 +191,13 @@ const Pipeline = () => {
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          tenantName,
-          buildingName,
-          contactName,
-          contactTitle,
-          industry,
-          sqft,
-          leaseExpiration,
-          outreachReason: `Touchpoint: ${tp.title} — ${tp.description}`,
-          vacancyRate,
-          headcount,
-          clientsInBuilding,
+          tenantName, buildingName, contactName, contactTitle, industry, sqft,
+          leaseExpiration, outreachReason: `Touchpoint: ${tp.title} — ${tp.description}`,
+          vacancyRate, headcount, clientsInBuilding,
         }),
       });
 
-      if (!resp.ok) {
-        setGeneratingEmail(false);
-        return;
-      }
+      if (!resp.ok) { setGeneratingEmail(false); return; }
 
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
@@ -255,26 +219,23 @@ const Pipeline = () => {
           try {
             const parsed = JSON.parse(json);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              full += content;
-              setGeneratedEmail(full);
-            }
+            if (content) { full += content; setGeneratedEmail(full); }
           } catch { /* partial */ }
         }
       }
-    } catch {
-      /* error */
-    }
+    } catch { /* error */ }
     setGeneratingEmail(false);
   }, []);
 
-  const handleMarkSent = (tp: Touchpoint) => {
+  const handleMarkSent = async (tp: Touchpoint) => {
     if (!selectedItem) return;
-    const updated = markTouchpointSent(selectedItem.tenantId, selectedItem.buildingId, tp);
-    setPipeline(updated);
-    // Update selected item
-    const refreshed = updated.find(p => p.tenantId === selectedItem.tenantId && p.buildingId === selectedItem.buildingId);
-    if (refreshed) setSelectedItem(refreshed);
+    await markTouchpointSent(selectedItem.tenantId, selectedItem.buildingId, tp);
+    // Refresh selected item from pipeline state
+    setSelectedItem(prev => {
+      if (!prev) return null;
+      const sent: Touchpoint = { ...tp, sentAt: new Date().toISOString(), followUpDate: new Date(Date.now() + 7 * 86400000).toISOString() };
+      return { ...prev, sentTouchpoints: [...(prev.sentTouchpoints || []), sent] };
+    });
   };
 
   const handleCopyEmail = () => {
@@ -283,23 +244,50 @@ const Pipeline = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleDeleteDeal = async (item: PipelineItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await deleteDeal(item.tenantId, item.buildingId);
+    if (selectedItem?.tenantId === item.tenantId && selectedItem?.buildingId === item.buildingId) {
+      setSelectedItem(null);
+    }
+  };
+
   const itemsByStage = (stage: PipelineStage) => pipeline.filter(p => p.stage === stage);
 
   const touchpoints = selectedItem ? generateTouchpoints(selectedItem) : [];
   const sentTouchpointIds = new Set((selectedItem?.sentTouchpoints || []).map(t => t.id));
 
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-14">
+        <div className="mx-auto max-w-[1600px] px-4 py-8">
+          <Skeleton className="h-10 w-48 mb-6" />
+          <div className="flex gap-4">
+            {stages.map(s => (
+              <div key={s} className="min-w-[220px] flex-1 space-y-2">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-14">
-      <div className="mx-auto max-w-[1600px] px-4 py-8">
+      <div className="mx-auto max-w-[1600px] px-2 sm:px-4 py-4 sm:py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Pipeline</h1>
-              <p className="mt-1 text-muted-foreground">Track your outreach across all prospects — drag cards between stages</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Pipeline</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Track your outreach across all prospects — drag cards between stages</p>
             </div>
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2">
+                <Button className="gap-2 w-full sm:w-auto">
                   <UserPlus className="h-4 w-4" /> Add Prospect
                 </Button>
               </DialogTrigger>
@@ -361,11 +349,11 @@ const Pipeline = () => {
 
           <div className="flex gap-4">
             {/* Kanban Board */}
-            <div className={`flex gap-4 overflow-x-auto pb-4 transition-all ${selectedItem ? 'flex-1' : 'w-full'}`}>
+            <div className={`flex gap-2 sm:gap-4 overflow-x-auto pb-4 transition-all ${selectedItem ? 'flex-1' : 'w-full'}`}>
               {stages.map(stage => (
                 <div
                   key={stage}
-                  className={`min-w-[220px] flex-1 rounded-lg p-2 transition-colors ${dragOverStage === stage ? 'bg-primary/5 ring-2 ring-primary/20' : ''}`}
+                  className={`min-w-[180px] sm:min-w-[220px] flex-1 rounded-lg p-1.5 sm:p-2 transition-colors ${dragOverStage === stage ? 'bg-primary/5 ring-2 ring-primary/20' : ''}`}
                   onDragOver={e => handleDragOver(e, stage)}
                   onDragLeave={handleDragLeave}
                   onDrop={e => handleDrop(e, stage)}
@@ -401,7 +389,16 @@ const Pipeline = () => {
                         >
                           <div className="mb-2 flex items-start justify-between">
                             <p className="text-sm font-semibold text-foreground">{getDisplayName(item)}</p>
-                            <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={e => handleDeleteDeal(item, e)}
+                                className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Remove from pipeline"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                              <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                            </div>
                           </div>
                           <p className="text-[11px] text-muted-foreground">{getDisplayCompany(item)}</p>
                           <p className="text-[11px] text-muted-foreground">{getDisplayDetail(item)}</p>
@@ -492,7 +489,7 @@ const Pipeline = () => {
                   animate={{ width: 400, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ type: 'spring', damping: 25 }}
-                  className="shrink-0 overflow-hidden"
+                  className="shrink-0 overflow-hidden hidden lg:block"
                 >
                   <Card className="sticky top-20 border-border bg-card p-4">
                     <div className="mb-4 flex items-start justify-between">

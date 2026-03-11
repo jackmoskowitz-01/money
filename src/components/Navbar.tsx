@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X } from 'lucide-react';
 import ProspectSearch from './ProspectSearch';
 
 const navItems = [
@@ -13,11 +14,12 @@ const navItems = [
 
 const Navbar = () => {
   const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
             <Building2 className="h-4 w-4 text-primary-foreground" />
           </div>
@@ -26,7 +28,8 @@ const Navbar = () => {
           </span>
         </Link>
 
-        <div className="flex items-center gap-1">
+        {/* Desktop nav */}
+        <div className="hidden md:flex items-center gap-1">
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
             return (
@@ -40,14 +43,53 @@ const Navbar = () => {
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                <span className="hidden md:inline">{label}</span>
+                <span>{label}</span>
               </Link>
             );
           })}
         </div>
 
-        <ProspectSearch />
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block">
+            <ProspectSearch />
+          </div>
+          <button
+            onClick={() => setMobileOpen(!mobileOpen)}
+            className="md:hidden rounded-md p-2 text-muted-foreground hover:bg-secondary"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-xl">
+          <div className="px-4 py-2 space-y-1">
+            {navItems.map(({ path, label, icon: Icon }) => {
+              const isActive = location.pathname === path;
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+          <div className="px-4 py-3 border-t border-border sm:hidden">
+            <ProspectSearch />
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

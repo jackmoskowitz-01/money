@@ -256,10 +256,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen pt-14">
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <h1 className="font-display text-3xl font-bold tracking-tight">Dashboard</h1>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-4 sm:mb-6">
+          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your pipeline performance at a glance</p>
         </motion.div>
 

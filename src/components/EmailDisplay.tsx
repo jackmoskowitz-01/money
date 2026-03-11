@@ -59,8 +59,21 @@ const EmailDisplay = ({
   const [showABVariant, setShowABVariant] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Extract subject from AI-generated content
+  const parsedSubject = (() => {
+    const match = emailContent.match(/^Subject:\s*([^\n]*)\n*/i);
+    return match ? match[1].trim() : '';
+  })();
+
+  const displayBody = (() => {
+    const match = emailContent.match(/^Subject:\s*[^\n]*\n*/i);
+    return match ? emailContent.slice(match[0].length).trimStart() : emailContent;
+  })();
+
   const copyEmail = () => {
-    navigator.clipboard.writeText(emailContent);
+    const subj = selectedSubject || parsedSubject || subject || '';
+    const text = subj ? `Subject: ${subj}\n\n${displayBody}` : emailContent;
+    navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success('Email copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
@@ -68,13 +81,8 @@ const EmailDisplay = ({
 
   const openInEmailClient = (toEmails?: string[]) => {
     const to = toEmails ? toEmails.join(',') : (contactEmail || '');
-    const subj = selectedSubject || subject || (label ? `Re: ${label}` : '');
-    let body = emailContent;
-    const subjectLineMatch = body.match(/^Subject:\s*[^\n]*\n*/i);
-    if (subjectLineMatch) {
-      body = body.slice(subjectLineMatch[0].length).trimStart();
-    }
-    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    const subj = selectedSubject || parsedSubject || subject || (label ? `Re: ${label}` : '');
+    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(displayBody)}`;
     window.open(mailto, '_blank');
     toast.success('Opening email client...');
   };
@@ -439,17 +447,19 @@ const EmailDisplay = ({
           </div>
         </div>
 
-        {/* Selected Subject Line */}
-        {selectedSubject && (
+        {/* Displayed Subject Line (extracted from AI or manually selected) */}
+        {(selectedSubject || parsedSubject) && !isEditing && (
           <div className="mb-2 flex items-center gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-1.5">
             <Hash className="h-3 w-3 text-primary shrink-0" />
-            <span className="text-[10px] font-medium text-foreground flex-1 truncate">{selectedSubject}</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); setSelectedSubject(null); }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
+            <span className="text-[10px] font-medium text-foreground flex-1 truncate">{selectedSubject || parsedSubject}</span>
+            {selectedSubject && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedSubject(null); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
           </div>
         )}
 
@@ -576,7 +586,7 @@ const EmailDisplay = ({
           />
         ) : (
           <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-            {emailContent || (isGenerating ? 'Generating...' : '')}
+            {displayBody || (isGenerating ? 'Generating...' : '')}
           </div>
         )}
       </div>

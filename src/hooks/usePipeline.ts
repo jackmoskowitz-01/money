@@ -85,7 +85,19 @@ export function usePipeline() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchPipeline(); }, [fetchPipeline]);
+  useEffect(() => {
+    fetchPipeline();
+
+    // Realtime subscription for pipeline changes
+    const channel = supabase
+      .channel('pipeline-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pipeline_deals' }, () => {
+        fetchPipeline();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchPipeline]);
 
   const updateStage = useCallback(async (tenantId: string, buildingId: string, stage: PipelineStage) => {
     const { error } = await supabase

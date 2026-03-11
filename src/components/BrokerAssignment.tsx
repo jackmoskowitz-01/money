@@ -9,6 +9,7 @@ interface Props {
 }
 
 const BrokerAssignment = ({ tenantId, buildingId }: Props) => {
+  const brokers = useBrokers();
   const [assignment, setAssignment] = useState(() => getAssignmentForTenant(tenantId));
   const [showPicker, setShowPicker] = useState(false);
 

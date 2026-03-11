@@ -129,8 +129,9 @@ const ActivityPanel = ({ label, barData, pieData }: { label: string; barData: an
 );
 
 const BrokerLeaderboard = () => {
-  const weekStats = useStats(7 * 24 * 3600000);
-  const monthStats = useStats(30 * 24 * 3600000);
+  const brokers = useBrokers();
+  const weekStats = useStats(brokers, 7 * 24 * 3600000);
+  const monthStats = useStats(brokers, 30 * 24 * 3600000);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

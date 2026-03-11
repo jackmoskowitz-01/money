@@ -10,6 +10,7 @@ import { useBrokers } from '@/hooks/useBrokers';
 import { buildings } from '@/data/mockData';
 
 const MeetingsOverview = () => {
+  const brokers = useBrokers();
   const pipeline = getPipeline();
   const assignments = getAssignments();
   const tasks = getTasks();

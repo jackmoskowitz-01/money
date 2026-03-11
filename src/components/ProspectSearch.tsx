@@ -296,11 +296,6 @@ const ProspectSearch = () => {
                                         Client
                                       </Badge>
                                     )}
-                                    {result.isCustom && (
-                                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-accent text-accent-foreground shrink-0">
-                                        Custom
-                                      </Badge>
-                                    )}
                                   </div>
                                   <p className="text-[11px] text-muted-foreground truncate">
                                     {result.isCustom

@@ -299,6 +299,14 @@ const MapView = () => {
                 </div>
               </div>
 
+              {selectedBuilding.leasingBroker && (
+                <div className="mb-4 rounded-md border border-border bg-secondary/30 p-2">
+                  <p className="text-xs text-muted-foreground">
+                    Listing Broker: <span className="font-medium text-foreground">{selectedBuilding.leasingBroker}</span>
+                  </p>
+                </div>
+              )}
+
               {selectedBuilding.recentSale && (
                 <div className="mb-4 rounded-md border border-primary/20 bg-primary/5 p-2">
                   <p className="text-xs font-medium text-primary">

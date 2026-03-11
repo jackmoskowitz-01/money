@@ -579,14 +579,6 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: content }));
   }, []);
 
-  // Hot prospects with scores
-  const hotProspects = useMemo(() => {
-    return buildings.flatMap(b =>
-      b.tenants.filter(t =>
-        !t.isClient && t.outreachReasons.some(r => r.urgency === 'high')
-      ).map(t => ({ tenant: t, building: b, score: getUrgencyScore(t) }))
-    ).sort((a, b) => b.score - a.score).slice(0, 8);
-  }, []);
 
   return (
     <div className="min-h-screen pt-14">

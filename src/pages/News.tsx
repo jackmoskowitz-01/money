@@ -154,7 +154,9 @@ const News = () => {
   const [customIntelItems, setCustomIntelItems] = useState<NewsItem[]>([]);
   const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
+  const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());

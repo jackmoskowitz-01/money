@@ -189,9 +189,6 @@ const CustomProspectDetail = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">{prospect.name}</h1>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-accent text-accent-foreground">
-                  Custom Prospect
-                </Badge>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">

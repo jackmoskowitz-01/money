@@ -43,9 +43,11 @@ const EmailComposer = ({
   sqft = 0,
   leaseExpiration = '',
   floor = '',
-  brokerName = '[Your Name]',
+  brokerName,
   recipients,
 }: EmailComposerProps) => {
+  const { profile } = useAuth();
+  const resolvedBrokerName = brokerName || profile?.full_name || '[Your Name]';
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EmailTemplateCategory | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);

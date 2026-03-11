@@ -757,6 +757,8 @@ const News = () => {
               <div className="space-y-0">
                 {filteredNews.map((news, i) => {
                   const isCustomIntel = news.id.startsWith('custom-intel-');
+                  const isCompanyNews = news.id.startsWith('cn');
+                  const companyItem = isCompanyNews ? (news as CompanyNewsItem) : null;
                   const autoProspects = getAffectedProspects(news);
                   const manual = manualProspects[news.id] || [];
                   const customs = customProspects[news.id] || [];

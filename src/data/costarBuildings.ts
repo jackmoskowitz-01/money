@@ -532,6 +532,18 @@ const existingAddresses = new Set([
   '1000 vermont ave nw',      // b6
 ]);
 
+const DC_LANDLORDS = [
+  'Boston Properties', 'Brookfield Properties', 'Vornado Realty Trust', 'Columbia Property Trust',
+  'Carr Properties', 'JBG SMITH', 'Tishman Speyer', 'Brandywine Realty Trust', 'Mack-Cali Realty',
+  'Paramount Group', 'SL Green Realty', 'Piedmont Office Realty', 'Easterly Government Properties',
+  'Corporate Office Properties Trust', 'Douglas Development', 'The Bernstein Companies',
+  'Lincoln Property Company', 'Hines Interests', 'Beacon Capital Partners', 'Monday Properties',
+];
+
+function generateOwner(index: number): string {
+  return DC_LANDLORDS[index % DC_LANDLORDS.length];
+}
+
 function buildCostarBuildings(): Building[] {
   const buildings: Building[] = [];
   const seenAddresses = new Set<string>();

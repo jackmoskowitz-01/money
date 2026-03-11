@@ -7,7 +7,7 @@ export type ProspectEnrichment = {
   headquarters: string | null;
   officeLocations: string[];
   description: string | null;
-  keyContacts: { name: string; title: string; relevance: string }[];
+  keyContacts?: { name: string; title: string; relevance: string }[];
   recentNews: { headline: string; date: string; summary: string; signal: string }[];
   spaceDetails: {
     currentSqft: string | null;

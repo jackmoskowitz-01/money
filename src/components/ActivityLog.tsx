@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getContacts } from '@/data/companyContacts';
 import { Plus, Mail, Phone, Users, StickyNote, AlertTriangle, ChevronRight, User } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

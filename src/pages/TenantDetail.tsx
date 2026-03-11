@@ -20,6 +20,7 @@ import CompanyContacts from '@/components/CompanyContacts';
 import ResearchBrief from '@/components/ResearchBrief';
 import SequenceBuilder from '@/components/SequenceBuilder';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
+import CompanyNewsCard from '@/components/CompanyNewsCard';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
@@ -595,6 +596,16 @@ const TenantDetail = () => {
                 </Collapsible>
               )}
 
+              {/* Real-Time Company News */}
+              <CompanyNewsCard
+                companyId={tenantId!}
+                companyName={tenant.name}
+                buildingId={buildingId}
+                onOutreachTrigger={(title, summary) => {
+                  setCustomReasonText(`${title} — ${summary}`);
+                  setCustomReasonOpen(true);
+                }}
+              />
 
               <div className="mt-4">
                 <ActivityLog

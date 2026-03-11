@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getCustomProspect } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
+import CompanyNewsCard from '@/components/CompanyNewsCard';
 import { getActivities, addActivity, activityTypeLabels, activityTypeIcons, type ActivityType, type ActivityEntry } from '@/data/activityData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -112,6 +113,14 @@ const CustomProspectDetail = () => {
               tenantName={prospect.name}
               contactName={prospect.name}
               buildingName={prospect.address}
+            />
+          </div>
+
+          {/* Real-Time Company News */}
+          <div className="mb-6">
+            <CompanyNewsCard
+              companyId={prospectId!}
+              companyName={prospect.name}
             />
           </div>
 

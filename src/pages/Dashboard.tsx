@@ -238,46 +238,53 @@ const Dashboard = () => {
         {/* ═══ Today's Focus Panel ═══ */}
         {focusItems.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="mb-6">
-            <Card className="border-border bg-card overflow-hidden">
-              <div className="border-b border-border px-4 py-2.5 flex items-center gap-2 bg-secondary/20">
-                <Flame className="h-4 w-4 text-primary" />
-                <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">Today's Focus</h2>
-                <span className="text-[10px] text-muted-foreground ml-auto">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border">
-                {focusItems.slice(0, 3).map(item => (
-                  <Link key={item.id} to={item.link || '/'} className="block">
-                    <div className="p-3.5 hover:bg-secondary/20 transition-colors group">
-                      <div className="flex items-start gap-2.5">
-                        <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                          item.urgency === 'high' ? 'bg-destructive/10' : item.urgency === 'medium' ? 'bg-warning/10' : 'bg-primary/10'
-                        }`}>
-                          <item.icon className={`h-3.5 w-3.5 ${
-                            item.urgency === 'high' ? 'text-destructive' : item.urgency === 'medium' ? 'text-warning' : 'text-primary'
-                          }`} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{item.detail}</p>
-                        </div>
-                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0 mt-1" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-              {focusItems.length > 3 && (
-                <div className="border-t border-border px-4 py-2 flex items-center gap-2">
-                  {focusItems.slice(3).map(item => (
-                    <Link key={item.id} to={item.link || '/'}>
-                      <Badge variant="outline" className="text-[10px] hover:bg-secondary transition-colors cursor-pointer">
-                        <item.icon className="h-2.5 w-2.5 mr-1" />
-                        {item.label}
-                      </Badge>
-                    </Link>
-                  ))}
+            <Card className="border-primary/20 bg-card overflow-hidden shadow-sm">
+              <div className="border-b border-border px-5 py-3 flex items-center gap-2.5 bg-gradient-to-r from-primary/5 to-transparent">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                  <Flame className="h-4 w-4 text-primary" />
                 </div>
-              )}
+                <div>
+                  <h2 className="text-sm font-bold text-foreground">Today's Focus</h2>
+                  <p className="text-[10px] text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                </div>
+                <Badge className="ml-auto bg-primary/10 text-primary border-0 text-[10px] font-bold px-2">
+                  {focusItems.length} item{focusItems.length > 1 ? 's' : ''}
+                </Badge>
+              </div>
+              <div className="divide-y divide-border">
+                {focusItems.map((item, i) => {
+                  const urgencyStyles = {
+                    high: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-l-destructive', badge: 'bg-destructive/10 text-destructive' },
+                    medium: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-l-warning', badge: 'bg-warning/10 text-warning' },
+                    low: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-l-primary', badge: 'bg-primary/10 text-primary' },
+                  }[item.urgency];
+
+                  return (
+                    <Link key={item.id} to={item.link || '/'} className="block">
+                      <motion.div
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.06 }}
+                        className={`px-5 py-3.5 hover:bg-muted/30 transition-all group border-l-[3px] ${urgencyStyles.border}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${urgencyStyles.bg}`}>
+                            <item.icon className={`h-4 w-4 ${urgencyStyles.text}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
+                          </div>
+                          <Badge className={`text-[10px] px-2 py-0.5 border-0 font-semibold ${urgencyStyles.badge}`}>
+                            {item.urgency === 'high' ? 'Urgent' : item.urgency === 'medium' ? 'Today' : 'Action'}
+                          </Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+                        </div>
+                      </motion.div>
+                    </Link>
+                  );
+                })}
+              </div>
             </Card>
           </motion.div>
         )}

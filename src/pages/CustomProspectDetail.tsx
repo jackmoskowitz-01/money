@@ -106,6 +106,17 @@ const CustomProspectDetail = () => {
             </p>
           </div>
 
+          {/* AI Company Enrichment */}
+          <div className="mb-6">
+            <ProspectEnrichmentCard
+              prospectId={prospectId!}
+              companyName={prospect.name}
+              website={prospect.website}
+              address={prospect.address}
+              cachedEnrichment={prospect.enrichment}
+            />
+          </div>
+
           {/* Email Composer */}
           <div className="mb-6">
             <EmailComposer

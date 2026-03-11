@@ -85,13 +85,35 @@ const CustomProspectDetail = () => {
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [customEmailKeys, setCustomEmailKeys] = useState<string[]>([]);
 
-  // Auto-generated outreach reasons from enrichment
-  const [outreachReasons, setOutreachReasons] = useState<AutoOutreachReason[]>(() => {
+  // Auto-generated outreach reasons from enrichment + live news
+  const [enrichmentReasons, setEnrichmentReasons] = useState<AutoOutreachReason[]>(() => {
     return buildReasonsFromEnrichment(prospect?.enrichment);
   });
+  const [newsReasons, setNewsReasons] = useState<AutoOutreachReason[]>([]);
+
+  const outreachReasons = useMemo(() => {
+    // Merge enrichment reasons + live news reasons, deduplicate by id
+    const all = [...enrichmentReasons, ...newsReasons];
+    const seen = new Set<string>();
+    return all.filter(r => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+  }, [enrichmentReasons, newsReasons]);
 
   const handleEnriched = useCallback((enrichment: ProspectEnrichment) => {
-    setOutreachReasons(buildReasonsFromEnrichment(enrichment));
+    setEnrichmentReasons(buildReasonsFromEnrichment(enrichment));
+  }, []);
+
+  const handleNewsLoaded = useCallback((newsItems: { id: string; title: string; summary: string; category: string; relevanceScore?: number }[]) => {
+    const reasons: AutoOutreachReason[] = newsItems.map(item => ({
+      id: `live-news-${item.id}`,
+      title: item.title,
+      description: item.summary,
+      urgency: (item.relevanceScore && item.relevanceScore >= 70) ? 'high' as const : 'medium' as const,
+    }));
+    setNewsReasons(reasons);
   }, []);
 
   const recipients: EmailRecipient[] = useMemo(() => {

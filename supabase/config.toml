@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.meeting-prep]
 verify_jwt = false
+
+[functions.scan-company-news]
+verify_jwt = false

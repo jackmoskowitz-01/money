@@ -35,6 +35,15 @@ const allIndustries = (() => {
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
+const COMPANY_NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scan-company-news`;
+
+type CompanyNewsItem = NewsItem & {
+  matchedCompanyId?: string;
+  matchedCompanyName?: string;
+  matchedBuildingId?: string;
+  relevanceScore?: number;
+  url?: string;
+};
 
 type ProspectMatch = { tenant: Tenant; building: Building };
 
@@ -145,7 +154,9 @@ const News = () => {
   const [customIntelItems, setCustomIntelItems] = useState<NewsItem[]>([]);
   const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(null);
+  const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>([]);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
@@ -170,6 +181,49 @@ const News = () => {
       return n;
     });
   };
+
+  const fetchCompanyNews = useCallback(async () => {
+    setCompanyNewsLoading(true);
+    try {
+      // Build company list from all non-client tenants
+      const companies = buildings.flatMap(b =>
+        b.tenants.filter(t => !t.isClient).map(t => ({
+          id: t.id,
+          name: t.name,
+          buildingId: b.id,
+        }))
+      );
+
+      const resp = await fetch(COMPANY_NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ companies }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to scan company news');
+      }
+      const data = await resp.json();
+      if (data.companyNews && Array.isArray(data.companyNews)) {
+        // Map company news to have relatedTenants for prospect matching
+        const mapped: CompanyNewsItem[] = data.companyNews.map((cn: CompanyNewsItem) => ({
+          ...cn,
+          relatedTenants: cn.matchedCompanyId ? [cn.matchedCompanyId] : undefined,
+          relatedBuildings: cn.matchedBuildingId ? [cn.matchedBuildingId] : undefined,
+        }));
+        setCompanyNews(mapped);
+        toast.success(`Found news for ${mapped.length} companies`);
+      }
+    } catch (e) {
+      console.error('Failed to scan company news:', e);
+      toast.error('Company news scan failed');
+    } finally {
+      setCompanyNewsLoading(false);
+    }
+  }, []);
 
   const fetchLiveNews = useCallback(async () => {
     setNewsLoading(true);
@@ -202,9 +256,14 @@ const News = () => {
 
   useEffect(() => {
     fetchLiveNews();
-  }, [fetchLiveNews]);
+    fetchCompanyNews();
+  }, [fetchLiveNews, fetchCompanyNews]);
 
-  const currentNews: NewsItem[] = useMemo(() => [...customIntelItems, ...(liveNews || staticNewsItems)], [customIntelItems, liveNews]);
+  const currentNews: NewsItem[] = useMemo(() => {
+    // Merge: custom intel first, then company-specific news, then market news
+    const marketNews = liveNews || staticNewsItems;
+    return [...customIntelItems, ...companyNews, ...marketNews];
+  }, [customIntelItems, companyNews, liveNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();
@@ -528,11 +587,21 @@ const News = () => {
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 text-xs"
-                onClick={fetchLiveNews}
-                disabled={newsLoading}
+                onClick={fetchCompanyNews}
+                disabled={companyNewsLoading}
+              >
+                <Search className={`h-3.5 w-3.5 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
+                Scan Companies
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => { fetchLiveNews(); fetchCompanyNews(); }}
+                disabled={newsLoading || companyNewsLoading}
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
-                Refresh
+                Refresh All
               </Button>
             </div>
           </div>
@@ -667,10 +736,16 @@ const News = () => {
               </div>
             </div>
 
-            {newsLoading && (
+            {(newsLoading || companyNewsLoading) && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-xs text-primary">Fetching latest market news...</span>
+                <span className="text-xs text-primary">
+                  {newsLoading && companyNewsLoading
+                    ? 'Searching real-time market news & scanning your companies...'
+                    : newsLoading
+                    ? 'Searching real-time market news via Perplexity...'
+                    : 'Scanning your companies for recent news...'}
+                </span>
               </div>
             )}
 
@@ -682,6 +757,8 @@ const News = () => {
               <div className="space-y-0">
                 {filteredNews.map((news, i) => {
                   const isCustomIntel = news.id.startsWith('custom-intel-');
+                  const isCompanyNews = news.id.startsWith('cn');
+                  const companyItem = isCompanyNews ? (news as CompanyNewsItem) : null;
                   const autoProspects = getAffectedProspects(news);
                   const manual = manualProspects[news.id] || [];
                   const customs = customProspects[news.id] || [];
@@ -717,6 +794,22 @@ const News = () => {
                           <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[8px] py-0">
                             Your Intel
                           </Badge>
+                        )}
+                        {isCompanyNews && companyItem?.matchedCompanyName && (
+                          <Badge variant="outline" className="bg-accent text-accent-foreground text-[8px] py-0">
+                            📡 {companyItem.matchedCompanyName}
+                          </Badge>
+                        )}
+                        {(news as any).url && (
+                          <a
+                            href={(news as any).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-2.5 w-2.5" /> Source
+                          </a>
                         )}
                       </div>
 

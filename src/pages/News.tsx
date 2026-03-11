@@ -35,6 +35,15 @@ const allIndustries = (() => {
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 const NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-market-news`;
+const COMPANY_NEWS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scan-company-news`;
+
+type CompanyNewsItem = NewsItem & {
+  matchedCompanyId?: string;
+  matchedCompanyName?: string;
+  matchedBuildingId?: string;
+  relevanceScore?: number;
+  url?: string;
+};
 
 type ProspectMatch = { tenant: Tenant; building: Building };
 

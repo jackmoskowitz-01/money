@@ -49,23 +49,38 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
 
   const usedReasons = getUsedOutreachReasons(tenantId);
 
-  // Build contacts list: primary contact from this tenant + all contacts from same building
+  // Build contacts list: only contacts from THIS company/tenant
   const contacts = useMemo<Contact[]>(() => {
     const building = buildings.find(b => b.id === buildingId);
-    if (!building) return [];
+    const tenant = building?.tenants.find(t => t.id === tenantId);
+    if (!tenant) return [];
+
     const list: Contact[] = [];
-    building.tenants.forEach(t => {
+
+    // Primary contact from mock data
+    list.push({
+      id: tenant.id,
+      name: tenant.contactName,
+      title: tenant.contactTitle,
+      email: tenant.contactEmail,
+      tenantName: tenant.name,
+      isPrimary: true,
+    });
+
+    // Additional contacts added via CompanyContacts manager
+    const customContacts = getContacts(tenantId);
+    customContacts.forEach(cc => {
       list.push({
-        id: t.id,
-        name: t.contactName,
-        title: t.contactTitle,
-        email: t.contactEmail,
-        tenantName: t.name,
-        isPrimary: t.id === tenantId,
+        id: cc.id,
+        name: cc.name,
+        title: cc.title,
+        email: cc.email,
+        tenantName: tenant.name,
+        isPrimary: false,
       });
     });
-    // Sort: primary first
-    return list.sort((a, b) => (a.isPrimary ? -1 : b.isPrimary ? 1 : 0));
+
+    return list;
   }, [buildingId, tenantId]);
 
   const needsContacts = contactRequiredTypes.includes(newType);

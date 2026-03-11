@@ -28,6 +28,7 @@ interface Props {
   tenantId: string;
   buildingId: string;
   outreachReasonTitles: string[];
+  contactsVersion?: number;
 }
 
 type Contact = {
@@ -39,7 +40,7 @@ type Contact = {
   isPrimary: boolean;
 };
 
-const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
+const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersion = 0 }: Props) => {
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities(tenantId));
   const [showForm, setShowForm] = useState(false);
   const [formStep, setFormStep] = useState<'details' | 'contacts'>('details');
@@ -82,7 +83,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
     });
 
     return list;
-  }, [buildingId, tenantId]);
+  }, [buildingId, tenantId, contactsVersion]);
 
   const needsContacts = contactRequiredTypes.includes(newType);
 

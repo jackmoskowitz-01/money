@@ -83,7 +83,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
     });
 
     return list;
-  }, [buildingId, tenantId]);
+  }, [buildingId, tenantId, contactsVersion]);
 
   const needsContacts = contactRequiredTypes.includes(newType);
 

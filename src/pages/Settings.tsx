@@ -33,8 +33,18 @@ const Settings = () => {
   });
 
   const [appearance, setAppearance] = useState({
-    darkMode: true,
+    darkMode: !document.documentElement.classList.contains('light'),
   });
+
+  useEffect(() => {
+    if (appearance.darkMode) {
+      document.documentElement.classList.remove('light');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.add('light');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [appearance.darkMode]);
 
   const [workflow, setWorkflow] = useState({
     defaultMarket: 'dc-metro',

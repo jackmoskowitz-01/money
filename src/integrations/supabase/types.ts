@@ -14,6 +14,99 @@ export type Database = {
   }
   public: {
     Tables: {
+      activities: {
+        Row: {
+          building_id: string
+          description: string
+          id: string
+          outreach_reason_used: string | null
+          tenant_id: string
+          timestamp: string
+          title: string
+          type: string
+        }
+        Insert: {
+          building_id?: string
+          description?: string
+          id?: string
+          outreach_reason_used?: string | null
+          tenant_id: string
+          timestamp?: string
+          title?: string
+          type: string
+        }
+        Update: {
+          building_id?: string
+          description?: string
+          id?: string
+          outreach_reason_used?: string | null
+          tenant_id?: string
+          timestamp?: string
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      broker_assignments: {
+        Row: {
+          assigned_at: string
+          broker_id: string
+          broker_name: string
+          building_id: string
+          id: string
+          tenant_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          broker_id: string
+          broker_name: string
+          building_id: string
+          id?: string
+          tenant_id: string
+        }
+        Update: {
+          assigned_at?: string
+          broker_id?: string
+          broker_name?: string
+          building_id?: string
+          id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      company_contacts: {
+        Row: {
+          created_at: string
+          direct_phone: string | null
+          email: string
+          entity_id: string
+          id: string
+          mobile_phone: string | null
+          name: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          direct_phone?: string | null
+          email?: string
+          entity_id: string
+          id?: string
+          mobile_phone?: string | null
+          name: string
+          title?: string
+        }
+        Update: {
+          created_at?: string
+          direct_phone?: string | null
+          email?: string
+          entity_id?: string
+          id?: string
+          mobile_phone?: string | null
+          name?: string
+          title?: string
+        }
+        Relationships: []
+      }
       pipeline_deals: {
         Row: {
           building_id: string
@@ -65,6 +158,30 @@ export type Database = {
           stage?: string
           tenant_id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_initials: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+        }
+        Insert: {
+          avatar_initials?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id: string
+        }
+        Update: {
+          avatar_initials?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
         }
         Relationships: []
       }
@@ -215,6 +332,45 @@ export type Database = {
           tags?: string[]
           updated_at?: string
           verified?: boolean
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          building_id: string | null
+          completed: boolean
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          priority: string
+          tenant_id: string | null
+          title: string
+          type: string
+        }
+        Insert: {
+          building_id?: string | null
+          completed?: boolean
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          priority?: string
+          tenant_id?: string | null
+          title: string
+          type?: string
+        }
+        Update: {
+          building_id?: string | null
+          completed?: boolean
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          priority?: string
+          tenant_id?: string | null
+          title?: string
+          type?: string
         }
         Relationships: []
       }

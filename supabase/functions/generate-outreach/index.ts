@@ -14,14 +14,22 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Calculate the Monday of the week two weeks from now
-    const twoWeeksFromNow = new Date();
-    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
-    const dayOfWeek = twoWeeksFromNow.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
-    const mondayOfThatWeek = new Date(twoWeeksFromNow);
-    mondayOfThatWeek.setDate(twoWeeksFromNow.getDate() - daysToMonday);
-    const weekOfDate = mondayOfThatWeek.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    // Calculate the Monday two Mondays from now
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ...
+    const daysToNextMonday = (8 - dayOfWeek) % 7 || 7;
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysToNextMonday);
+    const twoMondaysOut = new Date(nextMonday);
+    twoMondaysOut.setDate(nextMonday.getDate() + 7);
+    const monthName = twoMondaysOut.toLocaleDateString('en-US', { month: 'long' });
+    const dayNum = twoMondaysOut.getDate();
+    const ordinal = (n: number) => {
+      const s = ['th','st','nd','rd'];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+    const weekOfDate = `${monthName} ${ordinal(dayNum)}`;
 
     const systemPrompt = `You are an expert commercial real estate broker writing personalized outreach emails. Write in PLAIN TEXT only — no markdown, no asterisks, no bold, no formatting characters whatsoever. You write compelling, professional emails that are:
 - Specific to the tenant's situation and market conditions

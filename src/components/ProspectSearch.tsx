@@ -52,6 +52,21 @@ const ProspectSearch = () => {
   const [view, setView] = useState<'search' | 'create'>('search');
   const [customProspects, setCustomProspects] = useState<CustomProspect[]>(() => getCustomProspects());
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Refresh custom prospects when search opens or storage changes
+  useEffect(() => {
+    if (isOpen) setCustomProspects(getCustomProspects());
+  }, [isOpen]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'dealflow-custom-prospects') {
+        setCustomProspects(getCustomProspects());
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 

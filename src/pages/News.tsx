@@ -587,11 +587,21 @@ const News = () => {
                 variant="outline"
                 size="sm"
                 className="h-8 gap-1.5 text-xs"
-                onClick={fetchLiveNews}
-                disabled={newsLoading}
+                onClick={fetchCompanyNews}
+                disabled={companyNewsLoading}
+              >
+                <Search className={`h-3.5 w-3.5 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
+                Scan Companies
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                onClick={() => { fetchLiveNews(); fetchCompanyNews(); }}
+                disabled={newsLoading || companyNewsLoading}
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
-                Refresh
+                Refresh All
               </Button>
             </div>
           </div>

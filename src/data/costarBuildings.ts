@@ -537,7 +537,7 @@ function buildCostarBuildings(): Building[] {
   const seenAddresses = new Set<string>();
 
   rawBuildings.forEach((raw, index) => {
-    const [address, name, cls, sqft, floors, yearBuilt, vacancyRate, owner, lastSaleDate, lastSalePrice, submarket] = raw;
+    const [address, name, cls, sqft, floors, yearBuilt, vacancyRate, leasingBroker, lastSaleDate, lastSalePrice, submarket] = raw;
     const normalizedAddr = address.toLowerCase().replace(/\s+/g, ' ').trim();
 
     // Skip duplicates with existing mock data

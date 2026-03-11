@@ -24,6 +24,7 @@ type Props = {
   companyName: string;
   buildingId?: string;
   onOutreachTrigger?: (title: string, summary: string) => void;
+  onNewsLoaded?: (news: CompanyNewsItem[]) => void;
 };
 
 const categoryColors: Record<string, string> = {

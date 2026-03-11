@@ -795,6 +795,22 @@ const News = () => {
                             Your Intel
                           </Badge>
                         )}
+                        {isCompanyNews && companyItem?.matchedCompanyName && (
+                          <Badge variant="outline" className="bg-accent text-accent-foreground text-[8px] py-0">
+                            📡 {companyItem.matchedCompanyName}
+                          </Badge>
+                        )}
+                        {(news as any).url && (
+                          <a
+                            href={(news as any).url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+                            onClick={e => e.stopPropagation()}
+                          >
+                            <ExternalLink className="h-2.5 w-2.5" /> Source
+                          </a>
+                        )}
                       </div>
 
                       <Card className={`border-border bg-card overflow-hidden transition-all ${

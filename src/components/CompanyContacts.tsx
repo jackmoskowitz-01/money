@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, User, Mail, Phone, Briefcase, X, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, User, Mail, Phone, X, ChevronDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import {
-  getContacts, addContact, removeContact,
+  getContactsAsync, addContact, removeContact,
   type CompanyContact,
 } from '@/data/companyContacts';
 
@@ -23,10 +23,17 @@ interface Props {
 }
 
 const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) => {
-  const [contacts, setContacts] = useState<CompanyContact[]>(() => getContacts(entityId));
+  const [contacts, setContacts] = useState<CompanyContact[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const loadContacts = useCallback(async () => {
+    const data = await getContactsAsync(entityId);
+    setContacts(data);
+  }, [entityId]);
+
+  useEffect(() => { loadContacts(); }, [loadContacts]);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -42,28 +49,36 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
     return Object.keys(e).length === 0;
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!validate()) return;
-    const contact = addContact(entityId, {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      title: form.title.trim(),
-      mobilePhone: form.mobilePhone.trim() || undefined,
-      directPhone: form.directPhone.trim() || undefined,
-    });
-    setContacts([...contacts, contact]);
-    setForm({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
-    setErrors({});
-    setShowForm(false);
-    toast.success(`${contact.name} added as contact`);
-    onContactsChange?.();
+    try {
+      const contact = await addContact(entityId, {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        title: form.title.trim(),
+        mobilePhone: form.mobilePhone.trim() || undefined,
+        directPhone: form.directPhone.trim() || undefined,
+      });
+      setContacts(prev => [...prev, contact]);
+      setForm({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
+      setErrors({});
+      setShowForm(false);
+      toast.success(`${contact.name} added as contact`);
+      onContactsChange?.();
+    } catch (err) {
+      toast.error('Failed to add contact');
+    }
   };
 
-  const handleRemove = (id: string) => {
-    removeContact(entityId, id);
-    setContacts(contacts.filter(c => c.id !== id));
-    toast.success('Contact removed');
-    onContactsChange?.();
+  const handleRemove = async (id: string) => {
+    try {
+      await removeContact(entityId, id);
+      setContacts(contacts.filter(c => c.id !== id));
+      toast.success('Contact removed');
+      onContactsChange?.();
+    } catch {
+      toast.error('Failed to remove contact');
+    }
   };
 
   const totalContacts = (primaryContact ? 1 : 0) + contacts.length;
@@ -82,7 +97,6 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
       </CollapsibleTrigger>
 
       <CollapsibleContent className="mt-2 space-y-2">
-        {/* Primary contact */}
         {primaryContact && (
           <div className="flex items-center gap-3 rounded-md border border-border bg-secondary/20 p-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -99,7 +113,6 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
           </div>
         )}
 
-        {/* Additional contacts */}
         <AnimatePresence>
           {contacts.map(contact => (
             <motion.div
@@ -141,7 +154,6 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
           ))}
         </AnimatePresence>
 
-        {/* Add form */}
         <AnimatePresence>
           {showForm && (
             <motion.div
@@ -158,60 +170,28 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
                 </div>
 
                 <div>
-                  <Input
-                    placeholder="Full name *"
-                    value={form.name}
-                    onChange={e => setForm({ ...form, name: e.target.value })}
-                    className="border-border bg-secondary/50 text-xs h-8"
-                  />
+                  <Input placeholder="Full name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
                   {errors.name && <p className="text-[10px] text-destructive mt-0.5">{errors.name}</p>}
                 </div>
-
                 <div>
-                  <Input
-                    placeholder="Email *"
-                    type="email"
-                    value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    className="border-border bg-secondary/50 text-xs h-8"
-                  />
+                  <Input placeholder="Email *" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
                   {errors.email && <p className="text-[10px] text-destructive mt-0.5">{errors.email}</p>}
                 </div>
-
                 <div>
-                  <Input
-                    placeholder="Title *"
-                    value={form.title}
-                    onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="border-border bg-secondary/50 text-xs h-8"
-                  />
+                  <Input placeholder="Title *" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
                   {errors.title && <p className="text-[10px] text-destructive mt-0.5">{errors.title}</p>}
                 </div>
-
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Input
-                      placeholder="Mobile phone"
-                      value={form.mobilePhone}
-                      onChange={e => setForm({ ...form, mobilePhone: e.target.value })}
-                      className="border-border bg-secondary/50 text-xs h-8"
-                    />
+                    <Input placeholder="Mobile phone" value={form.mobilePhone} onChange={e => setForm({ ...form, mobilePhone: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
                     {errors.mobilePhone && <p className="text-[10px] text-destructive mt-0.5">{errors.mobilePhone}</p>}
                   </div>
                   <div>
-                    <Input
-                      placeholder="Direct phone"
-                      value={form.directPhone}
-                      onChange={e => setForm({ ...form, directPhone: e.target.value })}
-                      className="border-border bg-secondary/50 text-xs h-8"
-                    />
+                    <Input placeholder="Direct phone" value={form.directPhone} onChange={e => setForm({ ...form, directPhone: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
                     {errors.directPhone && <p className="text-[10px] text-destructive mt-0.5">{errors.directPhone}</p>}
                   </div>
                 </div>
-
-                <Button size="sm" onClick={handleAdd} className="w-full text-xs h-8">
-                  Add Contact
-                </Button>
+                <Button size="sm" onClick={handleAdd} className="w-full text-xs h-8">Add Contact</Button>
               </Card>
             </motion.div>
           )}

@@ -447,17 +447,19 @@ const EmailDisplay = ({
           </div>
         </div>
 
-        {/* Selected Subject Line */}
-        {selectedSubject && (
+        {/* Displayed Subject Line (extracted from AI or manually selected) */}
+        {(selectedSubject || parsedSubject) && !isEditing && (
           <div className="mb-2 flex items-center gap-2 rounded-md bg-primary/5 border border-primary/20 px-2.5 py-1.5">
             <Hash className="h-3 w-3 text-primary shrink-0" />
-            <span className="text-[10px] font-medium text-foreground flex-1 truncate">{selectedSubject}</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); setSelectedSubject(null); }}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-2.5 w-2.5" />
-            </button>
+            <span className="text-[10px] font-medium text-foreground flex-1 truncate">{selectedSubject || parsedSubject}</span>
+            {selectedSubject && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setSelectedSubject(null); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
           </div>
         )}
 

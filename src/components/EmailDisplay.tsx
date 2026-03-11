@@ -586,7 +586,7 @@ const EmailDisplay = ({
           />
         ) : (
           <div className="whitespace-pre-wrap text-[11px] leading-relaxed text-foreground/90">
-            {emailContent || (isGenerating ? 'Generating...' : '')}
+            {displayBody || (isGenerating ? 'Generating...' : '')}
           </div>
         )}
       </div>

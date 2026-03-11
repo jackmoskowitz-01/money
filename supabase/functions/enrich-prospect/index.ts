@@ -101,9 +101,6 @@ Return this exact shape:
   "headquarters": "string - HQ city/state",
   "officeLocations": ["array of office location strings"],
   "description": "string - 2-3 sentence company overview",
-  "keyContacts": [
-    { "name": "string", "title": "string", "relevance": "string - why this person matters for CRE" }
-  ],
   "recentNews": [
     { "headline": "string", "date": "YYYY-MM-DD", "summary": "string", "signal": "string - growth|contraction|neutral|opportunity" }
   ],
@@ -116,7 +113,7 @@ Return this exact shape:
   "confidenceScore": 0-100
 }
 
-Only include data you found in the research. Use null for unknown fields. Do not fabricate.`,
+Only include data you found in the research. Use null for unknown fields. Do not fabricate. Do NOT include key contacts or decision makers.`,
           },
           {
             role: "user",

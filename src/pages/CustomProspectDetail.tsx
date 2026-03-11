@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { getCustomProspect } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
+import ProspectEnrichmentCard from '@/components/ProspectEnrichmentCard';
 import { getActivities, addActivity, activityTypeLabels, activityTypeIcons, type ActivityType, type ActivityEntry } from '@/data/activityData';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -103,6 +104,17 @@ const CustomProspectDetail = () => {
             <p className="mt-1 text-[11px] text-muted-foreground/60 flex items-center gap-1">
               <Calendar className="h-3 w-3" /> Created {format(new Date(prospect.createdAt), 'MMM d, yyyy')}
             </p>
+          </div>
+
+          {/* AI Company Enrichment */}
+          <div className="mb-6">
+            <ProspectEnrichmentCard
+              prospectId={prospectId!}
+              companyName={prospect.name}
+              website={prospect.website}
+              address={prospect.address}
+              cachedEnrichment={prospect.enrichment}
+            />
           </div>
 
           {/* Email Composer */}

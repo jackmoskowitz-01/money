@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
-import { getActivities, getTasks, getAssignments, brokers } from '@/data/activityData';
+import { getActivities, getTasks, getAssignments } from '@/data/activityData';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -5,7 +5,8 @@ import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, Tr
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
 import { getPipeline } from '@/data/pipelineData';
-import { buildingSubmarkets, getSubmarketNews, brokers, assignTenant, type Broker } from '@/data/activityData';
+import { buildingSubmarkets, getSubmarketNews, assignTenant, type Broker } from '@/data/activityData';
+import { useBrokers } from '@/hooks/useBrokers';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

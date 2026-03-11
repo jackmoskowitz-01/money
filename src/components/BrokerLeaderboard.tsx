@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getActivities, getAssignments, brokers } from '@/data/activityData';
+import { getActivities, getAssignments } from '@/data/activityData';
 import { getPipeline } from '@/data/pipelineData';
+import { useBrokers } from '@/hooks/useBrokers';
 
 const BROKER_COLORS = [
   'hsl(38, 92%, 55%)',
@@ -14,7 +15,7 @@ const BROKER_COLORS = [
 
 type TimeRange = 'week' | 'month';
 
-const useStats = (rangeMs: number) => {
+const useStats = (brokers: ReturnType<typeof useBrokers>, rangeMs: number) => {
   const activities = getActivities();
   const assignments = getAssignments();
   const pipeline = getPipeline();

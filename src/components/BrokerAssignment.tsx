@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { brokers, getAssignmentForTenant, assignTenant, type Broker } from '@/data/activityData';
+import { getAssignmentForTenant, assignTenant, type Broker } from '@/data/activityData';
+import { useBrokers } from '@/hooks/useBrokers';
 
 interface Props {
   tenantId: string;

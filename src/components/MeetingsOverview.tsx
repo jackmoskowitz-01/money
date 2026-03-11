@@ -5,7 +5,8 @@ import { Calendar, MapPin, Clock, ArrowRight } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getPipeline, stageLabels, type PipelineItem } from '@/data/pipelineData';
-import { getAssignments, brokers, getTasks } from '@/data/activityData';
+import { getAssignments, getTasks } from '@/data/activityData';
+import { useBrokers } from '@/hooks/useBrokers';
 import { buildings } from '@/data/mockData';
 
 const MeetingsOverview = () => {

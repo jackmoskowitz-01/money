@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { getCustomProspect } from '@/data/customProspects';
+import { getCustomProspect, type ProspectEnrichment } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
 import EmailDisplay from '@/components/EmailDisplay';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
@@ -25,6 +25,45 @@ import { addActivity } from '@/data/activityData';
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
+
+type AutoOutreachReason = { id: string; title: string; description: string; urgency: 'high' | 'medium' | 'low' };
+
+const buildReasonsFromEnrichment = (enrichment?: ProspectEnrichment): AutoOutreachReason[] => {
+  if (!enrichment) return [];
+  const reasons: AutoOutreachReason[] = [];
+
+  // CRE signals → high urgency outreach reasons
+  enrichment.creSignals?.forEach((signal, i) => {
+    reasons.push({
+      id: `cre-signal-${i}`,
+      title: signal.length > 60 ? signal.slice(0, 57) + '...' : signal,
+      description: signal,
+      urgency: 'high',
+    });
+  });
+
+  // Recent news → medium urgency outreach reasons
+  enrichment.recentNews?.forEach((news, i) => {
+    reasons.push({
+      id: `news-${i}`,
+      title: news.headline,
+      description: news.summary,
+      urgency: news.signal === 'growth' || news.signal === 'opportunity' ? 'high' : 'medium',
+    });
+  });
+
+  // Space details → outreach angles
+  if (enrichment.spaceDetails?.leaseExpiration) {
+    reasons.push({
+      id: 'lease-exp',
+      title: `Lease expiring: ${enrichment.spaceDetails.leaseExpiration}`,
+      description: `Current lease is set to expire ${enrichment.spaceDetails.leaseExpiration}. This is a prime opportunity to discuss space options.`,
+      urgency: 'high',
+    });
+  }
+
+  return reasons;
+};
 
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
@@ -45,6 +84,15 @@ const CustomProspectDetail = () => {
   const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
   const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [customEmailKeys, setCustomEmailKeys] = useState<string[]>([]);
+
+  // Auto-generated outreach reasons from enrichment
+  const [outreachReasons, setOutreachReasons] = useState<AutoOutreachReason[]>(() => {
+    return buildReasonsFromEnrichment(prospect?.enrichment);
+  });
+
+  const handleEnriched = useCallback((enrichment: ProspectEnrichment) => {
+    setOutreachReasons(buildReasonsFromEnrichment(enrichment));
+  }, []);
 
   const recipients: EmailRecipient[] = useMemo(() => {
     const list: EmailRecipient[] = [];
@@ -189,9 +237,6 @@ const CustomProspectDetail = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold">{prospect.name}</h1>
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-accent text-accent-foreground">
-                  Custom Prospect
-                </Badge>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                 <span className="flex items-center gap-1">
@@ -287,6 +332,76 @@ const CustomProspectDetail = () => {
                   </button>
                 )}
               </div>
+
+              {/* Auto-generated Outreach Reasons from Enrichment */}
+              {outreachReasons.length > 0 && (
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
+                    <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                      <Zap className="h-3.5 w-3.5 text-primary" /> Outreach Reasons
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{outreachReasons.length}</Badge>
+                    </p>
+                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-1.5">
+                    {outreachReasons
+                      .sort((a, b) => {
+                        const order = { high: 0, medium: 1, low: 2 };
+                        return order[a.urgency] - order[b.urgency];
+                      })
+                      .map(reason => {
+                        const key = `${prospectId}-reason-${reason.id}`;
+                        const isGenerating = generatingKey === key;
+                        const hasEmail = !!generatedEmails[key];
+                        const urgencyColors = {
+                          high: 'bg-destructive/10 text-destructive border-destructive/20',
+                          medium: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+                          low: 'bg-muted text-muted-foreground border-border',
+                        };
+                        return (
+                          <div key={reason.id} className="space-y-2">
+                            <button
+                              onClick={() => generateEmail(reason.description, key)}
+                              disabled={isGenerating}
+                              className="w-full rounded-md border border-border bg-secondary/20 p-2.5 text-left transition-colors hover:bg-secondary/40 hover:border-primary/30 cursor-pointer"
+                            >
+                              <div className="flex items-start gap-2">
+                                <Zap className={`mt-0.5 h-3 w-3 shrink-0 ${reason.urgency === 'high' ? 'text-destructive' : 'text-muted-foreground'}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                    <p className="text-[11px] font-semibold text-foreground truncate">{reason.title}</p>
+                                    <Badge variant="outline" className={`text-[9px] px-1.5 py-0 shrink-0 capitalize ${urgencyColors[reason.urgency]}`}>
+                                      {reason.urgency}
+                                    </Badge>
+                                    {!hasEmail && <Mail className="h-3 w-3 shrink-0 text-primary/50 ml-auto" />}
+                                    {isGenerating && <Loader2 className="h-3 w-3 shrink-0 text-primary animate-spin ml-auto" />}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground leading-relaxed line-clamp-2">{reason.description}</p>
+                                </div>
+                              </div>
+                            </button>
+                            <AnimatePresence>
+                              {activeEmailKey === key && generatedEmails[key] !== undefined && (
+                                <EmailDisplay
+                                  emailKey={key}
+                                  emailContent={generatedEmails[key] || ''}
+                                  isGenerating={isGenerating}
+                                  label="Generated Email"
+                                  contactName={primaryContact?.name || prospect.name}
+                                  contactEmail={primaryContact?.email}
+                                  subject={`${prospect.name} — Outreach`}
+                                  recipients={recipients}
+                                  onClose={() => setActiveEmailKey(null)}
+                                  onUpdateEmail={updateEmail}
+                                />
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Custom Generated Emails */}
               {customEmailKeys.map(key => {
@@ -397,6 +512,7 @@ const CustomProspectDetail = () => {
                 website={prospect.website}
                 address={prospect.address}
                 cachedEnrichment={prospect.enrichment}
+                onEnriched={handleEnriched}
               />
             </div>
           </div>

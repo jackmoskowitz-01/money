@@ -86,11 +86,13 @@ const CustomProspectDetail = () => {
   const [customEmailKeys, setCustomEmailKeys] = useState<string[]>([]);
 
   // Auto-generated outreach reasons from enrichment
-  type OutreachReason = { id: string; title: string; description: string; urgency: 'high' | 'medium' | 'low' };
-  const [outreachReasons, setOutreachReasons] = useState<OutreachReason[]>(() => {
-    // Build from cached enrichment if available
+  const [outreachReasons, setOutreachReasons] = useState<AutoOutreachReason[]>(() => {
     return buildReasonsFromEnrichment(prospect?.enrichment);
   });
+
+  const handleEnriched = useCallback((enrichment: ProspectEnrichment) => {
+    setOutreachReasons(buildReasonsFromEnrichment(enrichment));
+  }, []);
 
   const recipients: EmailRecipient[] = useMemo(() => {
     const list: EmailRecipient[] = [];

@@ -28,6 +28,7 @@ interface Props {
   tenantId: string;
   buildingId: string;
   outreachReasonTitles: string[];
+  contactsVersion?: number;
 }
 
 type Contact = {

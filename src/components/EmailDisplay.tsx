@@ -81,15 +81,8 @@ const EmailDisplay = ({
 
   const openInEmailClient = (toEmails?: string[]) => {
     const to = toEmails ? toEmails.join(',') : (contactEmail || '');
-    let body = emailContent;
-    let extractedSubject = '';
-    const subjectLineMatch = body.match(/^Subject:\s*([^\n]*)\n*/i);
-    if (subjectLineMatch) {
-      extractedSubject = subjectLineMatch[1].trim();
-      body = body.slice(subjectLineMatch[0].length).trimStart();
-    }
-    const subj = selectedSubject || extractedSubject || subject || (label ? `Re: ${label}` : '');
-    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    const subj = selectedSubject || parsedSubject || subject || (label ? `Re: ${label}` : '');
+    const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(displayBody)}`;
     window.open(mailto, '_blank');
     toast.success('Opening email client...');
   };

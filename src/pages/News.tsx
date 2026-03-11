@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search,
   RefreshCw, FileText, Sparkles, ChevronDown, X, Filter, Clock, Bookmark, BookmarkCheck,
-  Zap, AlertTriangle, ArrowUpRight, BarChart3, Calendar, MapPin
+  Zap, AlertTriangle, BarChart3
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';

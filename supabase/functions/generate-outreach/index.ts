@@ -14,14 +14,22 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Calculate the Monday of the week two weeks from now
-    const twoWeeksFromNow = new Date();
-    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
-    const dayOfWeek = twoWeeksFromNow.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysToMonday = dayOfWeek === 0 ? 1 : (dayOfWeek === 1 ? 0 : 8 - dayOfWeek);
-    const mondayOfThatWeek = new Date(twoWeeksFromNow);
-    mondayOfThatWeek.setDate(twoWeeksFromNow.getDate() - daysToMonday);
-    const weekOfDate = mondayOfThatWeek.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    // Calculate the Monday two Mondays from now
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ...
+    const daysToNextMonday = (8 - dayOfWeek) % 7 || 7;
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysToNextMonday);
+    const twoMondaysOut = new Date(nextMonday);
+    twoMondaysOut.setDate(nextMonday.getDate() + 7);
+    const monthName = twoMondaysOut.toLocaleDateString('en-US', { month: 'long' });
+    const dayNum = twoMondaysOut.getDate();
+    const ordinal = (n: number) => {
+      const s = ['th','st','nd','rd'];
+      const v = n % 100;
+      return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    };
+    const weekOfDate = `${monthName} ${ordinal(dayNum)}`;
 
     const systemPrompt = `You are an expert commercial real estate broker writing personalized outreach emails. Write in PLAIN TEXT only — no markdown, no asterisks, no bold, no formatting characters whatsoever. You write compelling, professional emails that are:
 - Specific to the tenant's situation and market conditions
@@ -31,11 +39,14 @@ serve(async (req) => {
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
 
-CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?"
+CRITICAL FORMATTING RULES:
+- Always use "%" for percentages, NEVER spell out "percent". For example: "22%" not "22 percent".
+- When writing dates, always include the ordinal suffix. For example: "March 23rd", "April 1st", "May 2nd", not "March 23" or "April 1".
+- Sign off with "Best regards," (WITH a comma after "regards"), then the broker will add their name on the next line.
 
-${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}
+CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?" The date provided is always a Monday — do not change it.
 
-Sign off with just "Best regards" (the broker will add their name).`;
+${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}`;
 
     let userPrompt: string;
     if (isCustomProspect) {

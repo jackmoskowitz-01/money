@@ -214,26 +214,8 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
               </div>
             )}
 
-            {/* Key Contacts */}
-            {enrichment.keyContacts?.length > 0 && (
-              <div>
-                <h4 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Key Decision Makers</h4>
-                <div className="space-y-1.5">
-                  {enrichment.keyContacts.map((contact, i) => (
-                    <div key={i} className="flex items-start gap-2 rounded-md bg-secondary/20 p-2">
-                      <User className="h-3 w-3 text-muted-foreground mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-xs font-medium text-foreground">{contact.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{contact.title}</p>
-                        {contact.relevance && (
-                          <p className="text-[10px] text-primary/70 mt-0.5">{contact.relevance}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+
+
 
             {/* Recent News */}
             {enrichment.recentNews?.length > 0 && (

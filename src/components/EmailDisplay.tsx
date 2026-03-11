@@ -59,8 +59,21 @@ const EmailDisplay = ({
   const [showABVariant, setShowABVariant] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Extract subject from AI-generated content
+  const parsedSubject = (() => {
+    const match = emailContent.match(/^Subject:\s*([^\n]*)\n*/i);
+    return match ? match[1].trim() : '';
+  })();
+
+  const displayBody = (() => {
+    const match = emailContent.match(/^Subject:\s*[^\n]*\n*/i);
+    return match ? emailContent.slice(match[0].length).trimStart() : emailContent;
+  })();
+
   const copyEmail = () => {
-    navigator.clipboard.writeText(emailContent);
+    const subj = selectedSubject || parsedSubject || subject || '';
+    const text = subj ? `Subject: ${subj}\n\n${displayBody}` : emailContent;
+    navigator.clipboard.writeText(text);
     setCopied(true);
     toast.success('Email copied to clipboard');
     setTimeout(() => setCopied(false), 2000);

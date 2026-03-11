@@ -39,11 +39,14 @@ serve(async (req) => {
 - Written in a confident but not pushy tone
 - Reference specific market data and the tenant's situation
 
-CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?"
+CRITICAL FORMATTING RULES:
+- Always use "%" for percentages, NEVER spell out "percent". For example: "22%" not "22 percent".
+- When writing dates, always include the ordinal suffix. For example: "March 23rd", "April 1st", "May 2nd", not "March 23" or "April 1".
+- Sign off with "Best regards," (WITH a comma after "regards"), then the broker will add their name on the next line.
 
-${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}
+CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?" The date provided is always a Monday — do not change it.
 
-Sign off with just "Best regards" (the broker will add their name).`;
+${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}`;
 
     let userPrompt: string;
     if (isCustomProspect) {

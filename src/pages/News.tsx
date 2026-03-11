@@ -260,9 +260,9 @@ const News = () => {
   }, [fetchLiveNews, fetchCompanyNews]);
 
   const currentNews: NewsItem[] = useMemo(() => {
-    // Merge: custom intel first, then company-specific news, then market news
-    const marketNews = liveNews || staticNewsItems;
-    return [...customIntelItems, ...companyNews, ...marketNews];
+    const all = [...customIntelItems, ...companyNews, ...(liveNews || [])];
+    // Sort by date descending (newest first)
+    return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [customIntelItems, companyNews, liveNews]);
 
   const addCustomIntel = useCallback(() => {

@@ -459,6 +459,7 @@ const CustomProspectDetail = () => {
               <CompanyNewsCard
                 companyId={prospectId!}
                 companyName={prospect.name}
+                onNewsLoaded={handleNewsLoaded}
                 onOutreachTrigger={(title, summary) => {
                   setCustomReasonText(`${title} — ${summary}`);
                   setCustomReasonOpen(true);

@@ -125,23 +125,6 @@ const getTimeSince = (dateStr: string) => {
   return dateStr;
 };
 
-const getUrgencyScore = (tenant: Tenant): number => {
-  let score = 0;
-  const highReasons = tenant.outreachReasons.filter(r => r.urgency === 'high').length;
-  const medReasons = tenant.outreachReasons.filter(r => r.urgency === 'medium').length;
-  score += highReasons * 30 + medReasons * 10;
-  // Lease proximity bonus
-  const leaseDate = new Date(tenant.leaseExpiration);
-  const monthsLeft = (leaseDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30);
-  if (monthsLeft < 6) score += 40;
-  else if (monthsLeft < 12) score += 25;
-  else if (monthsLeft < 18) score += 10;
-  // SF bonus
-  if (tenant.sqft > 20000) score += 15;
-  else if (tenant.sqft > 10000) score += 8;
-  return Math.min(score, 100);
-};
-
 const News = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeIndustry, setActiveIndustry] = useState<string>('all');

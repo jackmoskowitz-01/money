@@ -40,7 +40,7 @@ type Contact = {
   isPrimary: boolean;
 };
 
-const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
+const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersion = 0 }: Props) => {
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities(tenantId));
   const [showForm, setShowForm] = useState(false);
   const [formStep, setFormStep] = useState<'details' | 'contacts'>('details');

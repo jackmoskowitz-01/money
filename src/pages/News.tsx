@@ -254,9 +254,19 @@ const News = () => {
     }
   }, []);
 
+  // Initial fetch + auto-refresh every 3 minutes for real-time news
   useEffect(() => {
     fetchLiveNews();
     fetchCompanyNews();
+
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing news feed...');
+      fetchLiveNews();
+      fetchCompanyNews();
+      setLastRefreshed(new Date());
+    }, 3 * 60 * 1000); // every 3 minutes
+
+    return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);
 
   const currentNews: NewsItem[] = useMemo(() => {

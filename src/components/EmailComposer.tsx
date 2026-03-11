@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Send, X, FileText, ChevronRight, Copy, Check, Pencil } from 'lucide-react';
+import { Mail, Send, X, ChevronRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -134,11 +134,11 @@ const EmailComposer = ({
     <div>
       <Button
         size="sm"
-        variant="outline"
-        className="text-xs h-8"
+        variant="default"
+        className="text-xs h-9 shadow-sm hover:shadow-md transition-shadow"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <FileText className="mr-1 h-3 w-3" /> Email Templates
+        <Mail className="mr-1.5 h-4 w-4" /> Email Templates
       </Button>
 
       <AnimatePresence>
@@ -164,21 +164,21 @@ const EmailComposer = ({
               {!selectedTemplateId ? (
                 <>
                   {/* Category Filters */}
-                  <div className="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-border">
+                  <div className="flex flex-wrap gap-2 px-4 py-3 border-b border-border bg-muted/30">
                     <button
                       onClick={() => setSelectedCategory(null)}
-                      className={`rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                        !selectedCategory ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                        !selectedCategory ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20' : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
                       }`}
                     >
-                      All
+                      All Templates
                     </button>
                     {categories.map(cat => (
                       <button
                         key={cat}
                         onClick={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
-                        className={`rounded-md px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                          selectedCategory === cat ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground hover:text-foreground'
+                        className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-all ${
+                          selectedCategory === cat ? 'bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20' : 'bg-background border border-border text-muted-foreground hover:text-foreground hover:border-primary/30'
                         }`}
                       >
                         {categoryLabels[cat]}
@@ -187,26 +187,28 @@ const EmailComposer = ({
                   </div>
 
                   {/* Template List */}
-                  <div className="max-h-[300px] overflow-y-auto p-2">
+                  <div className="max-h-[320px] overflow-y-auto p-3 space-y-1">
                     {filteredTemplates.map(template => (
                       <button
                         key={template.id}
                         onClick={() => selectTemplate(template.id)}
-                        className="w-full rounded-md px-3 py-2.5 text-left transition-colors hover:bg-secondary/70 group"
+                        className="w-full rounded-lg border border-border px-4 py-3 text-left transition-all hover:border-primary/30 hover:shadow-sm hover:bg-muted/20 group bg-card"
                       >
                         <div className="flex items-center gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="text-xs font-semibold text-foreground group-hover:text-primary">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                                 {template.name}
                               </p>
-                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${categoryColors[template.category]}`}>
+                              <Badge className={`text-[10px] px-2 py-0.5 font-medium border-0 ${categoryColors[template.category]}`}>
                                 {categoryLabels[template.category]}
                               </Badge>
                             </div>
-                            <p className="text-[10px] text-muted-foreground">{template.description}</p>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed">{template.description}</p>
                           </div>
-                          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 group-hover:text-primary" />
+                          <div className="shrink-0 w-7 h-7 rounded-full bg-muted flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                          </div>
                         </div>
                       </button>
                     ))}

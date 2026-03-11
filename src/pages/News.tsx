@@ -267,17 +267,15 @@ const News = () => {
     }
   }, []);
 
-  // Initial fetch + auto-refresh every 3 minutes for real-time news
+  // Initial fetch only if no cache; auto-refresh every 3 minutes
   useEffect(() => {
-    fetchLiveNews();
-    fetchCompanyNews();
+    if (!cachedLiveNews) fetchLiveNews();
+    if (cachedCompanyNews.length === 0) fetchCompanyNews();
 
     const interval = setInterval(() => {
-      console.log('Auto-refreshing news feed...');
       fetchLiveNews();
       fetchCompanyNews();
-      setLastRefreshed(new Date());
-    }, 3 * 60 * 1000); // every 3 minutes
+    }, 3 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);

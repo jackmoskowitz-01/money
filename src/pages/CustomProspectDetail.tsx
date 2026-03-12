@@ -16,6 +16,7 @@ import ProspectEnrichmentCard from '@/components/ProspectEnrichmentCard';
 import CompanyContacts from '@/components/CompanyContacts';
 import ActivityLog from '@/components/ActivityLog';
 import ResearchBrief from '@/components/ResearchBrief';
+import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';

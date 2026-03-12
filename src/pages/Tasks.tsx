@@ -14,6 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { buildings } from '@/data/mockData';
 import { useBuildings } from '@/hooks/useBuildings';
 import { useTasks, type TaskPriority, type TaskType, type Task } from '@/hooks/useTasks';
+import { getCustomProspects, type CustomProspect } from '@/data/customProspects';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import ProspectLists from '@/components/ProspectLists';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
@@ -326,7 +330,9 @@ const Tasks = () => {
                                   {(() => {
                                     const b = allBuildings.find(b => b.id === newTask.buildingId);
                                     const t = b?.tenants.find(t => t.id === newTask.tenantId);
-                                    return t ? `${t.name} — ${b?.name}` : 'Unknown';
+                                    if (t) return `${t.name} — ${b?.name}`;
+                                    const cp = getCustomProspects().find(p => p.id === newTask.tenantId);
+                                    return cp ? cp.name : 'Unknown';
                                   })()}
                                 </span>
                               </div>
@@ -346,41 +352,65 @@ const Tasks = () => {
                                 className={`border-border bg-secondary/50 ${!newTask.tenantId && prospectSearch === '' ? 'border-destructive/30 focus:ring-destructive/30' : ''}`}
                                 autoFocus
                               />
-                              {prospectSearch.length >= 2 && (
-                                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-                                  {allBuildings.flatMap(b =>
-                                    b.tenants
-                                      .filter(t =>
-                                        t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
-                                        b.name.toLowerCase().includes(prospectSearch.toLowerCase())
-                                      )
-                                      .map(t => (
-                                        <button
-                                          key={`${b.id}-${t.id}`}
-                                          onClick={() => {
-                                            setNewTask({ ...newTask, tenantId: t.id, buildingId: b.id });
-                                            setProspectSearch('');
-                                          }}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
-                                        >
-                                          <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                          <div className="min-w-0">
-                                            <p className="font-medium text-foreground truncate">{t.name}</p>
-                                            <p className="text-[11px] text-muted-foreground truncate">{b.name} · {t.industry}</p>
-                                          </div>
-                                        </button>
-                                      ))
-                                  ).slice(0, 8)}
-                                  {allBuildings.flatMap(b =>
-                                    b.tenants.filter(t =>
-                                      t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
-                                      b.name.toLowerCase().includes(prospectSearch.toLowerCase())
+                              {prospectSearch.length >= 2 && (() => {
+                                const query = prospectSearch.toLowerCase();
+                                // Building tenants
+                                const tenantResults = allBuildings.flatMap(b =>
+                                  b.tenants
+                                    .filter(t =>
+                                      t.name.toLowerCase().includes(query) ||
+                                      b.name.toLowerCase().includes(query)
                                     )
-                                  ).length === 0 && (
+                                    .map(t => ({
+                                      key: `${b.id}-${t.id}`,
+                                      id: t.id,
+                                      buildingId: b.id,
+                                      name: t.name,
+                                      subtitle: `${b.name} · ${t.industry}`,
+                                      isCustom: false,
+                                    }))
+                                );
+                                // Custom prospects
+                                const customProspects = getCustomProspects().filter(p =>
+                                  p.name.toLowerCase().includes(query)
+                                ).map(p => ({
+                                  key: `cp-${p.id}`,
+                                  id: p.id,
+                                  buildingId: '',
+                                  name: p.name,
+                                  subtitle: p.address || p.website || 'Custom prospect',
+                                  isCustom: true,
+                                }));
+                                const allResults = [...tenantResults, ...customProspects].slice(0, 10);
+
+                                return allResults.length > 0 ? (
+                                  <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                                    {allResults.map(r => (
+                                      <button
+                                        key={r.key}
+                                        onClick={() => {
+                                          setNewTask({ ...newTask, tenantId: r.id, buildingId: r.buildingId });
+                                          setProspectSearch('');
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
+                                      >
+                                        <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                        <div className="min-w-0">
+                                          <p className="font-medium text-foreground truncate">{r.name}</p>
+                                          <p className="text-[11px] text-muted-foreground truncate">{r.subtitle}</p>
+                                        </div>
+                                        {r.isCustom && (
+                                          <Badge variant="outline" className="ml-auto shrink-0 text-[9px]">Custom</Badge>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-md border border-border bg-card shadow-lg">
                                     <p className="px-3 py-2 text-xs text-muted-foreground">No matching prospects</p>
-                                  )}
-                                </div>
-                              )}
+                                  </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>
@@ -435,12 +465,33 @@ const Tasks = () => {
                         </div>
                         <div className="mb-3">
                           <label className="mb-1 block text-xs text-muted-foreground">Due Date</label>
-                          <Input
-                            type="date"
-                            value={newTask.dueDate}
-                            onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })}
-                            className="w-48 border-border bg-secondary/50"
-                          />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-56 justify-start text-left font-normal",
+                                  !newTask.dueDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {newTask.dueDate
+                                  ? format(new Date(newTask.dueDate + 'T12:00:00'), 'PPP')
+                                  : 'Pick a date'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={newTask.dueDate ? new Date(newTask.dueDate + 'T12:00:00') : undefined}
+                                onSelect={(date) => {
+                                  if (date) setNewTask({ ...newTask, dueDate: format(date, 'yyyy-MM-dd') });
+                                }}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>

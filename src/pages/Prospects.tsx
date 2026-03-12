@@ -7,6 +7,7 @@ import { getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachR
 import { useBuildings } from '@/hooks/useBuildings';
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews, assignTenant, type Broker } from '@/data/activityData';
+import { getUserGreeting } from '@/lib/getUserGreeting';
 import { useBrokers } from '@/hooks/useBrokers';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';

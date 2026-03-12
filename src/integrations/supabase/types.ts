@@ -374,6 +374,66 @@ export type Database = {
         }
         Relationships: []
       }
+      user_settings: {
+        Row: {
+          activity_categories: string
+          brokerage: string
+          created_at: string
+          dark_mode: boolean
+          default_market: string
+          email_greeting: string
+          email_signature: string
+          email_tone: string
+          id: string
+          meeting_lead_weeks: string
+          notify_new_scoops: boolean
+          notify_pipeline_changes: boolean
+          notify_task_reminders: boolean
+          notify_weekly_digest: boolean
+          phone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_categories?: string
+          brokerage?: string
+          created_at?: string
+          dark_mode?: boolean
+          default_market?: string
+          email_greeting?: string
+          email_signature?: string
+          email_tone?: string
+          id?: string
+          meeting_lead_weeks?: string
+          notify_new_scoops?: boolean
+          notify_pipeline_changes?: boolean
+          notify_task_reminders?: boolean
+          notify_weekly_digest?: boolean
+          phone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_categories?: string
+          brokerage?: string
+          created_at?: string
+          dark_mode?: boolean
+          default_market?: string
+          email_greeting?: string
+          email_signature?: string
+          email_tone?: string
+          id?: string
+          meeting_lead_weeks?: string
+          notify_new_scoops?: boolean
+          notify_pipeline_changes?: boolean
+          notify_task_reminders?: boolean
+          notify_weekly_digest?: boolean
+          phone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

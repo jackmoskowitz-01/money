@@ -61,6 +61,7 @@ const followUpDaysMap: Record<string, number> = {
 };
 
 const Tasks = () => {
+  const { buildings: allBuildings } = useBuildings();
   const navigate = useNavigate();
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
   const [currentMonth, setCurrentMonth] = useState(new Date());

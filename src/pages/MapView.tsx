@@ -1,18 +1,22 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { buildings as mockBuildings, type Building } from '@/data/mockData';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, CheckSquare, Square, Send } from 'lucide-react';
+import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MapView = () => {
+  const navigate = useNavigate();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);
@@ -125,6 +129,11 @@ const MapView = () => {
       b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
     );
   }, [searchQuery, allBuildingsList]);
+
+  // Clear tenant selections when building changes
+  useEffect(() => {
+    setSelectedTenants(new Set());
+  }, [selectedBuilding?.id]);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -332,6 +341,76 @@ const MapView = () => {
 
               <div className="mb-4">
                 <StackingPlan building={selectedBuilding} />
+              </div>
+
+              {/* Outreach Section */}
+              <div className="mb-4 rounded-md border border-border bg-secondary/20 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">Outreach</h4>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] px-2"
+                      onClick={() => {
+                        const allIds = selectedBuilding.tenants.filter(t => !t.isClient).map(t => t.id);
+                        if (selectedTenants.size === allIds.length) {
+                          setSelectedTenants(new Set());
+                        } else {
+                          setSelectedTenants(new Set(allIds));
+                        }
+                      }}
+                    >
+                      {selectedTenants.size === selectedBuilding.tenants.filter(t => !t.isClient).length && selectedTenants.size > 0
+                        ? 'Deselect All'
+                        : 'Select All'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="max-h-32 space-y-1 overflow-y-auto mb-2">
+                  {selectedBuilding.tenants.filter(t => !t.isClient).map(tenant => (
+                    <label
+                      key={tenant.id}
+                      className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs cursor-pointer hover:bg-secondary/40 transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedTenants.has(tenant.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedTenants(prev => {
+                            const next = new Set(prev);
+                            if (checked) next.add(tenant.id);
+                            else next.delete(tenant.id);
+                            return next;
+                          });
+                        }}
+                      />
+                      <span className="flex-1 truncate font-medium text-foreground">{tenant.name}</span>
+                      <span className="text-[10px] text-muted-foreground shrink-0">{tenant.industry}</span>
+                    </label>
+                  ))}
+                  {selectedBuilding.tenants.filter(t => !t.isClient).length === 0 && (
+                    <p className="text-[11px] text-muted-foreground text-center py-2">No prospects in this building</p>
+                  )}
+                </div>
+
+                {selectedTenants.size > 0 && (
+                  <Button
+                    size="sm"
+                    className="w-full text-xs h-8"
+                    onClick={() => {
+                      // Navigate to first selected tenant's detail page for outreach
+                      const firstId = Array.from(selectedTenants)[0];
+                      navigate(`/building/${selectedBuilding.id}/tenant/${firstId}`);
+                    }}
+                  >
+                    <Send className="mr-1.5 h-3 w-3" />
+                    Reach Out to {selectedTenants.size} {selectedTenants.size === 1 ? 'Tenant' : 'Tenants'}
+                  </Button>
+                )}
               </div>
 
               <h4 className="mb-2 text-sm font-semibold">Tenant List</h4>

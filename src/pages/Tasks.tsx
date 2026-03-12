@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { buildings } from '@/data/mockData';
-import {
-  getTasks, addTask, updateTask, deleteTask, getTaskCountsByDate,
-  type BrokerTask, type TaskPriority,
-} from '@/data/activityData';
+import { useTasks, type TaskPriority, type TaskType } from '@/hooks/useTasks';
 import ProspectLists from '@/components/ProspectLists';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
@@ -42,11 +40,11 @@ const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: 
 
 const Tasks = () => {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState<BrokerTask[]>(() => getTasks());
+  const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as BrokerTask['type'], priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd') });
+  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd') });
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   const taskCounts = useMemo(() => {
@@ -58,7 +56,6 @@ const Tasks = () => {
     return counts;
   }, [tasks]);
 
-  // Calendar grid
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const calStart = startOfWeek(monthStart);
@@ -66,7 +63,7 @@ const Tasks = () => {
   const calDays = eachDayOfInterval({ start: calStart, end: calEnd });
 
   const filteredTasks = useMemo(() => {
-    let t = tasks;
+    let t = [...tasks];
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
@@ -78,32 +75,47 @@ const Tasks = () => {
     });
   }, [tasks, filter, selectedDate]);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newTask.title.trim()) return;
-    const task = addTask({ ...newTask, completed: false });
-    setTasks([task, ...tasks]);
+    await addTask({ ...newTask, completed: false } as any);
     setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd') });
     setShowForm(false);
   };
 
-  const handleToggle = (id: string) => {
+  const handleToggle = async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-    updateTask(id, { completed: !task.completed });
-    setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    await updateTask(id, { completed: !task.completed });
   };
 
-  const handleDelete = (id: string) => {
-    deleteTask(id);
-    setTasks(tasks.filter(t => t.id !== id));
+  const handleDelete = async (id: string) => {
+    await deleteTask(id);
   };
 
-  const getTenantInfo = (task: BrokerTask) => {
+  const getTenantInfo = (task: { tenantId?: string; buildingId?: string }) => {
     if (!task.tenantId || !task.buildingId) return null;
     const building = buildings.find(b => b.id === task.buildingId);
     const tenant = building?.tenants.find(t => t.id === task.tenantId);
     return tenant ? { tenant, building } : null;
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-14">
+        <div className="mx-auto max-w-7xl px-4 py-8">
+          <Skeleton className="h-10 w-64 mb-6" />
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Skeleton className="h-80" />
+            <div className="lg:col-span-2 space-y-3">
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+              <Skeleton className="h-16" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-14">
@@ -254,7 +266,7 @@ const Tasks = () => {
                           {Object.entries(taskTypeIcons).map(([type, Icon]) => (
                             <button
                               key={type}
-                              onClick={() => setNewTask({ ...newTask, type: type as BrokerTask['type'] })}
+                              onClick={() => setNewTask({ ...newTask, type: type as TaskType })}
                               className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
                                 newTask.type === type
                                   ? taskTypeColors[type]
@@ -305,9 +317,14 @@ const Tasks = () => {
 
                   <div className="space-y-2">
                     {filteredTasks.length === 0 ? (
-                      <Card className="border-border bg-card p-8 text-center">
-                        <CalendarIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
-                        <p className="text-sm text-muted-foreground">No tasks {selectedDate ? 'for this date' : 'found'}</p>
+                      <Card className="border-border bg-card p-12 text-center">
+                        <Inbox className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {selectedDate ? 'No tasks for this date' : filter === 'completed' ? 'No completed tasks yet' : 'All caught up!'}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground/60">
+                          {selectedDate ? 'Try selecting a different date' : 'Click "New Task" to create one'}
+                        </p>
                       </Card>
                     ) : (
                       filteredTasks.map((task, i) => {

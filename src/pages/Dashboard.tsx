@@ -4,14 +4,17 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign,
   Timer, TrendingUp, TrendingDown, AlertTriangle, Calendar, Users, Mail, ArrowRight,
-  Phone, FileText, ChevronRight, Flame, MapPin
+  Phone, FileText, ChevronRight, Flame, MapPin, Inbox, Loader2
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
-import { getPipeline, stageLabels, type PipelineStage } from '@/data/pipelineData';
-import { getActivities, getTasks, getAssignments } from '@/data/activityData';
+import { stageLabels, type PipelineStage } from '@/data/pipelineData';
+import { usePipeline } from '@/hooks/usePipeline';
+import { useTasks } from '@/hooks/useTasks';
+import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import SubmarketTrends from '@/components/SubmarketTrends';
 import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
@@ -21,20 +24,54 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 
+type ActivityRow = {
+  id: string;
+  tenant_id: string;
+  building_id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+};
+
 const Dashboard = () => {
   const [expandedStat, setExpandedStat] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
 
-  // Refresh "now" every minute for live stream
+  const { pipeline, loading: pipelineLoading } = usePipeline();
+  const { tasks, loading: tasksLoading } = useTasks();
+
+  const loading = pipelineLoading || tasksLoading;
+
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 60000);
     return () => clearInterval(interval);
   }, []);
 
-  const pipeline = getPipeline();
-  const activities = getActivities();
-  const tasks = getTasks();
-  const assignments = getAssignments();
+  // Fetch activities from Supabase
+  useEffect(() => {
+    const fetchActivities = async () => {
+      const { data } = await supabase
+        .from('activities')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+      setActivities((data || []) as ActivityRow[]);
+      setActivitiesLoading(false);
+    };
+    fetchActivities();
+
+    const channel = supabase
+      .channel('activities-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
+        fetchActivities();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // ───── Stat Cards with Trends ─────
   const stats = useMemo(() => {
@@ -49,7 +86,6 @@ const Dashboard = () => {
     const pendingTasks = tasks.filter(t => !t.completed).length;
     const overdueTasks = tasks.filter(t => !t.completed && t.dueDate < new Date().toISOString().split('T')[0]).length;
 
-    // Simulate prior-period values for trends
     const prevActive = Math.max(active - 2, 0);
     const prevWon = Math.max(won - 1, 0);
     const prevActivities = lastWeek.length;
@@ -104,7 +140,6 @@ const Dashboard = () => {
     const today = new Date().toISOString().split('T')[0];
     const items: { id: string; icon: typeof Clock; label: string; detail: string; urgency: 'high' | 'medium' | 'low'; link?: string }[] = [];
 
-    // Overdue tasks
     const overdue = tasks.filter(t => !t.completed && t.dueDate < today);
     if (overdue.length > 0) {
       items.push({
@@ -117,7 +152,6 @@ const Dashboard = () => {
       });
     }
 
-    // Tasks due today
     const dueToday = tasks.filter(t => !t.completed && t.dueDate === today);
     if (dueToday.length > 0) {
       items.push({
@@ -130,7 +164,6 @@ const Dashboard = () => {
       });
     }
 
-    // Stale prospects (no activity in 14+ days)
     const staleProspects = pipeline.filter(p => {
       if (['won', 'lost', 'closed'].includes(p.stage)) return false;
       const daysSince = (now - new Date(p.lastActivity).getTime()) / (1000 * 60 * 60 * 24);
@@ -147,7 +180,6 @@ const Dashboard = () => {
       });
     }
 
-    // Hot prospects needing outreach
     const hotCount = pipeline.filter(p => p.stage === 'hot_prospect').length;
     if (hotCount > 0) {
       items.push({
@@ -160,7 +192,6 @@ const Dashboard = () => {
       });
     }
 
-    // Upcoming meetings
     const meetingSet = pipeline.filter(p => p.stage === 'meeting_set').length;
     if (meetingSet > 0) {
       items.push({
@@ -178,7 +209,6 @@ const Dashboard = () => {
       return order[a.urgency] - order[b.urgency];
     });
   }, [tasks, pipeline, now]);
-
 
   // ───── Advanced Pipeline Analytics ─────
   const stageCounts = useMemo(() => {
@@ -225,6 +255,25 @@ const Dashboard = () => {
       fill: colors[i],
     })).filter(d => d.value > 0);
   }, [stageCounts]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-14">
+        <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
+          <Skeleton className="h-10 w-48 mb-6" />
+          <Skeleton className="h-32 w-full mb-6" />
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
+            {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+          </div>
+          <Skeleton className="h-48 w-full mb-6" />
+          <div className="grid gap-4 lg:grid-cols-2 mb-6">
+            <Skeleton className="h-48" />
+            <Skeleton className="h-48" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-14">
@@ -360,29 +409,36 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {activities.slice(0, 10).map(activity => {
-                    const building = buildings.find(b => b.id === activity.buildingId);
-                    const tenant = building?.tenants.find(t => t.id === activity.tenantId);
-                    return (
-                      <div key={activity.id} className="flex items-start gap-3 rounded-md bg-secondary/30 p-2.5">
-                        <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                          <Zap className="h-3 w-3 text-primary" />
+                  {activities.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <Inbox className="mx-auto mb-2 h-8 w-8 text-muted-foreground/20" />
+                      <p className="text-xs text-muted-foreground">No activities yet. Start logging outreach!</p>
+                    </div>
+                  ) : (
+                    activities.slice(0, 10).map(activity => {
+                      const building = buildings.find(b => b.id === activity.building_id);
+                      const tenant = building?.tenants.find(t => t.id === activity.tenant_id);
+                      return (
+                        <div key={activity.id} className="flex items-start gap-3 rounded-md bg-secondary/30 p-2.5">
+                          <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                            <Zap className="h-3 w-3 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{activity.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {tenant?.name && `${tenant.name} · `}{building?.name || ''}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground/60">
+                              {new Date(activity.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                            {activity.type.replace(/_/g, ' ')}
+                          </Badge>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">{activity.title}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">
-                            {tenant?.name && `${tenant.name} · `}{building?.name || ''}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground/60">
-                            {new Date(activity.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
-                          {activity.type.replace(/_/g, ' ')}
-                        </Badge>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </Card>
             </motion.div>
@@ -409,34 +465,38 @@ const Dashboard = () => {
                   </div>
                 </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {tasks.filter(t => !t.completed).slice(0, 10).map(task => {
-                    const isOverdue = task.dueDate < new Date().toISOString().split('T')[0];
-                    const building = buildings.find(b => b.id === task.buildingId);
-                    const tenant = building?.tenants.find(t => t.id === task.tenantId);
-                    return (
-                      <div key={task.id} className={`flex items-start gap-3 rounded-md p-2.5 ${isOverdue ? 'bg-destructive/5 border border-destructive/20' : 'bg-secondary/30'}`}>
-                        <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isOverdue ? 'bg-destructive/10' : 'bg-primary/10'}`}>
-                          <Clock className={`h-3 w-3 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
+                  {tasks.filter(t => !t.completed).length === 0 ? (
+                    <div className="py-8 text-center">
+                      <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-success/30" />
+                      <p className="text-xs text-muted-foreground">No pending tasks 🎉</p>
+                    </div>
+                  ) : (
+                    tasks.filter(t => !t.completed).slice(0, 10).map(task => {
+                      const isOverdue = task.dueDate < new Date().toISOString().split('T')[0];
+                      const building = buildings.find(b => b.id === task.buildingId);
+                      const tenant = building?.tenants.find(t => t.id === task.tenantId);
+                      return (
+                        <div key={task.id} className={`flex items-start gap-3 rounded-md p-2.5 ${isOverdue ? 'bg-destructive/5 border border-destructive/20' : 'bg-secondary/30'}`}>
+                          <div className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isOverdue ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                            <Clock className={`h-3 w-3 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-foreground truncate">{task.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>
+                            {tenant && (
+                              <p className="text-[10px] text-muted-foreground/60 truncate">
+                                {tenant.name} · {building?.name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${isOverdue ? 'bg-destructive/10 text-destructive' : ''}`}>
+                              {isOverdue ? 'Overdue' : 'Due'} {task.dueDate}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-foreground truncate">{task.title}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{task.description}</p>
-                          {tenant && (
-                            <p className="text-[10px] text-muted-foreground/60 truncate">
-                              {tenant.name} · {building?.name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right shrink-0">
-                          <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${isOverdue ? 'bg-destructive/10 text-destructive' : ''}`}>
-                            {isOverdue ? 'Overdue' : 'Due'} {task.dueDate}
-                          </Badge>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {tasks.filter(t => !t.completed).length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4">No pending tasks 🎉</p>
+                      );
+                    })
                   )}
                 </div>
               </Card>
@@ -460,60 +520,76 @@ const Dashboard = () => {
           {/* Pipeline Funnel */}
           <Card className="border-border bg-card p-4">
             <h3 className="mb-3 font-display text-sm font-bold">Pipeline Breakdown</h3>
-            <div className="space-y-2">
-              {(['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'] as PipelineStage[]).map(stage => {
-                const count = stageCounts[stage] || 0;
-                const total = pipeline.length || 1;
-                const pct = Math.round((count / total) * 100);
-                return (
-                  <div key={stage} className="flex items-center gap-3">
-                    <span className="w-28 text-xs text-muted-foreground">{stageLabels[stage]}</span>
-                    <div className="flex-1">
-                      <div className="h-2 rounded-full bg-secondary">
-                        <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+            {pipeline.length === 0 ? (
+              <div className="py-8 text-center">
+                <Inbox className="mx-auto mb-2 h-8 w-8 text-muted-foreground/20" />
+                <p className="text-xs text-muted-foreground">No deals in pipeline yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {(['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'] as PipelineStage[]).map(stage => {
+                  const count = stageCounts[stage] || 0;
+                  const total = pipeline.length || 1;
+                  const pct = Math.round((count / total) * 100);
+                  return (
+                    <div key={stage} className="flex items-center gap-3">
+                      <span className="w-28 text-xs text-muted-foreground">{stageLabels[stage]}</span>
+                      <div className="flex-1">
+                        <div className="h-2 rounded-full bg-secondary">
+                          <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                        </div>
                       </div>
+                      <span className="w-8 text-right text-xs font-bold text-foreground">{count}</span>
                     </div>
-                    <span className="w-8 text-right text-xs font-bold text-foreground">{count}</span>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
 
           {/* Stage Distribution Pie */}
           <Card className="border-border bg-card p-4">
             <h3 className="mb-3 font-display text-sm font-bold">Stage Distribution</h3>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stageDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {stageDistribution.map((entry, i) => (
-                      <Cell key={i} fill={entry.fill} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }}
-                    formatter={(value: number, name: string) => [`${value} deals`, name]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-1">
-              {stageDistribution.map(d => (
-                <div key={d.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.fill }} />
-                  {d.name} ({d.value})
+            {stageDistribution.length === 0 ? (
+              <div className="py-8 text-center">
+                <Inbox className="mx-auto mb-2 h-8 w-8 text-muted-foreground/20" />
+                <p className="text-xs text-muted-foreground">No data yet</p>
+              </div>
+            ) : (
+              <>
+                <div className="h-48">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={stageDistribution}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={40}
+                        outerRadius={70}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
+                        {stageDistribution.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '6px', fontSize: '11px' }}
+                        formatter={(value: number, name: string) => [`${value} deals`, name]}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              ))}
-            </div>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {stageDistribution.map(d => (
+                    <div key={d.name} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: d.fill }} />
+                      {d.name} ({d.value})
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </Card>
 
           {/* Win Rate by Industry */}
@@ -535,7 +611,10 @@ const Dashboard = () => {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground text-center py-8">No data yet</p>
+              <div className="py-8 text-center">
+                <Inbox className="mx-auto mb-2 h-8 w-8 text-muted-foreground/20" />
+                <p className="text-xs text-muted-foreground">No data yet</p>
+              </div>
             )}
           </Card>
         </div>

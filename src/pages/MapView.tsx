@@ -14,7 +14,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const MapView = () => {
+  const navigate = useNavigate();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);

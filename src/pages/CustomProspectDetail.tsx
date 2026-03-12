@@ -316,8 +316,8 @@ const CustomProspectDetail = () => {
             />
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-4">
+          <div className="grid gap-10 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
 
               {/* Quick Actions: Email Templates + Direct Email */}
               <Card className="border-primary/20 bg-primary/5 p-4">

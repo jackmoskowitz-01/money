@@ -39,15 +39,15 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "sonar",
+        model: "sonar-pro",
         messages: [
           {
             role: "system",
-            content: "You are a corporate intelligence researcher. Search for the most recent news about specific companies, focusing on real estate moves, office space changes, hiring, layoffs, expansions, contractions, mergers, acquisitions, funding, and any news relevant to a commercial real estate broker trying to win their business.",
+            content: "You are a corporate intelligence researcher specializing in commercial real estate signals. Search across Bisnow, CoStar, Commercial Observer, Washington Business Journal, Bloomberg, company press releases, SEC filings, and LinkedIn announcements. Return specific, sourced intelligence only.",
           },
           {
             role: "user",
-            content: `Search for recent news (past 30 days) about these companies, especially anything related to their office space, real estate decisions, growth, downsizing, or major business changes:\n\n${companyList}\n\nFor each company where you find news, provide the company name, the news details, and the source. Focus on actionable intelligence for a DC commercial real estate broker.`,
+            content: `Search for the most recent and significant news about these companies. Look for ANY of these signals:\n\n- Office lease signings, renewals, or expirations\n- Relocations, expansions, or space reductions\n- Layoffs, hiring surges, or headcount changes\n- Mergers, acquisitions, or spin-offs\n- Funding rounds or IPO activity\n- Leadership changes (new CEO, CFO, etc.)\n- Government contract wins or losses\n- Return-to-office or remote work policy changes\n- Sublease listings\n- Any news that would affect their real estate footprint\n\nCompanies to search:\n${companyList}\n\nProvide the company name, specific details, publication source, and date for each item found. Focus on actionable intelligence for a DC commercial real estate broker.`,
           },
         ],
         search_recency_filter: "month",

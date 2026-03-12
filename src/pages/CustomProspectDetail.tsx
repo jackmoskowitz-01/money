@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Globe, MapPin, Calendar, Plus, Send, Mail, Loader2, ChevronDown, Zap } from 'lucide-react';
+import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

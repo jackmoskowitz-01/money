@@ -256,12 +256,12 @@ const CustomProspectDetail = () => {
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-6 flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{prospect.name}</h1>
+                <h1 className="text-2xl font-bold tracking-tight">{prospect.name}</h1>
               </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1.5">
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" /> {prospect.address}
                 </span>

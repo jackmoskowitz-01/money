@@ -6,6 +6,7 @@ import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, newsItems, getUrgencyColor, scoopPosts, type OutreachReason } from '@/data/mockData';
 import { updatePipelineStage, getOrCreatePipelineItem, stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
 import { addActivity, buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
+import { getUserGreeting } from '@/lib/getUserGreeting';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

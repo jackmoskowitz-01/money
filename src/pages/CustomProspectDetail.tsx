@@ -248,20 +248,20 @@ const CustomProspectDetail = () => {
   const primaryContact = recipients[0];
 
   return (
-    <div className="min-h-screen pt-14">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="min-h-screen pt-14 bg-background">
+      <div className="mx-auto max-w-5xl px-4 py-10">
         <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-6 flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{prospect.name}</h1>
+                <h1 className="text-2xl font-bold tracking-tight">{prospect.name}</h1>
               </div>
-              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1.5">
                 <span className="flex items-center gap-1">
                   <MapPin className="h-3.5 w-3.5" /> {prospect.address}
                 </span>
@@ -290,7 +290,7 @@ const CustomProspectDetail = () => {
           </div>
 
           {/* Pipeline Stage */}
-          <Card className="mb-6 border-border bg-card p-3">
+          <Card className="mb-8 border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-muted-foreground">Pipeline Stage:</span>
               <select
@@ -309,45 +309,54 @@ const CustomProspectDetail = () => {
           </Card>
 
           {/* Company Contacts */}
-          <div className="mb-6">
+          <div className="mb-8">
             <CompanyContacts
               entityId={prospectId!}
               onContactsChange={() => setContactsVersion(v => v + 1)}
             />
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-4">
+          <div className="grid gap-10 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
 
               {/* Quick Actions: Email Templates + Direct Email */}
-              <Card className="border-primary/20 bg-primary/5 p-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <EmailComposer
-                    tenantId={prospectId!}
-                    buildingId=""
-                    tenantName={prospect.name}
-                    contactName={primaryContact?.name || prospect.name}
-                    contactEmail={primaryContact?.email}
-                    buildingName={prospect.address}
-                    recipients={recipients}
-                  />
-                  {primaryContact?.email && (
-                    <a href={`mailto:${primaryContact.email}`}>
-                      <Button size="sm" variant="outline" className="text-xs h-9">
-                        <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
-                      </Button>
-                    </a>
-                  )}
-                </div>
-              </Card>
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h2>
+                <Card className="border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <EmailComposer
+                      tenantId={prospectId!}
+                      buildingId=""
+                      tenantName={prospect.name}
+                      contactName={primaryContact?.name || prospect.name}
+                      contactEmail={primaryContact?.email}
+                      buildingName={prospect.address}
+                      recipients={recipients}
+                    />
+                    {primaryContact?.email && (
+                      <a href={`mailto:${primaryContact.email}`}>
+                        <Button size="sm" variant="outline" className="text-xs h-9">
+                          <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </Card>
+              </div>
 
               {/* Activity Log — prominent placement */}
-              <ActivityLog
-                tenantId={prospectId!}
-                buildingId=""
-                outreachReasonTitles={[]}
-                contactsVersion={contactsVersion}
-              />
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Activity History</h2>
+                <ActivityLog
+                  tenantId={prospectId!}
+                  buildingId=""
+                  outreachReasonTitles={[]}
+                  contactsVersion={contactsVersion}
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border" />
 
               {/* 1. Custom Outreach Reason */}
               <div>
@@ -505,7 +514,7 @@ const CustomProspectDetail = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <MeetingPrepBrief
                 tenantName={prospect.name}
                 industry={prospect.enrichment?.industry || ''}

@@ -131,6 +131,14 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
         </Button>
       </div>
 
+      {lastFetchedAt && (
+        <div className="border-b border-border bg-muted/20 px-4 py-2">
+          <p className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Clock3 className="h-3 w-3" /> Updated {getTimeSince(lastFetchedAt)} · {freshnessLabel}
+          </p>
+        </div>
+      )}
+
       <div className="p-3">
         {loading && !hasLoaded ? (
           <div className="flex items-center gap-2 py-6 justify-center">

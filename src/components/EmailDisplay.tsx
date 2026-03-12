@@ -41,7 +41,7 @@ interface EmailDisplayProps {
 const EmailDisplay = ({
   emailKey, emailContent, isGenerating, label = 'Generated Email',
   contactName, contactEmail, subject, recipients,
-  tenantName, industry, buildingName, sqft, leaseExpiration, outreachReason,
+  tenantId, tenantName, industry, buildingId, buildingName, sqft, leaseExpiration, outreachReason,
   onClose, onDismiss, onUpdateEmail,
 }: EmailDisplayProps) => {
   const [copied, setCopied] = useState(false);

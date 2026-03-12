@@ -1287,25 +1287,6 @@ const News = () => {
           </div>
         </motion.div>
 
-        {/* ═══ Stat Cards ═══ */}
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {stats.map((stat, i) => (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
-              <Card className="border-border bg-card p-4">
-                <div className="flex items-start justify-between">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.color}`}>
-                    <stat.icon className="h-4.5 w-4.5" />
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <p className="text-2xl font-bold text-foreground tabular-nums">{stat.value}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
         {/* ═══ Custom Intel (Dialog) ═══ */}
         <div className="mb-6">
           <Dialog open={showCustomIntel} onOpenChange={setShowCustomIntel}>

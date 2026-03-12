@@ -234,6 +234,7 @@ const News = () => {
         const allCompany = Array.from(newsHistory.values()).filter(n => n.id.startsWith('cn')) as CompanyNewsItem[];
         setCompanyNews(allCompany);
         cachedCompanyNews = allCompany;
+        saveToLS(LS_COMPANY_NEWS, allCompany);
         toast.success(`Found news for ${mapped.length} companies`);
       }
     } catch (e) {

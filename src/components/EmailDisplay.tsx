@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown, FlipHorizontal } from 'lucide-react';
 import { toast } from 'sonner';

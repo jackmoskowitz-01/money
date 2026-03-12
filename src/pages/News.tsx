@@ -572,6 +572,7 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const clientsInBuilding = building.tenants
         .filter(t => t.isClient && t.id !== tenant.id)
         .map(t => t.name);
@@ -594,6 +595,7 @@ const News = () => {
           vacancyRate: building.vacancyRate,
           headcount: tenant.headcount,
           clientsInBuilding,
+          greeting,
         }),
       });
 

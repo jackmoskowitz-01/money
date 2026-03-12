@@ -514,7 +514,7 @@ const CustomProspectDetail = () => {
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               <MeetingPrepBrief
                 tenantName={prospect.name}
                 industry={prospect.enrichment?.industry || ''}

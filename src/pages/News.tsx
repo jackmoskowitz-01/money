@@ -195,9 +195,19 @@ const News = () => {
       const n = new Set(prev);
       if (n.has(id)) { n.delete(id); toast.info('Removed bookmark'); }
       else { n.add(id); toast.success('Bookmarked'); }
+      saveToLS(LS_BOOKMARKS, Array.from(n));
       return n;
     });
   };
+
+  const markAsRead = useCallback((id: string) => {
+    setReadIds(prev => {
+      if (prev.has(id)) return prev;
+      const n = new Set(prev).add(id);
+      saveToLS(LS_READ_IDS, Array.from(n));
+      return n;
+    });
+  }, []);
 
   const fetchCompanyNews = useCallback(async () => {
     setCompanyNewsLoading(true);

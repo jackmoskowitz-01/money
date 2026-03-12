@@ -8,7 +8,7 @@ const corsHeaders = {
 
 // In-memory cache per company (edge function instance lifetime)
 const newsCache = new Map<string, { items: any[]; citations: string[]; fetchedAt: number }>();
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

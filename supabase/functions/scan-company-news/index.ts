@@ -1,9 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+// In-memory cache per company (edge function instance lifetime)
+const newsCache = new Map<string, { items: any[]; citations: string[]; fetchedAt: number }>();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -17,6 +22,18 @@ serve(async (req) => {
       });
     }
 
+    // Check cache for each company
+    const now = Date.now();
+    const companyId = companies[0]?.id;
+    const cached = companyId ? newsCache.get(companyId) : null;
+    
+    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
+      console.log(`Serving cached news for ${companies[0]?.name} (age: ${Math.round((now - cached.fetchedAt) / 1000)}s)`);
+      return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
     if (!PERPLEXITY_API_KEY) throw new Error("PERPLEXITY_API_KEY is not configured");
 
@@ -25,13 +42,11 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Build a single batch query with all company names
     const companyNames = companies.map((c: { name: string }) => c.name);
     const companyList = companyNames.join(", ");
 
     console.log(`Scanning news for ${companyNames.length} companies`);
 
-    // Use Perplexity to search for news about these companies
     const perplexityResp = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
       headers: {
@@ -58,6 +73,13 @@ serve(async (req) => {
       const errText = await perplexityResp.text();
       console.error("Perplexity error:", perplexityResp.status, errText);
       if (perplexityResp.status === 402) {
+        // If we have stale cache, serve it rather than showing nothing
+        if (cached) {
+          console.log("Credits exhausted, serving stale cache");
+          return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: "Perplexity credits exhausted. Please top up." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -71,12 +93,10 @@ serve(async (req) => {
 
     console.log("Company scan returned content length:", rawContent.length);
 
-    // Build a company ID lookup for the AI
     const companyLookup = companies.map((c: { id: string; name: string; buildingId?: string }) =>
       `${c.name} (id: ${c.id}, buildingId: ${c.buildingId || ""})`
     ).join("\n");
 
-    // Structure results with Lovable AI
     const structureResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -120,6 +140,11 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
 
     if (!structureResp.ok) {
       if (structureResp.status === 429) {
+        if (cached) {
+          return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
         return new Response(JSON.stringify({ error: "Rate limit exceeded." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -140,12 +165,38 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
       newsItems = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse company news:", cleaned);
+      // If parse fails but we have cached results, merge/keep them
+      if (cached) {
+        return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ companyNews: [], citations }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ companyNews: newsItems, citations }), {
+    // Merge new results with cached results (keep previously found items that aren't duplicates)
+    let mergedItems = [...newsItems];
+    if (cached && cached.items.length > 0) {
+      const newTitles = new Set(newsItems.map((n: any) => n.title?.toLowerCase()));
+      for (const oldItem of cached.items) {
+        if (!newTitles.has(oldItem.title?.toLowerCase())) {
+          mergedItems.push(oldItem);
+        }
+      }
+    }
+
+    // Sort by relevance score descending
+    mergedItems.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+
+    // Cache the merged results
+    if (companyId) {
+      newsCache.set(companyId, { items: mergedItems, citations, fetchedAt: now });
+      console.log(`Cached ${mergedItems.length} news items for ${companies[0]?.name}`);
+    }
+
+    return new Response(JSON.stringify({ companyNews: mergedItems, citations }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

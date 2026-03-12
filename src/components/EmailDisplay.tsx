@@ -25,8 +25,10 @@ interface EmailDisplayProps {
   contactEmail?: string;
   subject?: string;
   recipients?: EmailRecipient[];
+  tenantId?: string;
   tenantName?: string;
   industry?: string;
+  buildingId?: string;
   buildingName?: string;
   sqft?: number;
   leaseExpiration?: string;

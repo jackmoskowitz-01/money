@@ -4,11 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search,
   RefreshCw, FileText, Sparkles, ChevronDown, X, Filter, Clock, Bookmark, BookmarkCheck,
-  Zap, AlertTriangle, BarChart3
+  Zap, AlertTriangle, BarChart3, ListPlus
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { getProspectLists } from '@/data/prospectLists';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -457,6 +459,61 @@ const News = () => {
     }));
     setProspectSearch(prev => ({ ...prev, [newsId]: '' }));
     setShowSearchFor(null);
+  };
+
+  const addListToNews = (newsId: string, listId: string) => {
+    const lists = getProspectLists();
+    const list = lists.find(l => l.id === listId);
+    if (!list || list.entries.length === 0) {
+      toast.info('This list has no prospects');
+      return;
+    }
+
+    // For each entry in the list, try to find the matching tenant in buildings
+    const manual = manualProspects[newsId] || [];
+    const existingIds = new Set(manual.map(p => p.tenant.id));
+    let addedCount = 0;
+
+    const newManual: ProspectMatch[] = [];
+    const newCustom: { id: string; name: string }[] = [];
+
+    for (const entry of list.entries) {
+      if (existingIds.has(entry.tenantId)) continue;
+
+      // Try to find in buildings data
+      let found = false;
+      for (const building of buildings) {
+        const tenant = building.tenants.find(t => t.id === entry.tenantId);
+        if (tenant) {
+          newManual.push({ tenant, building });
+          existingIds.add(entry.tenantId);
+          found = true;
+          addedCount++;
+          break;
+        }
+      }
+
+      // If not found in buildings, add as custom prospect
+      if (!found) {
+        newCustom.push({ id: entry.tenantId, name: entry.tenantName });
+        addedCount++;
+      }
+    }
+
+    if (newManual.length > 0) {
+      setManualProspects(prev => ({
+        ...prev,
+        [newsId]: [...(prev[newsId] || []), ...newManual],
+      }));
+    }
+    if (newCustom.length > 0) {
+      setCustomProspects(prev => ({
+        ...prev,
+        [newsId]: [...(prev[newsId] || []), ...newCustom],
+      }));
+    }
+
+    toast.success(`Added ${addedCount} prospects from "${list.name}"`);
   };
 
   const removeCustomProspect = (newsId: string, customId: string) => {
@@ -1283,12 +1340,47 @@ const News = () => {
                                       )}
                                     </div>
                                   ) : (
-                                    <button
-                                      onClick={() => setShowSearchFor(news.id)}
-                                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
-                                    >
-                                      <Plus className="h-3 w-3" /> Add prospect manually
-                                    </button>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => setShowSearchFor(news.id)}
+                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                                      >
+                                        <Plus className="h-3 w-3" /> Add prospect manually
+                                      </button>
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                                          >
+                                            <ListPlus className="h-3 w-3" /> Add a list
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-56 p-2" align="end">
+                                          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                            Choose a List
+                                          </p>
+                                          {(() => {
+                                            const lists = getProspectLists();
+                                            return lists.length > 0 ? (
+                                              <div className="max-h-48 space-y-0.5 overflow-y-auto">
+                                                {lists.map(list => (
+                                                  <button
+                                                    key={list.id}
+                                                    onClick={() => addListToNews(news.id, list.id)}
+                                                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
+                                                  >
+                                                    <span className="truncate">{list.name}</span>
+                                                    <Badge variant="outline" className="text-[9px] shrink-0">{list.entries.length}</Badge>
+                                                  </button>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <p className="px-2 py-3 text-[11px] text-muted-foreground text-center">No lists yet — create one from Tasks → Lists</p>
+                                            );
+                                          })()}
+                                        </PopoverContent>
+                                      </Popover>
+                                    </div>
                                   )}
                                 </div>
 

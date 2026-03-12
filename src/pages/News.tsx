@@ -175,8 +175,8 @@ const News = () => {
   const [newsLoading, setNewsLoading] = useState(false);
   const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(cachedLastRefreshed);
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_BOOKMARKS, [])));
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_READ_IDS, [])));
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const dismissNews = (id: string) => {

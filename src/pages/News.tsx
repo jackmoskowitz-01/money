@@ -52,6 +52,7 @@ const LS_LAST_REFRESHED = 'dealflow_news_last_refreshed';
 const LS_NEWS_HISTORY = 'dealflow_news_history';
 const LS_BOOKMARKS = 'dealflow_news_bookmarks';
 const LS_READ_IDS = 'dealflow_news_read';
+const LS_INDUSTRY_NEWS = 'dealflow_industry_news';
 
 const loadFromLS = <T,>(key: string, fallback: T): T => {
   try {

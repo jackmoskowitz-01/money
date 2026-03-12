@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildings } from '@/data/mockData';
+import { useBuildings } from '@/hooks/useBuildings';
 import { useTasks, type TaskPriority, type TaskType, type Task } from '@/hooks/useTasks';
 import ProspectLists from '@/components/ProspectLists';
 

@@ -524,6 +524,11 @@ const Prospects = () => {
                                             contactName={tenant.contactName}
                                             contactEmail={tenant.contactEmail}
                                             subject={`${tenant.name} — ${reason.title}`}
+                                            tenantId={tenant.id}
+                                            tenantName={tenant.name}
+                                            buildingId={building.id}
+                                            buildingName={building.name}
+                                            outreachReason={reason.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; }); }}
                                             onUpdateEmail={updateEmail}
@@ -550,6 +555,10 @@ const Prospects = () => {
                                     contactName={tenant.contactName}
                                     contactEmail={tenant.contactEmail}
                                     subject={`${tenant.name} — Custom Outreach`}
+                                    tenantId={tenant.id}
+                                    tenantName={tenant.name}
+                                    buildingId={building.id}
+                                    buildingName={building.name}
                                     onClose={() => {
                                       setCustomEmailKeys(prev => ({ ...prev, [tenant.id]: (prev[tenant.id] || []).filter(k => k !== key) }));
                                       setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
@@ -665,6 +674,10 @@ const Prospects = () => {
                                                 contactName={tenant.contactName}
                                                 contactEmail={tenant.contactEmail}
                                                 subject={`${tenant.name} — Market News`}
+                                                tenantId={tenant.id}
+                                                tenantName={tenant.name}
+                                                buildingId={building.id}
+                                                buildingName={building.name}
                                                 onClose={() => setActiveEmailKey(null)}
                                                 onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[newsKey]; return n; }); }}
                                                 onUpdateEmail={updateEmail}
@@ -735,6 +748,10 @@ const Prospects = () => {
                                                 contactName={tenant.contactName}
                                                 contactEmail={tenant.contactEmail}
                                                 subject={`${tenant.name} — Broker Intel`}
+                                                tenantId={tenant.id}
+                                                tenantName={tenant.name}
+                                                buildingId={building.id}
+                                                buildingName={building.name}
                                                 onClose={() => setActiveEmailKey(null)}
                                                 onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[scoopKey]; return n; }); }}
                                                 onUpdateEmail={updateEmail}

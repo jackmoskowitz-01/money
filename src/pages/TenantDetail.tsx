@@ -251,6 +251,10 @@ const TenantDetail = () => {
         contactEmail={tenant?.contactEmail}
         subject={`${tenant?.name} — Outreach`}
         recipients={recipients}
+        tenantId={tenantId}
+        tenantName={tenant?.name}
+        buildingId={buildingId}
+        buildingName={building?.name}
         onClose={() => setActiveEmailKey(null)}
         onUpdateEmail={updateEmail}
       />
@@ -370,6 +374,10 @@ const TenantDetail = () => {
                       contactEmail={tenant.contactEmail}
                       subject={`${tenant.name} — Custom Outreach`}
                       recipients={recipients}
+                      tenantId={tenantId}
+                      tenantName={tenant.name}
+                      buildingId={buildingId}
+                      buildingName={building?.name}
                       onClose={() => {
                         setCustomEmailKeys(prev => prev.filter(k => k !== key));
                         setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });

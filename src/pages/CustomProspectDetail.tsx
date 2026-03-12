@@ -415,6 +415,8 @@ const CustomProspectDetail = () => {
                                   contactEmail={primaryContact?.email}
                                   subject={`${prospect.name} — Outreach`}
                                   recipients={recipients}
+                                  tenantId={prospectId}
+                                  tenantName={prospect.name}
                                   onClose={() => setActiveEmailKey(null)}
                                   onUpdateEmail={updateEmail}
                                 />
@@ -443,6 +445,8 @@ const CustomProspectDetail = () => {
                       contactEmail={primaryContact?.email}
                       subject={`${prospect.name} — Outreach`}
                       recipients={recipients}
+                      tenantId={prospectId}
+                      tenantName={prospect.name}
                       onClose={() => {
                         setCustomEmailKeys(prev => prev.filter(k => k !== key));
                         setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });

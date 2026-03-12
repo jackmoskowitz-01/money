@@ -1196,6 +1196,11 @@ const News = () => {
                                             contactEmail={tenant.contactEmail}
                                             subject={`${news.title} — ${tenant.name}`}
                                             recipients={buildRecipients(tenant)}
+                                            tenantId={tenant.id}
+                                            tenantName={tenant.name}
+                                            buildingId={bldg.id}
+                                            buildingName={bldg.name}
+                                            outreachReason={news.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />
@@ -1266,6 +1271,8 @@ const News = () => {
                                             isGenerating={isGenerating}
                                             label={`Email to ${custom.name}`}
                                             subject={`${news.title} — ${custom.name}`}
+                                            tenantName={custom.name}
+                                            outreachReason={news.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />

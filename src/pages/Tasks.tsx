@@ -58,11 +58,20 @@ const Tasks = () => {
   const completedCount = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
   const overdueCount = useMemo(() => tasks.filter(t => !t.completed && t.dueDate < format(new Date(), 'yyyy-MM-dd')).length, [tasks]);
 
-  const taskCounts = useMemo(() => {
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+
+  const { taskCounts, overdueCounts } = useMemo(() => {
     const counts: Record<string, number> = {};
-    tasks.filter(t => !t.completed).forEach(t => { const date = t.dueDate.split('T')[0]; counts[date] = (counts[date] || 0) + 1; });
-    return counts;
-  }, [tasks]);
+    const overdue: Record<string, number> = {};
+    tasks.filter(t => !t.completed).forEach(t => {
+      const date = t.dueDate.split('T')[0];
+      counts[date] = (counts[date] || 0) + 1;
+      if (date < todayStr) {
+        overdue[date] = (overdue[date] || 0) + 1;
+      }
+    });
+    return { taskCounts: counts, overdueCounts: overdue };
+  }, [tasks, todayStr]);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);

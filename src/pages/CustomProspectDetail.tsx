@@ -319,6 +319,36 @@ const CustomProspectDetail = () => {
           <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-4">
 
+              {/* Quick Actions: Email Templates + Direct Email */}
+              <Card className="border-primary/20 bg-primary/5 p-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <EmailComposer
+                    tenantId={prospectId!}
+                    buildingId=""
+                    tenantName={prospect.name}
+                    contactName={primaryContact?.name || prospect.name}
+                    contactEmail={primaryContact?.email}
+                    buildingName={prospect.address}
+                    recipients={recipients}
+                  />
+                  {primaryContact?.email && (
+                    <a href={`mailto:${primaryContact.email}`}>
+                      <Button size="sm" variant="outline" className="text-xs h-9">
+                        <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
+                      </Button>
+                    </a>
+                  )}
+                </div>
+              </Card>
+
+              {/* Activity Log — prominent placement */}
+              <ActivityLog
+                tenantId={prospectId!}
+                buildingId=""
+                outreachReasonTitles={[]}
+                contactsVersion={contactsVersion}
+              />
+
               {/* 1. Custom Outreach Reason */}
               <div>
                 {customReasonOpen ? (
@@ -472,35 +502,6 @@ const CustomProspectDetail = () => {
                 }}
               />
 
-              {/* Activity Log */}
-              <div className="mt-4">
-                <ActivityLog
-                  tenantId={prospectId!}
-                  buildingId=""
-                  outreachReasonTitles={[]}
-                  contactsVersion={contactsVersion}
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <EmailComposer
-                  tenantId={prospectId!}
-                  buildingId=""
-                  tenantName={prospect.name}
-                  contactName={primaryContact?.name || prospect.name}
-                  contactEmail={primaryContact?.email}
-                  buildingName={prospect.address}
-                  recipients={recipients}
-                />
-                {primaryContact?.email && (
-                  <a href={`mailto:${primaryContact.email}`}>
-                    <Button size="sm" variant="outline" className="text-xs h-8">
-                      <Mail className="mr-1 h-3 w-3" /> Email {primaryContact.name.split(' ')[0]}
-                    </Button>
-                  </a>
-                )}
-              </div>
             </div>
 
             {/* Sidebar */}

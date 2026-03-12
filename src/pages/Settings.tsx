@@ -7,10 +7,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Settings = () => {
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
   const [profile, setProfile] = useState({
     name: '',
     brokerage: '',
@@ -36,6 +43,66 @@ const Settings = () => {
     darkMode: !document.documentElement.classList.contains('light'),
   });
 
+  const [workflow, setWorkflow] = useState({
+    defaultMarket: 'dc-metro',
+    activityCategories: 'Calls, Tours, Emails, Meetings, Proposals',
+  });
+
+  // Load settings from database
+  useEffect(() => {
+    if (!user) return;
+
+    const loadSettings = async () => {
+      // Load profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(p => ({
+          ...p,
+          name: profileData.full_name || '',
+          email: profileData.email || '',
+        }));
+      }
+
+      // Load user settings
+      const { data: settingsData } = await supabase
+        .from('user_settings' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (settingsData) {
+        const s = settingsData as any;
+        setProfile(p => ({ ...p, brokerage: s.brokerage || '', phone: s.phone || '' }));
+        setEmailDefaults({
+          signature: s.email_signature || '',
+          meetingLeadWeeks: s.meeting_lead_weeks || '2',
+          tone: s.email_tone || 'professional',
+          defaultGreeting: s.email_greeting || 'Hi',
+        });
+        setNotifications({
+          pipelineChanges: s.notify_pipeline_changes ?? true,
+          newScoops: s.notify_new_scoops ?? true,
+          taskReminders: s.notify_task_reminders ?? true,
+          weeklyDigest: s.notify_weekly_digest ?? false,
+        });
+        setWorkflow({
+          defaultMarket: s.default_market || 'dc-metro',
+          activityCategories: s.activity_categories || 'Calls, Tours, Emails, Meetings, Proposals',
+        });
+        setAppearance({ darkMode: s.dark_mode ?? true });
+      }
+
+      setLoading(false);
+    };
+
+    loadSettings();
+  }, [user]);
+
   useEffect(() => {
     if (appearance.darkMode) {
       document.documentElement.classList.remove('light');
@@ -46,18 +113,73 @@ const Settings = () => {
     }
   }, [appearance.darkMode]);
 
-  const [workflow, setWorkflow] = useState({
-    defaultMarket: 'dc-metro',
-    activityCategories: 'Calls, Tours, Emails, Meetings, Proposals',
-  });
+  const saveAll = async (section: string) => {
+    if (!user) return;
+    setSaving(true);
 
-  const handleSave = (section: string) => {
-    toast.success(`${section} settings saved`);
+    try {
+      // Update profile name
+      await supabase.from('profiles').update({
+        full_name: profile.name,
+        email: profile.email,
+        avatar_initials: profile.name ? profile.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : 'AN',
+      }).eq('id', user.id);
+
+      // Upsert user_settings
+      const settingsRow = {
+        user_id: user.id,
+        brokerage: profile.brokerage,
+        phone: profile.phone,
+        email_signature: emailDefaults.signature,
+        email_tone: emailDefaults.tone,
+        email_greeting: emailDefaults.defaultGreeting,
+        meeting_lead_weeks: emailDefaults.meetingLeadWeeks,
+        notify_pipeline_changes: notifications.pipelineChanges,
+        notify_new_scoops: notifications.newScoops,
+        notify_task_reminders: notifications.taskReminders,
+        notify_weekly_digest: notifications.weeklyDigest,
+        default_market: workflow.defaultMarket,
+        activity_categories: workflow.activityCategories,
+        dark_mode: appearance.darkMode,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Try update first, then insert if no rows affected
+      const { data: existing } = await supabase
+        .from('user_settings' as any)
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (existing) {
+        await supabase.from('user_settings' as any).update(settingsRow).eq('user_id', user.id);
+      } else {
+        await supabase.from('user_settings' as any).insert(settingsRow);
+      }
+
+      toast.success(`${section} settings saved`);
+    } catch (err) {
+      toast.error('Failed to save settings');
+    }
+
+    setSaving(false);
   };
 
   const handleExportCSV = (type: string) => {
     toast.success(`${type} data exported as CSV`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background pt-20 pb-12">
+        <div className="mx-auto max-w-3xl px-4">
+          <Skeleton className="h-8 w-32 mb-6" />
+          <Skeleton className="h-12 w-full mb-6" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-12">
@@ -112,7 +234,10 @@ const Settings = () => {
                     <Input id="phone" placeholder="(202) 555-0100" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
                   </div>
                 </div>
-                <Button onClick={() => handleSave('Profile')} className="mt-2">Save Profile</Button>
+                <Button onClick={() => saveAll('Profile')} className="mt-2" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Save Profile
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -128,9 +253,7 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label htmlFor="tone">Default Tone</Label>
                   <Select value={emailDefaults.tone} onValueChange={v => setEmailDefaults(e => ({ ...e, tone: v }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="professional">Professional</SelectItem>
                       <SelectItem value="friendly">Friendly</SelectItem>
@@ -142,9 +265,7 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label htmlFor="lead-weeks">Meeting Lead Time</Label>
                   <Select value={emailDefaults.meetingLeadWeeks} onValueChange={v => setEmailDefaults(e => ({ ...e, meetingLeadWeeks: v }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">1 week out</SelectItem>
                       <SelectItem value="2">2 weeks out (default)</SelectItem>
@@ -155,9 +276,7 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label htmlFor="greeting">Default Greeting</Label>
                   <Select value={emailDefaults.defaultGreeting} onValueChange={v => setEmailDefaults(e => ({ ...e, defaultGreeting: v }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Hi">Hi</SelectItem>
                       <SelectItem value="Hello">Hello</SelectItem>
@@ -177,7 +296,10 @@ const Settings = () => {
                     onChange={e => setEmailDefaults(s => ({ ...s, signature: e.target.value }))}
                   />
                 </div>
-                <Button onClick={() => handleSave('Email defaults')} className="mt-2">Save Email Settings</Button>
+                <Button onClick={() => saveAll('Email defaults')} className="mt-2" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Save Email Settings
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -207,7 +329,10 @@ const Settings = () => {
                     />
                   </div>
                 ))}
-                <Button onClick={() => handleSave('Notification')} className="mt-2">Save Notifications</Button>
+                <Button onClick={() => saveAll('Notification')} className="mt-2" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Save Notifications
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -223,9 +348,7 @@ const Settings = () => {
                 <div className="space-y-2">
                   <Label>Default Market</Label>
                   <Select value={workflow.defaultMarket} onValueChange={v => setWorkflow(w => ({ ...w, defaultMarket: v }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="dc-metro">DC Metro</SelectItem>
                       <SelectItem value="nova">Northern Virginia</SelectItem>
@@ -244,7 +367,10 @@ const Settings = () => {
                   />
                   <p className="text-xs text-muted-foreground">Comma-separated list</p>
                 </div>
-                <Button onClick={() => handleSave('Workflow')} className="mt-2">Save Workflow</Button>
+                <Button onClick={() => saveAll('Workflow')} className="mt-2" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                  Save Workflow
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
@@ -264,7 +390,13 @@ const Settings = () => {
                   </div>
                   <Switch
                     checked={appearance.darkMode}
-                    onCheckedChange={v => setAppearance(a => ({ ...a, darkMode: v }))}
+                    onCheckedChange={v => {
+                      setAppearance(a => ({ ...a, darkMode: v }));
+                      // Auto-save theme preference
+                      if (user) {
+                        supabase.from('user_settings' as any).update({ dark_mode: v, updated_at: new Date().toISOString() }).eq('user_id', user.id).then();
+                      }
+                    }}
                   />
                 </div>
                 <Separator />

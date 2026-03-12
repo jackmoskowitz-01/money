@@ -95,9 +95,9 @@ const Dashboard = () => {
     };
 
     return [
+      { label: 'Activities (7d)', value: thisWeek.length, icon: Zap, trend: calcTrend(thisWeek.length, prevActivities), detail: `${activities.filter(a => a.type === 'email_sent').length} emails total`, color: 'text-info bg-info/10' },
       { label: 'Active Prospects', value: active, icon: Target, trend: calcTrend(active, prevActive), detail: `${pipeline.filter(p => p.stage === 'meeting_held').length} meetings held`, link: '/prospects', color: 'text-primary bg-primary/10' },
       { label: 'Deals Won', value: won, icon: CheckCircle2, trend: calcTrend(won, prevWon), detail: `${pipeline.filter(p => p.stage === 'moving_forward').length} moving forward`, color: 'text-success bg-success/10' },
-      { label: 'Activities (7d)', value: thisWeek.length, icon: Zap, trend: calcTrend(thisWeek.length, prevActivities), detail: `${activities.filter(a => a.type === 'email_sent').length} emails total`, color: 'text-info bg-info/10' },
       { label: 'Pending Tasks', value: pendingTasks, icon: BarChart3, trend: overdueTasks > 0 ? -overdueTasks : 0, detail: `${overdueTasks} overdue`, link: '/tasks', color: overdueTasks > 0 ? 'text-destructive bg-destructive/10' : 'text-warning bg-warning/10' },
     ];
   }, [pipeline, activities, tasks, now]);

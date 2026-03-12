@@ -45,6 +45,7 @@ const reasonTypeLabels: Record<string, string> = {
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
 const Prospects = () => {
+  const { buildings, loading: buildingsLoading } = useBuildings();
   const brokers = useBrokers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');

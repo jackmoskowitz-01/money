@@ -46,6 +46,8 @@ CRITICAL FORMATTING RULES:
 
 CRITICAL MEETING REQUEST RULE: When asking for a meeting, ask to meet "the week of ${weekOfDate}". For example: "Would you be open to a brief call the week of ${weekOfDate}?" or "Are you available for coffee the week of ${weekOfDate}?" The date provided is always a Monday — do not change it.
 
+GREETING RULE: ${greeting === 'none' ? `Do NOT use any greeting word like "Hi", "Hello", "Dear", or "Hey". Start the email with just the contact's first name followed by a comma. For example: "Sarah," on its own line.` : `Start the email with "${greeting} [first name]," — for example: "${greeting} Sarah,".`}
+
 ${isCustomProspect ? `CUSTOM PROSPECT MODE: The prospect is NOT in our database. You only have their organization name. Use your general knowledge about this organization (what they do, their industry, approximate size, likely office needs) to write a relevant outreach email. If you don't know specifics, keep it general but still tie it to the market news provided. Do NOT make up specific lease details or square footage — keep it about the market opportunity.` : `CRITICAL RULE: If "EXISTING CLIENTS IN THIS BUILDING" is provided, you MUST mention those client names by name in the FIRST paragraph of the email. Lead with the existing relationship — e.g. "Our firm currently represents [client name] at [building], so we know the property well..." This establishes credibility immediately. This is NOT optional — always include it when provided, and always in the opening paragraph.`}`;
 
     let userPrompt: string;

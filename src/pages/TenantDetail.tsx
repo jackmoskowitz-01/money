@@ -19,6 +19,7 @@ import EmailComposer from '@/components/EmailComposer';
 import CompanyContacts from '@/components/CompanyContacts';
 import ResearchBrief from '@/components/ResearchBrief';
 import SequenceBuilder from '@/components/SequenceBuilder';
+import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
 import { getContacts } from '@/data/companyContacts';

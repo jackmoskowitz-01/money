@@ -130,6 +130,11 @@ const MapView = () => {
     );
   }, [searchQuery, allBuildingsList]);
 
+  // Clear tenant selections when building changes
+  useEffect(() => {
+    setSelectedTenants(new Set());
+  }, [selectedBuilding?.id]);
+
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 

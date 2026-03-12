@@ -315,6 +315,76 @@ const Tasks = () => {
                   {showForm && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                       <Card className="mb-4 border-primary/30 bg-card p-4">
+                        {/* Prospect (required, first) */}
+                        <div className="mb-3">
+                          <label className="mb-1 block text-xs font-medium text-foreground">Prospect <span className="text-destructive">*</span></label>
+                          {newTask.tenantId ? (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm flex-1">
+                                <Building2 className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-foreground">
+                                  {(() => {
+                                    const b = allBuildings.find(b => b.id === newTask.buildingId);
+                                    const t = b?.tenants.find(t => t.id === newTask.tenantId);
+                                    return t ? `${t.name} — ${b?.name}` : 'Unknown';
+                                  })()}
+                                </span>
+                              </div>
+                              <button
+                                onClick={() => { setNewTask({ ...newTask, tenantId: '', buildingId: '' }); setProspectSearch(''); }}
+                                className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              <Input
+                                placeholder="Search prospect by name or building..."
+                                value={prospectSearch}
+                                onChange={e => setProspectSearch(e.target.value)}
+                                className={`border-border bg-secondary/50 ${!newTask.tenantId && prospectSearch === '' ? 'border-destructive/30 focus:ring-destructive/30' : ''}`}
+                                autoFocus
+                              />
+                              {prospectSearch.length >= 2 && (
+                                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                                  {allBuildings.flatMap(b =>
+                                    b.tenants
+                                      .filter(t =>
+                                        t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
+                                        b.name.toLowerCase().includes(prospectSearch.toLowerCase())
+                                      )
+                                      .map(t => (
+                                        <button
+                                          key={`${b.id}-${t.id}`}
+                                          onClick={() => {
+                                            setNewTask({ ...newTask, tenantId: t.id, buildingId: b.id });
+                                            setProspectSearch('');
+                                          }}
+                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
+                                        >
+                                          <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                          <div className="min-w-0">
+                                            <p className="font-medium text-foreground truncate">{t.name}</p>
+                                            <p className="text-[11px] text-muted-foreground truncate">{b.name} · {t.industry}</p>
+                                          </div>
+                                        </button>
+                                      ))
+                                  ).slice(0, 8)}
+                                  {allBuildings.flatMap(b =>
+                                    b.tenants.filter(t =>
+                                      t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
+                                      b.name.toLowerCase().includes(prospectSearch.toLowerCase())
+                                    )
+                                  ).length === 0 && (
+                                    <p className="px-3 py-2 text-xs text-muted-foreground">No matching prospects</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
                         <Input
                           placeholder="Task title..."
                           value={newTask.title}
@@ -372,76 +442,9 @@ const Tasks = () => {
                             className="w-48 border-border bg-secondary/50"
                           />
                         </div>
-                        <div className="mb-3">
-                          <label className="mb-1 block text-xs text-muted-foreground">Link to Prospect (optional)</label>
-                          {newTask.tenantId ? (
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
-                                <Building2 className="h-3.5 w-3.5 text-primary" />
-                                <span className="text-foreground">
-                                  {(() => {
-                                    const b = buildings.find(b => b.id === newTask.buildingId);
-                                    const t = b?.tenants.find(t => t.id === newTask.tenantId);
-                                    return t ? `${t.name} — ${b?.name}` : 'Unknown';
-                                  })()}
-                                </span>
-                              </div>
-                              <button
-                                onClick={() => { setNewTask({ ...newTask, tenantId: '', buildingId: '' }); setProspectSearch(''); }}
-                                className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              <Input
-                                placeholder="Search by company or building..."
-                                value={prospectSearch}
-                                onChange={e => setProspectSearch(e.target.value)}
-                                className="border-border bg-secondary/50"
-                              />
-                              {prospectSearch.length >= 2 && (
-                                <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
-                                  {buildings.flatMap(b =>
-                                    b.tenants
-                                      .filter(t =>
-                                        t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
-                                        b.name.toLowerCase().includes(prospectSearch.toLowerCase())
-                                      )
-                                      .map(t => (
-                                        <button
-                                          key={t.id}
-                                          onClick={() => {
-                                            setNewTask({ ...newTask, tenantId: t.id, buildingId: b.id });
-                                            setProspectSearch('');
-                                          }}
-                                          className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary"
-                                        >
-                                          <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                          <div className="min-w-0">
-                                            <p className="font-medium text-foreground truncate">{t.name}</p>
-                                            <p className="text-[11px] text-muted-foreground truncate">{b.name} · {t.industry}</p>
-                                          </div>
-                                        </button>
-                                      ))
-                                  ).slice(0, 8)}
-                                  {buildings.flatMap(b =>
-                                    b.tenants.filter(t =>
-                                      t.name.toLowerCase().includes(prospectSearch.toLowerCase()) ||
-                                      b.name.toLowerCase().includes(prospectSearch.toLowerCase())
-                                    )
-                                  ).length === 0 && (
-                                    <p className="px-3 py-2 text-xs text-muted-foreground">No matching prospects</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
-                          <Button size="sm" onClick={handleAdd}>Create Task</Button>
+                          <Button size="sm" onClick={handleAdd} disabled={!newTask.tenantId || !newTask.title.trim()}>Create Task</Button>
                         </div>
                       </Card>
                     </motion.div>

@@ -241,7 +241,7 @@ const MapView = () => {
     for (const tenantId of selectedTenants) {
       const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
       if (tenant) {
-        const key = `map-${selectedBuilding.id}-${tenant.id}`;
+        const key = `map::${selectedBuilding.id}::${tenant.id}`;
         generateEmailForTenant(tenant, selectedBuilding, reason, key);
       }
     }

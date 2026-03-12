@@ -74,6 +74,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cached_buildings: {
+        Row: {
+          address: string
+          building_data: Json
+          business_status: string
+          fetched_at: string
+          id: string
+          lat: number
+          lng: number
+          name: string
+          photo_url: string | null
+          query_index: number
+          rating: number | null
+          rating_count: number
+          types: string[]
+        }
+        Insert: {
+          address?: string
+          building_data?: Json
+          business_status?: string
+          fetched_at?: string
+          id: string
+          lat?: number
+          lng?: number
+          name: string
+          photo_url?: string | null
+          query_index?: number
+          rating?: number | null
+          rating_count?: number
+          types?: string[]
+        }
+        Update: {
+          address?: string
+          building_data?: Json
+          business_status?: string
+          fetched_at?: string
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          photo_url?: string | null
+          query_index?: number
+          rating?: number | null
+          rating_count?: number
+          types?: string[]
+        }
+        Relationships: []
+      }
       company_contacts: {
         Row: {
           created_at: string

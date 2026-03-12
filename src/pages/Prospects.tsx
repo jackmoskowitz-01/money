@@ -524,6 +524,11 @@ const Prospects = () => {
                                             contactName={tenant.contactName}
                                             contactEmail={tenant.contactEmail}
                                             subject={`${tenant.name} — ${reason.title}`}
+                                            tenantId={tenant.id}
+                                            tenantName={tenant.name}
+                                            buildingId={building.id}
+                                            buildingName={building.name}
+                                            outreachReason={reason.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onDismiss={() => { setActiveEmailKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; }); }}
                                             onUpdateEmail={updateEmail}

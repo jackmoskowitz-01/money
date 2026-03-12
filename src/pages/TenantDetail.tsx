@@ -6,6 +6,7 @@ import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, newsItems, getUrgencyColor, scoopPosts, type OutreachReason } from '@/data/mockData';
 import { updatePipelineStage, getOrCreatePipelineItem, stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
 import { addActivity, buildingSubmarkets, getSubmarketNews } from '@/data/activityData';
+import { getUserGreeting } from '@/lib/getUserGreeting';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,7 @@ const TenantDetail = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
         headers: {
@@ -122,6 +124,7 @@ const TenantDetail = () => {
           clientsInBuilding: building.tenants
             .filter(t => t.isClient && t.id !== tenant.id)
             .map(t => t.name),
+          greeting,
         }),
       });
 

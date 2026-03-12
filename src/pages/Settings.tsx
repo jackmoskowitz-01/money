@@ -278,6 +278,7 @@ const Settings = () => {
                   <Select value={emailDefaults.defaultGreeting} onValueChange={v => setEmailDefaults(e => ({ ...e, defaultGreeting: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">None (name only)</SelectItem>
                       <SelectItem value="Hi">Hi</SelectItem>
                       <SelectItem value="Hello">Hello</SelectItem>
                       <SelectItem value="Dear">Dear</SelectItem>

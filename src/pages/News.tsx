@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
+import { getUserGreeting } from '@/lib/getUserGreeting';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getProspectLists } from '@/data/prospectLists';
@@ -571,6 +572,7 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const clientsInBuilding = building.tenants
         .filter(t => t.isClient && t.id !== tenant.id)
         .map(t => t.name);
@@ -593,6 +595,7 @@ const News = () => {
           vacancyRate: building.vacancyRate,
           headcount: tenant.headcount,
           clientsInBuilding,
+          greeting,
         }),
       });
 
@@ -645,6 +648,7 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
         headers: {
@@ -664,6 +668,7 @@ const News = () => {
           headcount: 0,
           clientsInBuilding: [],
           isCustomProspect: true,
+          greeting,
         }),
       });
 

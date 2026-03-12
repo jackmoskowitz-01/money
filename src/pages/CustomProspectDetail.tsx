@@ -415,6 +415,8 @@ const CustomProspectDetail = () => {
                                   contactEmail={primaryContact?.email}
                                   subject={`${prospect.name} — Outreach`}
                                   recipients={recipients}
+                                  tenantId={prospectId}
+                                  tenantName={prospect.name}
                                   onClose={() => setActiveEmailKey(null)}
                                   onUpdateEmail={updateEmail}
                                 />

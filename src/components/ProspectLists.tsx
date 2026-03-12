@@ -1,32 +1,17 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Users, Search, ChevronDown, ChevronRight, Building2, X } from 'lucide-react';
+import { Plus, Trash2, Users, Search, ChevronDown, ChevronRight, Building2, X, ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { buildings, type Tenant, type Building } from '@/data/mockData';
-
-export type ProspectList = {
-  id: string;
-  name: string;
-  industry: string;
-  prospects: { tenantId: string; buildingId: string }[];
-  createdAt: string;
-};
-
-const LISTS_KEY = 'dealflow-prospect-lists';
-
-const getLists = (): ProspectList[] => {
-  try {
-    const stored = localStorage.getItem(LISTS_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch { return []; }
-};
-
-const saveLists = (lists: ProspectList[]) => {
-  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
-};
+import {
+  getProspectLists, createProspectList, addProspectsToList,
+  removeProspectFromList, deleteProspectList, type ProspectList,
+} from '@/data/prospectLists';
+import { getCustomProspects } from '@/data/customProspects';
 
 // Get all unique industries
 const getAllIndustries = (): string[] => {
@@ -46,7 +31,8 @@ const getAllProspects = (): { tenant: Tenant; building: Building }[] => {
 };
 
 const ProspectLists = () => {
-  const [lists, setLists] = useState<ProspectList[]>(getLists);
+  const navigate = useNavigate();
+  const [lists, setLists] = useState<ProspectList[]>(getProspectLists);
   const [expandedList, setExpandedList] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -56,62 +42,57 @@ const ProspectLists = () => {
 
   const industries = useMemo(getAllIndustries, []);
   const allProspects = useMemo(getAllProspects, []);
+  const customProspects = useMemo(() => getCustomProspects(), []);
 
-  const updateLists = (updated: ProspectList[]) => {
-    setLists(updated);
-    saveLists(updated);
-  };
+  const refreshLists = () => setLists(getProspectLists());
 
   const handleCreateList = () => {
     if (!newListName.trim()) return;
-    const list: ProspectList = {
-      id: `list-${Date.now()}`,
-      name: newListName.trim(),
-      industry: newListIndustry,
-      prospects: [],
-      createdAt: new Date().toISOString(),
-    };
-    updateLists([list, ...lists]);
+    const list = createProspectList(newListName.trim(), newListIndustry || undefined);
     setNewListName('');
     setNewListIndustry('');
     setShowCreate(false);
     setExpandedList(list.id);
     setAddingToList(list.id);
+    refreshLists();
   };
 
   const handleDeleteList = (id: string) => {
-    updateLists(lists.filter(l => l.id !== id));
+    deleteProspectList(id);
     if (expandedList === id) setExpandedList(null);
+    refreshLists();
   };
 
-  const handleAddProspect = (listId: string, tenantId: string, buildingId: string) => {
-    updateLists(lists.map(l => {
-      if (l.id !== listId) return l;
-      if (l.prospects.some(p => p.tenantId === tenantId)) return l;
-      return { ...l, prospects: [...l.prospects, { tenantId, buildingId }] };
-    }));
+  const handleAddProspect = (listId: string, tenantId: string, buildingId: string, tenantName: string) => {
+    addProspectsToList(listId, [{ tenantId, buildingId, tenantName }]);
+    refreshLists();
   };
 
   const handleRemoveProspect = (listId: string, tenantId: string) => {
-    updateLists(lists.map(l => {
-      if (l.id !== listId) return l;
-      return { ...l, prospects: l.prospects.filter(p => p.tenantId !== tenantId) };
-    }));
+    removeProspectFromList(listId, tenantId);
+    refreshLists();
   };
 
   const getProspectInfo = (tenantId: string, buildingId: string) => {
+    // Check building tenants first
     const building = buildings.find(b => b.id === buildingId);
     const tenant = building?.tenants.find(t => t.id === tenantId);
-    return tenant && building ? { tenant, building } : null;
+    if (tenant && building) return { name: tenant.name, industry: tenant.industry, buildingName: building.name, contactName: tenant.contactName, isCustom: false, tenantId, buildingId };
+    // Check custom prospects
+    const cp = customProspects.find(p => p.id === tenantId);
+    if (cp) return { name: cp.name, industry: cp.enrichment?.industry || '', buildingName: cp.address || '', contactName: '', isCustom: true, tenantId, buildingId: '' };
+    return null;
   };
 
   const getAvailableProspects = (list: ProspectList) => {
-    const existingIds = new Set(list.prospects.map(p => p.tenantId));
-    return allProspects
+    const existingIds = new Set(list.entries.map(e => e.tenantId));
+    const q = searchQuery.toLowerCase();
+
+    // Building tenants
+    const tenantResults = allProspects
       .filter(p => !existingIds.has(p.tenant.id))
       .filter(p => {
-        if (searchQuery) {
-          const q = searchQuery.toLowerCase();
+        if (q) {
           return p.tenant.name.toLowerCase().includes(q) ||
             p.tenant.industry.toLowerCase().includes(q) ||
             p.building.name.toLowerCase().includes(q) ||
@@ -121,7 +102,33 @@ const ProspectLists = () => {
           return p.tenant.industry.toLowerCase().includes(list.industry.toLowerCase());
         }
         return true;
-      });
+      })
+      .map(p => ({
+        id: p.tenant.id,
+        buildingId: p.building.id,
+        name: p.tenant.name,
+        subtitle: `${p.tenant.industry} · ${p.building.name}`,
+        contactName: p.tenant.contactName,
+        isCustom: false,
+      }));
+
+    // Custom prospects
+    const cpResults = customProspects
+      .filter(p => !existingIds.has(p.id))
+      .filter(p => {
+        if (q) return p.name.toLowerCase().includes(q);
+        return true;
+      })
+      .map(p => ({
+        id: p.id,
+        buildingId: '',
+        name: p.name,
+        subtitle: p.address || p.website || 'Custom prospect',
+        contactName: '',
+        isCustom: true,
+      }));
+
+    return [...tenantResults, ...cpResults];
   };
 
   return (
@@ -129,7 +136,7 @@ const ProspectLists = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {lists.length} list{lists.length !== 1 ? 's' : ''} · {lists.reduce((sum, l) => sum + l.prospects.length, 0)} total prospects
+          {lists.length} list{lists.length !== 1 ? 's' : ''} · {lists.reduce((sum, l) => sum + l.entries.length, 0)} total prospects
         </p>
         <Button size="sm" onClick={() => setShowCreate(!showCreate)}>
           <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
@@ -185,7 +192,7 @@ const ProspectLists = () => {
         <Card className="border-border bg-card p-8 text-center">
           <Users className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
           <p className="text-sm text-muted-foreground">No prospect lists yet</p>
-          <p className="mt-1 text-xs text-muted-foreground/60">Create a list to organize prospects by industry</p>
+          <p className="mt-1 text-xs text-muted-foreground/60">Create a list to organize prospects by industry, or add prospects from the Prospects page</p>
         </Card>
       ) : (
         <div className="space-y-2">
@@ -213,7 +220,7 @@ const ProspectLists = () => {
                       )}
                     </div>
                     <p className="mt-0.5 text-[11px] text-muted-foreground">
-                      {list.prospects.length} prospect{list.prospects.length !== 1 ? 's' : ''}
+                      {list.entries.length} prospect{list.entries.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -272,20 +279,23 @@ const ProspectLists = () => {
                                   {searchQuery ? 'No matching prospects' : 'All prospects already added'}
                                 </p>
                               ) : (
-                                available.map(({ tenant, building }) => (
+                                available.map(r => (
                                   <button
-                                    key={tenant.id}
-                                    onClick={() => handleAddProspect(list.id, tenant.id, building.id)}
+                                    key={r.id}
+                                    onClick={() => handleAddProspect(list.id, r.id, r.buildingId, r.name)}
                                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-secondary"
                                   >
                                     <Plus className="h-3 w-3 shrink-0 text-primary" />
                                     <div className="flex-1 min-w-0">
-                                      <p className="truncate text-xs font-medium text-foreground">{tenant.name}</p>
-                                      <p className="truncate text-[10px] text-muted-foreground">
-                                        {tenant.industry} · {building.name}
-                                      </p>
+                                      <p className="truncate text-xs font-medium text-foreground">{r.name}</p>
+                                      <p className="truncate text-[10px] text-muted-foreground">{r.subtitle}</p>
                                     </div>
-                                    <Badge variant="outline" className="shrink-0 text-[9px]">{tenant.contactName}</Badge>
+                                    {r.isCustom && (
+                                      <Badge variant="outline" className="shrink-0 text-[9px]">Custom</Badge>
+                                    )}
+                                    {r.contactName && (
+                                      <Badge variant="outline" className="shrink-0 text-[9px]">{r.contactName}</Badge>
+                                    )}
                                   </button>
                                 ))
                               )}
@@ -294,36 +304,52 @@ const ProspectLists = () => {
                         )}
 
                         {/* Prospect List */}
-                        {list.prospects.length === 0 && !isAdding ? (
+                        {list.entries.length === 0 && !isAdding ? (
                           <p className="py-4 text-center text-xs text-muted-foreground">
-                            No prospects yet — click "Add" to get started
+                            No prospects yet — click "Add" to get started, or add from the Prospects page
                           </p>
                         ) : (
                           <div className="mt-2 space-y-1">
-                            {list.prospects.map(p => {
-                              const info = getProspectInfo(p.tenantId, p.buildingId);
+                            {list.entries.map(entry => {
+                              const info = getProspectInfo(entry.tenantId, entry.buildingId);
                               if (!info) return null;
                               return (
                                 <div
-                                  key={p.tenantId}
-                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/30"
+                                  key={entry.tenantId}
+                                  className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-secondary/30 cursor-pointer group"
+                                  onClick={() => {
+                                    if (info.isCustom) {
+                                      navigate(`/prospect/${entry.tenantId}`);
+                                    } else {
+                                      navigate(`/building/${entry.buildingId}/tenant/${entry.tenantId}`);
+                                    }
+                                  }}
                                 >
                                   <Users className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                                   <div className="flex-1 min-w-0">
-                                    <p className="truncate text-xs font-medium text-foreground">{info.tenant.name}</p>
+                                    <p className="truncate text-xs font-medium text-foreground">{info.name}</p>
                                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                                      <span>{info.tenant.industry}</span>
-                                      <span>·</span>
-                                      <span className="flex items-center gap-0.5">
-                                        <Building2 className="h-2.5 w-2.5" />
-                                        {info.building.name}
-                                      </span>
-                                      <span>·</span>
-                                      <span>{info.tenant.contactName}</span>
+                                      {info.industry && <span>{info.industry}</span>}
+                                      {info.buildingName && (
+                                        <>
+                                          <span>·</span>
+                                          <span className="flex items-center gap-0.5">
+                                            <Building2 className="h-2.5 w-2.5" />
+                                            {info.buildingName}
+                                          </span>
+                                        </>
+                                      )}
+                                      {info.contactName && (
+                                        <>
+                                          <span>·</span>
+                                          <span>{info.contactName}</span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
+                                  <ExternalLink className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors" />
                                   <button
-                                    onClick={() => handleRemoveProspect(list.id, p.tenantId)}
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveProspect(list.id, entry.tenantId); }}
                                     className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
                                   >
                                     <X className="h-3 w-3" />

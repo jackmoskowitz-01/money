@@ -98,6 +98,15 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
     return dateStr;
   };
 
+  const freshnessLabel =
+    freshness === 'cached'
+      ? 'From daily cache'
+      : freshness === 'stale_cache'
+        ? 'Using fallback cache'
+        : freshness === 'empty_cached'
+          ? 'No news cached yet'
+          : 'Fresh lookup';
+
   return (
     <Card className="border-border bg-card overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">

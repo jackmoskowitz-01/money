@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Building2, Calendar, ChevronDown, Mail, Users, Briefcase, TrendingUp, AlertTriangle, Info, Zap, Loader2, Copy, Check, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, ExternalLink, UserPlus, ListPlus, BarChart3, Target } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
-import { buildings, getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
+import { getUrgencyColor, scoopPosts, type Tenant, type Building, type OutreachReason, type ScoopPost } from '@/data/mockData';
+import { useBuildings } from '@/hooks/useBuildings';
 import { getPipeline } from '@/data/pipelineData';
 import { buildingSubmarkets, getSubmarketNews, assignTenant, type Broker } from '@/data/activityData';
 import { useBrokers } from '@/hooks/useBrokers';
@@ -44,6 +45,7 @@ const reasonTypeLabels: Record<string, string> = {
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
 const Prospects = () => {
+  const { buildings, loading: buildingsLoading } = useBuildings();
   const brokers = useBrokers();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
@@ -80,7 +82,7 @@ const Prospects = () => {
       const bMax = Math.min(...b.tenant.outreachReasons.map(r => urgencyOrder[r.urgency]));
       return aMax - bMax;
     });
-  }, [pipeline]);
+  }, [pipeline, buildings]);
 
   const industries = useMemo(() => {
     const set = new Set(prospects.map(p => p.tenant.industry));

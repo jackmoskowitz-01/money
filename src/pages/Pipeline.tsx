@@ -347,8 +347,62 @@ const Pipeline = () => {
             </div>
           )}
 
-          <div className="flex gap-4">
-            {/* Kanban Board */}
+          {/* Mobile: stacked list view */}
+          <div className="block md:hidden space-y-4">
+            {stages.map(stage => {
+              const items = itemsByStage(stage);
+              if (items.length === 0) return null;
+              return (
+                <div key={stage}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline" className={`${stageColors[stage]} text-xs`}>
+                      {stageLabels[stage]}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">{items.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map(item => {
+                      if (!item.isManual) {
+                        const { tenant, building } = getTenantInfo(item.tenantId, item.buildingId);
+                        if (!tenant || !building) return null;
+                      }
+                      const sentCount = (item.sentTouchpoints || []).length;
+                      return (
+                        <Card
+                          key={`m-${item.tenantId}-${item.buildingId}`}
+                          className="border-border bg-card p-3"
+                          onClick={() => setSelectedItem(item)}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-semibold text-foreground">{getDisplayName(item)}</p>
+                            <select
+                              value={item.stage}
+                              onChange={e => { e.stopPropagation(); handleStageChange(item.tenantId, item.buildingId, e.target.value as PipelineStage); }}
+                              className="rounded-sm border border-border bg-secondary/50 px-1.5 py-0.5 text-[10px] text-foreground"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              {stages.map(s => <option key={s} value={s}>{stageLabels[s]}</option>)}
+                            </select>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{getDisplayCompany(item)}</p>
+                          <p className="text-[11px] text-muted-foreground">{getDisplayDetail(item)}</p>
+                          {sentCount > 0 && (
+                            <div className="mt-1.5 flex items-center gap-1">
+                              <Check className="h-3 w-3 text-primary" />
+                              <span className="text-[10px] text-primary">{sentCount} touchpoint{sentCount > 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: kanban board */}
+          <div className="hidden md:flex gap-4">
             <div className={`flex gap-2 sm:gap-4 overflow-x-auto pb-4 transition-all ${selectedItem ? 'flex-1' : 'w-full'}`}>
               {stages.map(stage => (
                 <div

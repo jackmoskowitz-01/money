@@ -95,8 +95,8 @@ const MapView = () => {
       const marker = L.marker([b.lat, b.lng], { icon }).addTo(mapInstanceRef.current);
       marker.bindPopup(`
         <div style="min-width:180px">
-          <strong>${b.name}</strong><br/>
-          <span style="font-size:11px;opacity:0.7">${b.address}</span><br/>
+          <strong>${b.address}</strong><br/>
+          ${b.name && b.name !== b.address ? `<span style="font-size:11px;opacity:0.7">${b.name}</span><br/>` : ''}
           <span style="font-size:11px">${b.tenants.length} tenants · ${b.vacancyRate}% vacant</span>
         </div>
       `);
@@ -156,8 +156,8 @@ const MapView = () => {
         const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
         marker.bindPopup(`
           <div style="min-width:180px">
-            <strong>${building.name}</strong><br/>
-            <span style="font-size:11px;opacity:0.7">${building.address}</span><br/>
+            <strong>${building.address}</strong><br/>
+            ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
             <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span>
           </div>
         `);
@@ -233,8 +233,10 @@ const MapView = () => {
                           : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{b.address}</p>
+                      <p className="text-sm font-semibold text-foreground">{b.address}</p>
+                      {b.name && b.name !== b.address && (
+                        <p className="text-[11px] text-muted-foreground">{b.name}</p>
+                      )}
                       <div className="mt-1.5 flex items-center gap-3 text-[11px]">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Users className="h-3 w-3" /> {b.tenants.length} tenants
@@ -271,8 +273,10 @@ const MapView = () => {
             <Card className="border-border bg-card/95 p-4 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
               <div className="mb-3 flex items-start justify-between">
                 <div>
-                  <h3 className="font-display text-lg font-bold">{selectedBuilding.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selectedBuilding.address}</p>
+                  <h3 className="font-display text-lg font-bold">{selectedBuilding.address}</h3>
+                  {selectedBuilding.name && selectedBuilding.name !== selectedBuilding.address && (
+                    <p className="text-xs text-muted-foreground">{selectedBuilding.name}</p>
+                  )}
                 </div>
                 <button
                   onClick={() => setSelectedBuilding(null)}

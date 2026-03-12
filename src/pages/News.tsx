@@ -329,9 +329,9 @@ const News = () => {
     }
   }, []);
 
-  // Fetch industry news when filter changes
+  // Fetch industry news when filter changes — always fetch fresh on selection
   useEffect(() => {
-    if (activeIndustry !== 'all' && !industryNews[activeIndustry]) {
+    if (activeIndustry !== 'all') {
       fetchIndustryNews(activeIndustry);
     }
   }, [activeIndustry, fetchIndustryNews]);

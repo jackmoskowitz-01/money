@@ -198,7 +198,21 @@ const CustomProspectDetail = () => {
 
   const handleStageChange = async (stage: PipelineStage) => {
     const buildingId = pipelineItem?.buildingId || 'custom';
-    await updateStage(prospectId!, buildingId, stage);
+    if (!pipelineItem) {
+      // Create pipeline deal if it doesn't exist yet
+      await supabase.from('pipeline_deals').insert({
+        tenant_id: prospectId!,
+        building_id: 'custom',
+        stage,
+        notes: [],
+        last_activity: new Date().toISOString(),
+        is_manual: true,
+        prospect_name: prospect.name,
+        sent_touchpoints: [],
+      });
+    } else {
+      await updateStage(prospectId!, buildingId, stage);
+    }
     addActivity({
       tenantId: prospectId!,
       buildingId: '',

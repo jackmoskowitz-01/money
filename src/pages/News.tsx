@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
+import { getUserGreeting } from '@/lib/getUserGreeting';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { getProspectLists } from '@/data/prospectLists';

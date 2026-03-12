@@ -46,14 +46,15 @@ const ActivityLogger = () => {
     return activities.filter(a => a.type === filterType);
   }, [activities, filterType]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formTitle.trim()) {
       toast.error('Please enter an activity title');
       return;
     }
     const selected = tenantOptions.find(t => t.tenantId === formTenant);
+    const tenantId = selected?.tenantId || '';
     const entry = addActivity({
-      tenantId: selected?.tenantId || '',
+      tenantId,
       buildingId: selected?.buildingId || '',
       type: formType,
       title: formTitle.trim(),
@@ -66,6 +67,16 @@ const ActivityLogger = () => {
     setFormType('note');
     setShowForm(false);
     toast.success('Activity logged');
+
+    // Auto-complete matching pending tasks
+    if (tenantId) {
+      const { completedCount, taskTitles } = await autoCompleteTasks(tenantId, formType);
+      if (completedCount > 0) {
+        toast.success(`Task auto-completed: "${taskTitles[0]}"`, {
+          description: 'Matching task was marked done based on this activity.',
+        });
+      }
+    }
   };
 
   const timeAgo = (ts: string) => {

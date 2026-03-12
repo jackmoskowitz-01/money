@@ -290,7 +290,7 @@ const CustomProspectDetail = () => {
           </div>
 
           {/* Pipeline Stage */}
-          <Card className="mb-6 border-border bg-card p-3">
+          <Card className="mb-8 border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <span className="text-xs font-medium text-muted-foreground">Pipeline Stage:</span>
               <select
@@ -309,7 +309,7 @@ const CustomProspectDetail = () => {
           </Card>
 
           {/* Company Contacts */}
-          <div className="mb-6">
+          <div className="mb-8">
             <CompanyContacts
               entityId={prospectId!}
               onContactsChange={() => setContactsVersion(v => v + 1)}

@@ -267,9 +267,11 @@ const News = () => {
         const allLive = Array.from(newsHistory.values()).filter(n => !n.id.startsWith('cn') && !n.id.startsWith('custom-intel-'));
         setLiveNews(allLive);
         cachedLiveNews = allLive;
+        saveToLS(LS_LIVE_NEWS, allLive);
         const now = new Date();
         setLastRefreshed(now);
         cachedLastRefreshed = now;
+        saveToLS(LS_LAST_REFRESHED, now);
         toast.success('Market news updated');
       }
     } catch (e) {

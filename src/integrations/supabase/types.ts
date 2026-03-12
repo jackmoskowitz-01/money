@@ -260,6 +260,30 @@ export type Database = {
         }
         Relationships: []
       }
+      prospect_owners: {
+        Row: {
+          claimed_at: string
+          id: string
+          owner_id: string
+          owner_name: string
+          prospect_id: string
+        }
+        Insert: {
+          claimed_at?: string
+          id?: string
+          owner_id: string
+          owner_name?: string
+          prospect_id: string
+        }
+        Update: {
+          claimed_at?: string
+          id?: string
+          owner_id?: string
+          owner_name?: string
+          prospect_id?: string
+        }
+        Relationships: []
+      }
       scoop_comments: {
         Row: {
           author_avatar: string

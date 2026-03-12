@@ -37,9 +37,12 @@ serve(async (req) => {
       .single();
 
     if (cached) {
+      const cachedItems = Array.isArray(cached.news_items) ? cached.news_items : [];
       const cacheAge = now - new Date(cached.fetched_at).getTime();
-      if (cacheAge < CACHE_TTL_MS) {
-        console.log(`Serving DB-cached news for ${companyName} (age: ${Math.round(cacheAge / 60000)}min)`);
+      const effectiveTtl = cachedItems.length > 0 ? CACHE_TTL_MS : EMPTY_CACHE_TTL_MS;
+
+      if (cacheAge < effectiveTtl) {
+        console.log(`Serving DB-cached news for ${companyName} (items: ${cachedItems.length}, age: ${Math.round(cacheAge / 60000)}min)`);
         return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });

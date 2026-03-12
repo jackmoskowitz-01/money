@@ -89,7 +89,7 @@ const CustomProspectDetail = () => {
   const isClaimed = !!owner;
 
   // Fetch owner
-  useState(() => {
+  useMemo(() => {
     const fetchOwner = async () => {
       if (!prospectId) return;
       const { data } = await supabase
@@ -101,7 +101,7 @@ const CustomProspectDetail = () => {
       setOwnerLoading(false);
     };
     fetchOwner();
-  });
+  }, [prospectId]);
 
   const claimAccount = async () => {
     if (!user || !profile) return;

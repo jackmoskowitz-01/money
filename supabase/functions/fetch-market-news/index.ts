@@ -163,25 +163,26 @@ Provide as many specific details as possible — company names, exact addresses,
         messages: [
           {
             role: "system",
-            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.
+            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.${industry ? ` These are ${industry} industry news items being analyzed for commercial real estate outreach opportunities.` : ""}
 
 IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra text.
 
 Each item must have:
-- id: unique string (n1, n2, etc.)
+- id: unique string (${industry ? `"ind-${industry.toLowerCase().replace(/[^a-z]/g, "")}-1"` : '"n1"'}, etc.)
 - title: compelling headline (max 80 chars)
-- summary: 2-3 sentence description with specific details from the source
+- summary: 2-3 sentence description with specific details from the source.${industry ? " Include a brief note on why this creates a CRE opportunity (e.g., 'This contract win likely means 200+ new hires needing office space in Northern Virginia')." : ""}
 - source: the actual publication name if mentioned, otherwise "Market Intelligence"
 - date: the date mentioned in the article, or today's date, in YYYY-MM-DD format
 - category: one of "lease", "sale", "expansion", "vacancy", "market", "contraction"
 - url: source URL if available from citations, otherwise null
 - companyMentions: array of company/organization names mentioned in this news item
+${industry ? `- industryTag: "${industry}"` : ""}
 
 Extract 10-15 distinct news items from the content. Prioritize the most significant and actionable items first. Each should be a separate piece of intelligence — do not combine multiple stories into one item.`,
           },
           {
             role: "user",
-            content: `Here is raw DC CRE market news content:\n\n${rawContent}\n\nCitations/Sources:\n${citations.map((c: string, i: number) => `[${i + 1}] ${c}`).join("\n")}\n\nStructure this into a JSON array of news items.`,
+            content: `Here is raw ${industry ? `${industry} industry` : "DC CRE market"} news content:\n\n${rawContent}\n\nCitations/Sources:\n${citations.map((c: string, i: number) => `[${i + 1}] ${c}`).join("\n")}\n\nStructure this into a JSON array of news items.`,
           },
         ],
       }),

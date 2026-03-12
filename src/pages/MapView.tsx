@@ -514,19 +514,82 @@ const MapView = () => {
                 </div>
 
                 {selectedTenants.size > 0 && (
-                  <Button
-                    size="sm"
-                    className="w-full text-xs h-8"
-                    onClick={() => {
-                      // Navigate to first selected tenant's detail page for outreach
-                      const firstId = Array.from(selectedTenants)[0];
-                      navigate(`/building/${selectedBuilding.id}/tenant/${firstId}`);
-                    }}
-                  >
-                    <Send className="mr-1.5 h-3 w-3" />
-                    Reach Out to {selectedTenants.size} {selectedTenants.size === 1 ? 'Tenant' : 'Tenants'}
-                  </Button>
+                  <div className="space-y-2 pt-1 border-t border-border/50">
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">
+                        <FileText className="h-3 w-3 inline mr-1" />
+                        Outreach Reason / Article
+                      </label>
+                      <textarea
+                        value={outreachReason}
+                        onChange={e => setOutreachReason(e.target.value)}
+                        placeholder="Paste a news article, market insight, or describe why you're reaching out..."
+                        className="w-full rounded-md border border-border bg-secondary/50 px-2.5 py-2 text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                        rows={3}
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full text-xs h-8"
+                      onClick={generateForSelected}
+                      disabled={generatingKeys.size > 0}
+                    >
+                      {generatingKeys.size > 0 ? (
+                        <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Generating...</>
+                      ) : (
+                        <><Sparkles className="mr-1.5 h-3 w-3" /> Generate Emails for {selectedTenants.size} {selectedTenants.size === 1 ? 'Tenant' : 'Tenants'}</>
+                      )}
+                    </Button>
+                  </div>
                 )}
+
+                {/* Generated Emails */}
+                {selectedBuilding && Object.entries(generatedEmails).filter(([k]) => k.startsWith(`map-${selectedBuilding.id}-`)).map(([key, content]) => {
+                  const tenantId = key.split('-').slice(2).join('-');
+                  const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
+                  if (!tenant) return null;
+                  const isGen = generatingKeys.has(key);
+
+                  return (
+                    <div key={key} className="mt-2">
+                      <button
+                        onClick={() => setActiveEmailKey(activeEmailKey === key ? null : key)}
+                        className="flex w-full items-center justify-between rounded-md border border-border bg-secondary/30 px-2.5 py-2 text-left hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs font-medium text-foreground">{tenant.name}</span>
+                        </div>
+                        {isGen ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary">Ready</Badge>
+                        )}
+                      </button>
+                      {activeEmailKey === key && content && (
+                        <div className="mt-1">
+                          <EmailDisplay
+                            emailKey={key}
+                            emailContent={content}
+                            isGenerating={isGen}
+                            label={`Email to ${tenant.name}`}
+                            contactName={tenant.contactName}
+                            contactEmail={tenant.contactEmail}
+                            recipients={buildRecipients(tenant)}
+                            tenantName={tenant.name}
+                            industry={tenant.industry}
+                            buildingName={selectedBuilding.name}
+                            sqft={tenant.sqft}
+                            leaseExpiration={tenant.leaseExpiration}
+                            outreachReason={outreachReason}
+                            onClose={() => setActiveEmailKey(null)}
+                            onUpdateEmail={updateEmail}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <h4 className="mb-2 text-sm font-semibold">Tenant List</h4>

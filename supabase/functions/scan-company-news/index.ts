@@ -196,11 +196,21 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     } catch {
       console.error("Failed to parse company news:", cleaned);
       if (cached) {
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ companyNews: [], citations }), {
+      return new Response(JSON.stringify({
+        companyNews: [],
+        citations,
+        fetchedAt: new Date().toISOString(),
+        freshness: "fresh_empty",
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

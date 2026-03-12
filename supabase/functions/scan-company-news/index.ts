@@ -43,7 +43,12 @@ serve(async (req) => {
 
       if (cacheAge < effectiveTtl) {
         console.log(`Serving DB-cached news for ${companyName} (items: ${cachedItems.length}, age: ${Math.round(cacheAge / 60000)}min)`);
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: cachedItems.length > 0 ? "cached" : "empty_cached",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

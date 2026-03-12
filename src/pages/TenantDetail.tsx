@@ -272,6 +272,7 @@ const TenantDetail = () => {
               <p className="text-muted-foreground">{building.name} · {tenant.industry}</p>
             </div>
             <div className="flex items-center gap-3">
+              <AddToListButton tenantId={tenantId!} buildingId={buildingId!} tenantName={tenant.name} />
               <BrokerAssignment tenantId={tenantId!} buildingId={buildingId!} />
               <Badge variant="outline" className="text-xs">
                 {tenant.outreachReasons.filter(r => r.urgency === 'high').length} urgent signals

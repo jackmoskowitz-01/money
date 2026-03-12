@@ -94,7 +94,12 @@ serve(async (req) => {
       // If API fails, serve stale cache if available
       if (cached) {
         console.log("API failed, serving stale cached news");
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

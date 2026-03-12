@@ -173,8 +173,10 @@ const News = () => {
   const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(cachedLiveNews);
   const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>(cachedCompanyNews);
+  const [industryNews, setIndustryNews] = useState<Record<string, NewsItem[]>>(() => loadFromLS<Record<string, NewsItem[]>>(LS_INDUSTRY_NEWS, {}));
   const [newsLoading, setNewsLoading] = useState(false);
   const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
+  const [industryNewsLoading, setIndustryNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(cachedLastRefreshed);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_BOOKMARKS, [])));
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_READ_IDS, [])));

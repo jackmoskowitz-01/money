@@ -63,10 +63,15 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
       }
 
       const data = await resp.json();
-      if (data.companyNews && Array.isArray(data.companyNews)) {
-        setNews(data.companyNews);
-        onNewsLoaded?.(data.companyNews);
+      const incomingNews = Array.isArray(data.companyNews) ? data.companyNews : [];
+
+      setNews(prev => (incomingNews.length > 0 ? incomingNews : prev.length > 0 ? prev : incomingNews));
+      if (incomingNews.length > 0) {
+        onNewsLoaded?.(incomingNews);
       }
+
+      setLastFetchedAt(data.fetchedAt || new Date().toISOString());
+      setFreshness(data.freshness || 'fresh');
       setHasLoaded(true);
     } catch (e) {
       console.error('Company news fetch failed:', e);

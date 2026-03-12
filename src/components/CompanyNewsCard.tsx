@@ -77,8 +77,8 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
 
   useEffect(() => {
     fetchNews();
-    // Auto-refresh every 3 minutes
-    const interval = setInterval(fetchNews, 3 * 60 * 1000);
+    // Auto-refresh every 30 minutes (matches server-side cache TTL)
+    const interval = setInterval(fetchNews, 30 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchNews]);
 

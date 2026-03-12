@@ -364,6 +364,7 @@ const MapView = () => {
                   );
                 })}
               </div>
+              </div>
             </Card>
           </motion.div>
         )}

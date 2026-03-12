@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap } from 'lucide-react';
+import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap, ShieldAlert, UserCheck, UserPlus, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,11 @@ import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
-import { updatePipelineStage, getOrCreatePipelineItem, stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
+import { stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
 import { addActivity } from '@/data/activityData';
+import { usePipeline } from '@/hooks/usePipeline';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -69,14 +72,72 @@ const buildReasonsFromEnrichment = (enrichment?: ProspectEnrichment): AutoOutrea
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
   const prospect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const { user, profile } = useAuth();
+  const { pipeline, updateStage } = usePipeline();
 
-  const [currentStage, setCurrentStage] = useState<PipelineStage>(() => {
-    if (prospectId) {
-      const item = getOrCreatePipelineItem(prospectId, 'custom');
-      return item.stage;
+  // Get DB-backed pipeline stage for this prospect
+  const pipelineItem = useMemo(() => {
+    return pipeline.find(p => p.tenantId === prospectId);
+  }, [pipeline, prospectId]);
+  const currentStage: PipelineStage = pipelineItem?.stage || 'meeting_set';
+
+  // Account owner state
+  const [owner, setOwner] = useState<{ owner_id: string; owner_name: string } | null>(null);
+  const [ownerLoading, setOwnerLoading] = useState(true);
+  const [ownerActing, setOwnerActing] = useState(false);
+  const isMyAccount = owner?.owner_id === user?.id;
+  const isClaimed = !!owner;
+
+  // Fetch owner
+  useMemo(() => {
+    const fetchOwner = async () => {
+      if (!prospectId) return;
+      const { data } = await supabase
+        .from('prospect_owners')
+        .select('owner_id, owner_name')
+        .eq('prospect_id', prospectId)
+        .maybeSingle();
+      setOwner(data || null);
+      setOwnerLoading(false);
+    };
+    fetchOwner();
+  }, [prospectId]);
+
+  const claimAccount = async () => {
+    if (!user || !profile) return;
+    setOwnerActing(true);
+    const { error } = await supabase
+      .from('prospect_owners')
+      .insert({
+        prospect_id: prospectId!,
+        owner_id: user.id,
+        owner_name: profile.full_name || profile.email || 'Unknown',
+      });
+    if (error) {
+      toast.error(error.code === '23505' ? 'Already claimed by someone else' : 'Failed to claim');
+    } else {
+      setOwner({ owner_id: user.id, owner_name: profile.full_name || profile.email || 'Unknown' });
+      toast.success('You are now the account owner');
     }
-    return 'meeting_set';
-  });
+    setOwnerActing(false);
+  };
+
+  const releaseAccount = async () => {
+    if (!user) return;
+    setOwnerActing(true);
+    const { error } = await supabase
+      .from('prospect_owners')
+      .delete()
+      .eq('prospect_id', prospectId!)
+      .eq('owner_id', user.id);
+    if (error) {
+      toast.error('Failed to release account');
+    } else {
+      setOwner(null);
+      toast.success('Account ownership released');
+    }
+    setOwnerActing(false);
+  };
 
   const [contactsVersion, setContactsVersion] = useState(0);
   const [customReasonOpen, setCustomReasonOpen] = useState(false);
@@ -93,7 +154,6 @@ const CustomProspectDetail = () => {
   const [newsReasons, setNewsReasons] = useState<AutoOutreachReason[]>([]);
 
   const outreachReasons = useMemo(() => {
-    // Merge enrichment reasons + live news reasons, deduplicate by id
     const all = [...enrichmentReasons, ...newsReasons];
     const seen = new Set<string>();
     return all.filter(r => {
@@ -136,9 +196,23 @@ const CustomProspectDetail = () => {
     );
   }
 
-  const handleStageChange = (stage: PipelineStage) => {
-    updatePipelineStage(prospectId!, 'custom', stage);
-    setCurrentStage(stage);
+  const handleStageChange = async (stage: PipelineStage) => {
+    const buildingId = pipelineItem?.buildingId || 'custom';
+    if (!pipelineItem) {
+      // Create pipeline deal if it doesn't exist yet
+      await supabase.from('pipeline_deals').insert({
+        tenant_id: prospectId!,
+        building_id: 'custom',
+        stage,
+        notes: [],
+        last_activity: new Date().toISOString(),
+        is_manual: true,
+        prospect_name: prospect.name,
+        sent_touchpoints: [],
+      });
+    } else {
+      await updateStage(prospectId!, buildingId, stage);
+    }
     addActivity({
       tenantId: prospectId!,
       buildingId: '',
@@ -147,6 +221,12 @@ const CustomProspectDetail = () => {
       description: `Pipeline stage updated from ${stageLabels[currentStage]} to ${stageLabels[stage]}`,
     });
   };
+
+  // Determine if outreach should be blocked (someone else owns + active deal)
+  const activeStages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward'];
+  const isActiveDeal = activeStages.includes(currentStage);
+  const ownedBySomeoneElse = isClaimed && !isMyAccount;
+  const outreachBlocked = ownedBySomeoneElse && isActiveDeal;
 
   const generateCustomEmail = () => {
     if (!customReasonText.trim()) {
@@ -282,27 +362,82 @@ const CustomProspectDetail = () => {
             </div>
             <div className="flex items-center gap-3">
               <AddToListButton tenantId={prospectId!} buildingId="" tenantName={prospect.name} />
-              <AccountOwnerBadge prospectId={prospectId!} />
             </div>
           </div>
 
-          {/* Pipeline Stage */}
-          <Card className="mb-8 border-border bg-card p-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-muted-foreground">Pipeline Stage:</span>
-              <select
-                value={currentStage}
-                onChange={e => handleStageChange(e.target.value as PipelineStage)}
-                className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground"
-              >
-                {stages.map(s => (
-                  <option key={s} value={s}>{stageLabels[s]}</option>
-                ))}
-              </select>
-              <Badge variant="outline" className={`text-[10px] ${stageColors[currentStage]}`}>
-                {stageLabels[currentStage]}
-              </Badge>
+          {/* Combined Status Banner — Pipeline + Account Owner */}
+          <Card className={`mb-8 border p-4 ${outreachBlocked ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-card'}`}>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              {/* Pipeline Stage */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Pipeline:</span>
+                <select
+                  value={currentStage}
+                  onChange={e => handleStageChange(e.target.value as PipelineStage)}
+                  disabled={ownedBySomeoneElse}
+                  className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground disabled:opacity-60"
+                >
+                  {stages.map(s => (
+                    <option key={s} value={s}>{stageLabels[s]}</option>
+                  ))}
+                </select>
+                <Badge variant="outline" className={`text-[10px] ${stageColors[currentStage]}`}>
+                  {stageLabels[currentStage]}
+                </Badge>
+              </div>
+
+              {/* Account Owner */}
+              <div className="flex items-center gap-2">
+                {ownerLoading ? (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Owner
+                  </Badge>
+                ) : !isClaimed ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-[10px] h-7 gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                    onClick={claimAccount}
+                    disabled={ownerActing}
+                  >
+                    {ownerActing ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                    Claim as My Account
+                  </Button>
+                ) : isMyAccount ? (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20">
+                      <UserCheck className="h-3 w-3" /> My Account
+                    </Badge>
+                    <button
+                      onClick={releaseAccount}
+                      disabled={ownerActing}
+                      className="rounded p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Release ownership"
+                    >
+                      {ownerActing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-3 w-3" />}
+                    </button>
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] gap-1 bg-muted text-muted-foreground">
+                    <UserCheck className="h-3 w-3" /> {owner!.owner_name}'s Account
+                  </Badge>
+                )}
+              </div>
             </div>
+
+            {/* Warning banner when someone else has an active deal */}
+            {outreachBlocked && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-3 flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2"
+              >
+                <ShieldAlert className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-[11px] text-destructive font-medium">
+                  {owner!.owner_name} has an active {stageLabels[currentStage].toLowerCase()} on this account — do not reach out.
+                </p>
+              </motion.div>
+            )}
           </Card>
 
           {/* Company Contacts */}

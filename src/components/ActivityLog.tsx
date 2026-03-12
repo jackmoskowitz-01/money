@@ -13,6 +13,8 @@ import {
   activityTypeLabels, activityTypeIcons,
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
+import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
+import { toast } from 'sonner';
 
 const typeOptions: { value: ActivityType; label: string; icon: typeof Mail; defaultTitle: string }[] = [
   { value: 'email_sent', label: 'Email', icon: Mail, defaultTitle: 'Sent email' },
@@ -99,7 +101,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
     }
   };
 
-  const handleSave = (contactIds: string[]) => {
+  const handleSave = async (contactIds: string[]) => {
     if (contactIds.length === 0) {
       // No contacts selected — log single activity
       const entry = addActivity({
@@ -128,6 +130,15 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
       });
       setActivities(prev => [...newEntries, ...prev]);
     }
+
+    // Auto-complete matching pending tasks
+    const { completedCount, taskTitles } = await autoCompleteTasks(tenantId, newType);
+    if (completedCount > 0) {
+      toast.success(`Task auto-completed: "${taskTitles[0]}"`, {
+        description: 'Matching task was marked done based on this activity.',
+      });
+    }
+
     resetForm();
   };
 

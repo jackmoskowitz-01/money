@@ -45,12 +45,40 @@ type CompanyNewsItem = NewsItem & {
   url?: string;
 };
 
-// Module-level cache so news persists across navigations
-let cachedLiveNews: NewsItem[] | null = null;
-let cachedCompanyNews: CompanyNewsItem[] = [];
-let cachedLastRefreshed: Date | null = null;
+// LocalStorage-backed cache so news survives reloads
+const LS_LIVE_NEWS = 'dealflow_live_news';
+const LS_COMPANY_NEWS = 'dealflow_company_news';
+const LS_LAST_REFRESHED = 'dealflow_news_last_refreshed';
+const LS_NEWS_HISTORY = 'dealflow_news_history';
+const LS_BOOKMARKS = 'dealflow_news_bookmarks';
+const LS_READ_IDS = 'dealflow_news_read';
+
+const loadFromLS = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch { return fallback; }
+};
+
+const saveToLS = (key: string, value: unknown) => {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+};
+
+let cachedLiveNews: NewsItem[] | null = loadFromLS<NewsItem[] | null>(LS_LIVE_NEWS, null);
+let cachedCompanyNews: CompanyNewsItem[] = loadFromLS<CompanyNewsItem[]>(LS_COMPANY_NEWS, []);
+let cachedLastRefreshed: Date | null = (() => {
+  const v = localStorage.getItem(LS_LAST_REFRESHED);
+  return v ? new Date(JSON.parse(v)) : null;
+})();
 // Accumulated history — news items are never removed, only added
-let newsHistory: Map<string, NewsItem> = new Map();
+let newsHistory: Map<string, NewsItem> = new Map(
+  loadFromLS<[string, NewsItem][]>(LS_NEWS_HISTORY, [])
+);
+
+const persistHistory = () => {
+  saveToLS(LS_NEWS_HISTORY, Array.from(newsHistory.entries()));
+};
 
 const mergeIntoHistory = (items: NewsItem[]) => {
   items.forEach(item => {
@@ -58,6 +86,7 @@ const mergeIntoHistory = (items: NewsItem[]) => {
       newsHistory.set(item.id, item);
     }
   });
+  persistHistory();
 };
 
 type ProspectMatch = { tenant: Tenant; building: Building };

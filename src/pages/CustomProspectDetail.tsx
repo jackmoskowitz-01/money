@@ -1,13 +1,13 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Globe, MapPin, Calendar, Plus, Send, Mail, Loader2, ChevronDown, Zap } from 'lucide-react';
+import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import AccountOwnerBadge from '@/components/AccountOwnerBadge';
 import { getCustomProspect, type ProspectEnrichment } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
 import EmailDisplay from '@/components/EmailDisplay';
@@ -282,10 +282,7 @@ const CustomProspectDetail = () => {
             </div>
             <div className="flex items-center gap-3">
               <AddToListButton tenantId={prospectId!} buildingId="" tenantName={prospect.name} />
-              <Badge variant="outline" className="text-[10px]">
-                <Calendar className="h-3 w-3 mr-1" />
-                Added {format(new Date(prospect.createdAt), 'MMM d, yyyy')}
-              </Badge>
+              <AccountOwnerBadge prospectId={prospectId!} />
             </div>
           </div>
 

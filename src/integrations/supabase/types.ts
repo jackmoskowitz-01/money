@@ -260,6 +260,42 @@ export type Database = {
         }
         Relationships: []
       }
+      prospect_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number
+          file_type: string
+          id: string
+          prospect_id: string
+          uploaded_by: string
+          uploaded_by_name: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          prospect_id: string
+          uploaded_by: string
+          uploaded_by_name?: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          id?: string
+          prospect_id?: string
+          uploaded_by?: string
+          uploaded_by_name?: string
+        }
+        Relationships: []
+      }
       prospect_owners: {
         Row: {
           claimed_at: string

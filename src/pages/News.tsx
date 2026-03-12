@@ -295,6 +295,47 @@ const News = () => {
     }
   }, []);
 
+  const fetchIndustryNews = useCallback(async (ind: string) => {
+    if (ind === 'all') return;
+    setIndustryNewsLoading(true);
+    try {
+      const resp = await fetch(NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ industry: ind }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to fetch industry news');
+      }
+      const data = await resp.json();
+      if (data.news && Array.isArray(data.news)) {
+        mergeIntoHistory(data.news);
+        setIndustryNews(prev => {
+          const updated = { ...prev, [ind]: data.news };
+          saveToLS(LS_INDUSTRY_NEWS, updated);
+          return updated;
+        });
+        toast.success(`Found ${data.news.length} ${ind} industry items`);
+      }
+    } catch (e) {
+      console.error('Failed to fetch industry news:', e);
+      toast.error(`Failed to fetch ${ind} news`);
+    } finally {
+      setIndustryNewsLoading(false);
+    }
+  }, []);
+
+  // Fetch industry news when filter changes
+  useEffect(() => {
+    if (activeIndustry !== 'all' && !industryNews[activeIndustry]) {
+      fetchIndustryNews(activeIndustry);
+    }
+  }, [activeIndustry, fetchIndustryNews]);
+
   // Initial fetch only if no cache; auto-refresh every 3 minutes
   useEffect(() => {
     if (!cachedLiveNews) fetchLiveNews();
@@ -310,9 +351,17 @@ const News = () => {
 
   const currentNews: NewsItem[] = useMemo(() => {
     const all = [...customIntelItems, ...companyNews, ...(liveNews || [])];
+    // Include industry-specific news
+    Object.values(industryNews).forEach(items => {
+      items.forEach(item => {
+        if (!all.some(n => n.id === item.id)) {
+          all.push(item);
+        }
+      });
+    });
     // Sort by date descending (newest first)
     return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [customIntelItems, companyNews, liveNews]);
+  }, [customIntelItems, companyNews, liveNews, industryNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();

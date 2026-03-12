@@ -14,6 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { buildings } from '@/data/mockData';
 import { useBuildings } from '@/hooks/useBuildings';
 import { useTasks, type TaskPriority, type TaskType, type Task } from '@/hooks/useTasks';
+import { getCustomProspects, type CustomProspect } from '@/data/customProspects';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
 import ProspectLists from '@/components/ProspectLists';
 
 const taskTypeIcons: Record<string, typeof Phone> = {

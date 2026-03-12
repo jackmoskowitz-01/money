@@ -80,7 +80,7 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
     } finally {
       setLoading(false);
     }
-  }, [companyId, companyName, buildingId]);
+  }, [companyId, companyName, buildingId, onNewsLoaded]);
 
   useEffect(() => {
     fetchNews();

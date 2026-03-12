@@ -165,14 +165,14 @@ Provide as many specific details as possible — company names, exact addresses,
         messages: [
           {
             role: "system",
-            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.${industry ? ` These are ${industry} industry news items being analyzed for commercial real estate outreach opportunities.` : ""}
+            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.${industry ? ` These are ${industry} industry news items — major industry developments, funding, deals, and policy changes.` : ""}
 
 IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra text.
 
 Each item must have:
 - id: unique string (${industry ? `"ind-${industry.toLowerCase().replace(/[^a-z]/g, "")}-1"` : '"n1"'}, etc.)
 - title: compelling headline (max 80 chars)
-- summary: 2-3 sentence description with specific details from the source.${industry ? " Include a brief note on why this creates a CRE opportunity (e.g., 'This contract win likely means 200+ new hires needing office space in Northern Virginia')." : ""}
+- summary: 2-3 sentence description with specific details from the source.${industry ? " Focus on the significance of this news — deal size, funding amount, policy impact, or strategic importance." : ""}
 - source: the actual publication name if mentioned, otherwise "Market Intelligence"
 - date: the date mentioned in the article, or today's date, in YYYY-MM-DD format
 - category: one of "lease", "sale", "expansion", "vacancy", "market", "contraction"

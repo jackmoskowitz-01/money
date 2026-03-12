@@ -22,6 +22,10 @@ const MapView = () => {
   const navigate = useNavigate();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
+  const [outreachReason, setOutreachReason] = useState('');
+  const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
+  const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
+  const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);

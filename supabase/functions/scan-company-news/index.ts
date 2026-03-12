@@ -165,7 +165,12 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     if (!structureResp.ok) {
       if (cached) {
         console.log("Structure API failed, serving stale cached news");
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

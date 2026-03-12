@@ -156,8 +156,8 @@ const MapView = () => {
         const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
         marker.bindPopup(`
           <div style="min-width:180px">
-            <strong>${building.name}</strong><br/>
-            <span style="font-size:11px;opacity:0.7">${building.address}</span><br/>
+            <strong>${building.address}</strong><br/>
+            ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
             <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span>
           </div>
         `);

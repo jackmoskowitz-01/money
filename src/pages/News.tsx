@@ -389,6 +389,11 @@ const News = () => {
     }
     if (activeIndustry !== 'all') {
       result = result.filter(news => {
+        // Match industry-tagged news first
+        if ((news as any).industryTag === activeIndustry) return true;
+        // Also match by id prefix for industry-fetched items
+        if (news.id.startsWith(`ind-${activeIndustry.toLowerCase().replace(/[^a-z]/g, '')}`)) return true;
+        // Existing matching logic
         const prospects = getAffectedProspects(news);
         return prospects.some(p => p.tenant.industry === activeIndustry) ||
           news.relatedTenants?.some(tid => {

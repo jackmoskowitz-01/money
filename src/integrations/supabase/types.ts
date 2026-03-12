@@ -122,6 +122,33 @@ export type Database = {
         }
         Relationships: []
       }
+      cached_company_news: {
+        Row: {
+          citations: Json
+          company_id: string
+          company_name: string
+          fetched_at: string
+          id: string
+          news_items: Json
+        }
+        Insert: {
+          citations?: Json
+          company_id: string
+          company_name?: string
+          fetched_at?: string
+          id?: string
+          news_items?: Json
+        }
+        Update: {
+          citations?: Json
+          company_id?: string
+          company_name?: string
+          fetched_at?: string
+          id?: string
+          news_items?: Json
+        }
+        Relationships: []
+      }
       company_contacts: {
         Row: {
           created_at: string

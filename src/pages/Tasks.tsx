@@ -435,13 +435,17 @@ const Tasks = () => {
                     {calDays.map(day => {
                       const dateStr = format(day, 'yyyy-MM-dd');
                       const count = taskCounts[dateStr] || 0;
+                      const overdueForDay = overdueCounts[dateStr] || 0;
                       const isSelected = selectedDate && isSameDay(day, selectedDate);
                       const isToday = isSameDay(day, new Date());
                       const inMonth = isSameMonth(day, currentMonth);
                       return (
                         <button key={dateStr} onClick={() => setSelectedDate(isSelected ? null : day)} className={`relative flex flex-col items-center rounded-md py-1.5 text-xs transition-colors ${!inMonth ? 'text-muted-foreground/30' : isSelected ? 'bg-primary text-primary-foreground' : isToday ? 'bg-primary/10 text-primary font-bold' : 'text-foreground hover:bg-secondary'}`}>
                           {format(day, 'd')}
-                          {count > 0 && inMonth && (
+                          {overdueForDay > 0 && inMonth && (
+                            <span className={`mt-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold ${isSelected ? 'bg-destructive/80 text-destructive-foreground' : 'bg-destructive/15 text-destructive'}`}>{overdueForDay}</span>
+                          )}
+                          {count > 0 && overdueForDay === 0 && inMonth && (
                             <span className={`mt-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold ${isSelected ? 'bg-primary-foreground/30 text-primary-foreground' : 'bg-primary/20 text-primary'}`}>{count}</span>
                           )}
                         </button>

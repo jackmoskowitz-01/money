@@ -502,35 +502,6 @@ const CustomProspectDetail = () => {
                 }}
               />
 
-              {/* Activity Log */}
-              <div className="mt-4">
-                <ActivityLog
-                  tenantId={prospectId!}
-                  buildingId=""
-                  outreachReasonTitles={[]}
-                  contactsVersion={contactsVersion}
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2 pt-1">
-                <EmailComposer
-                  tenantId={prospectId!}
-                  buildingId=""
-                  tenantName={prospect.name}
-                  contactName={primaryContact?.name || prospect.name}
-                  contactEmail={primaryContact?.email}
-                  buildingName={prospect.address}
-                  recipients={recipients}
-                />
-                {primaryContact?.email && (
-                  <a href={`mailto:${primaryContact.email}`}>
-                    <Button size="sm" variant="outline" className="text-xs h-8">
-                      <Mail className="mr-1 h-3 w-3" /> Email {primaryContact.name.split(' ')[0]}
-                    </Button>
-                  </a>
-                )}
-              </div>
             </div>
 
             {/* Sidebar */}

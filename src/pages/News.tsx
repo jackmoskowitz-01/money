@@ -461,6 +461,61 @@ const News = () => {
     setShowSearchFor(null);
   };
 
+  const addListToNews = (newsId: string, listId: string) => {
+    const lists = getProspectLists();
+    const list = lists.find(l => l.id === listId);
+    if (!list || list.entries.length === 0) {
+      toast.info('This list has no prospects');
+      return;
+    }
+
+    // For each entry in the list, try to find the matching tenant in buildings
+    const manual = manualProspects[newsId] || [];
+    const existingIds = new Set(manual.map(p => p.tenant.id));
+    let addedCount = 0;
+
+    const newManual: ProspectMatch[] = [];
+    const newCustom: { id: string; name: string }[] = [];
+
+    for (const entry of list.entries) {
+      if (existingIds.has(entry.tenantId)) continue;
+
+      // Try to find in buildings data
+      let found = false;
+      for (const building of buildings) {
+        const tenant = building.tenants.find(t => t.id === entry.tenantId);
+        if (tenant) {
+          newManual.push({ tenant, building });
+          existingIds.add(entry.tenantId);
+          found = true;
+          addedCount++;
+          break;
+        }
+      }
+
+      // If not found in buildings, add as custom prospect
+      if (!found) {
+        newCustom.push({ id: entry.tenantId, name: entry.tenantName });
+        addedCount++;
+      }
+    }
+
+    if (newManual.length > 0) {
+      setManualProspects(prev => ({
+        ...prev,
+        [newsId]: [...(prev[newsId] || []), ...newManual],
+      }));
+    }
+    if (newCustom.length > 0) {
+      setCustomProspects(prev => ({
+        ...prev,
+        [newsId]: [...(prev[newsId] || []), ...newCustom],
+      }));
+    }
+
+    toast.success(`Added ${addedCount} prospects from "${list.name}"`);
+  };
+
   const removeCustomProspect = (newsId: string, customId: string) => {
     setCustomProspects(prev => ({
       ...prev,

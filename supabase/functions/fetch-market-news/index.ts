@@ -25,15 +25,27 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "sonar",
+        model: "sonar-pro",
         messages: [
           {
             role: "system",
-            content: "You are a commercial real estate news researcher. Search for the most recent news about the Washington DC office market. Focus on leases, building sales, tenant moves, expansions, contractions, vacancy trends, and market developments. Return factual, sourced news only.",
+            content: "You are an elite commercial real estate news researcher covering the Washington DC metro area. Search broadly across major CRE publications (Bisnow, CoStar, Commercial Observer, GlobeSt, WTOP, Washington Business Journal, CRE Daily), government/GSA announcements, and mainstream business news (Bloomberg, WSJ, Reuters). Return ONLY factual, sourced news with specific details.",
           },
           {
             role: "user",
-            content: `Find the latest Washington DC commercial real estate office market news from the past 7 days. Include tenant leases, building sales, expansions, contractions, vacancy updates, and market trends. Focus on specific companies, buildings, and submarkets (CBD, East End, NoMa, Capitol Hill, Southwest, Georgetown). Provide as many specific details as possible — company names, addresses, square footages, deal terms.`,
+            content: `Find the most important and recent Washington DC commercial real estate news. Search across ALL of these categories:
+
+1. MAJOR DEALS: Office leases signed, building sales/acquisitions, land deals
+2. TENANT MOVES: Companies relocating to/from/within DC, new HQ announcements, office consolidations
+3. GOVERNMENT/GSA: Federal agency space decisions, DOGE-related space cuts, GSA lease actions, return-to-office mandates
+4. MARKET TRENDS: Vacancy rate changes, rent trends, sublease availability, conversion projects (office-to-residential)
+5. DEVELOPMENT: New construction, renovations, repositioning projects
+6. CAPITAL MARKETS: CMBS distress, loan maturities, refinancing, foreclosures
+7. COMPANY NEWS: Major employers expanding/contracting in DC (law firms, consulting, tech, nonprofits, lobbying firms)
+
+Focus on the DC metro area including CBD, East End, NoMa, Capitol Hill, Southwest, Georgetown, Tysons, Arlington, Bethesda, Crystal City/National Landing.
+
+Provide as many specific details as possible — company names, exact addresses, square footages, deal terms, asking rents, vacancy percentages. Include the most significant national CRE news that impacts DC.`,
           },
         ],
         search_recency_filter: "week",
@@ -78,7 +90,7 @@ Each item must have:
 - url: source URL if available from citations, otherwise null
 - companyMentions: array of company/organization names mentioned in this news item
 
-Extract 6-10 distinct news items from the content. Each should be a separate, actionable piece of intelligence.`,
+Extract 10-15 distinct news items from the content. Prioritize the most significant and actionable items first. Each should be a separate piece of intelligence — do not combine multiple stories into one item.`,
           },
           {
             role: "user",

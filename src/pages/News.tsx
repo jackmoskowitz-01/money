@@ -45,12 +45,40 @@ type CompanyNewsItem = NewsItem & {
   url?: string;
 };
 
-// Module-level cache so news persists across navigations
-let cachedLiveNews: NewsItem[] | null = null;
-let cachedCompanyNews: CompanyNewsItem[] = [];
-let cachedLastRefreshed: Date | null = null;
+// LocalStorage-backed cache so news survives reloads
+const LS_LIVE_NEWS = 'dealflow_live_news';
+const LS_COMPANY_NEWS = 'dealflow_company_news';
+const LS_LAST_REFRESHED = 'dealflow_news_last_refreshed';
+const LS_NEWS_HISTORY = 'dealflow_news_history';
+const LS_BOOKMARKS = 'dealflow_news_bookmarks';
+const LS_READ_IDS = 'dealflow_news_read';
+
+const loadFromLS = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch { return fallback; }
+};
+
+const saveToLS = (key: string, value: unknown) => {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+};
+
+let cachedLiveNews: NewsItem[] | null = loadFromLS<NewsItem[] | null>(LS_LIVE_NEWS, null);
+let cachedCompanyNews: CompanyNewsItem[] = loadFromLS<CompanyNewsItem[]>(LS_COMPANY_NEWS, []);
+let cachedLastRefreshed: Date | null = (() => {
+  const v = localStorage.getItem(LS_LAST_REFRESHED);
+  return v ? new Date(JSON.parse(v)) : null;
+})();
 // Accumulated history — news items are never removed, only added
-let newsHistory: Map<string, NewsItem> = new Map();
+let newsHistory: Map<string, NewsItem> = new Map(
+  loadFromLS<[string, NewsItem][]>(LS_NEWS_HISTORY, [])
+);
+
+const persistHistory = () => {
+  saveToLS(LS_NEWS_HISTORY, Array.from(newsHistory.entries()));
+};
 
 const mergeIntoHistory = (items: NewsItem[]) => {
   items.forEach(item => {
@@ -58,6 +86,7 @@ const mergeIntoHistory = (items: NewsItem[]) => {
       newsHistory.set(item.id, item);
     }
   });
+  persistHistory();
 };
 
 type ProspectMatch = { tenant: Tenant; building: Building };
@@ -146,8 +175,8 @@ const News = () => {
   const [newsLoading, setNewsLoading] = useState(false);
   const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(cachedLastRefreshed);
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_BOOKMARKS, [])));
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_READ_IDS, [])));
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   const dismissNews = (id: string) => {
@@ -166,9 +195,19 @@ const News = () => {
       const n = new Set(prev);
       if (n.has(id)) { n.delete(id); toast.info('Removed bookmark'); }
       else { n.add(id); toast.success('Bookmarked'); }
+      saveToLS(LS_BOOKMARKS, Array.from(n));
       return n;
     });
   };
+
+  const markAsRead = useCallback((id: string) => {
+    setReadIds(prev => {
+      if (prev.has(id)) return prev;
+      const n = new Set(prev).add(id);
+      saveToLS(LS_READ_IDS, Array.from(n));
+      return n;
+    });
+  }, []);
 
   const fetchCompanyNews = useCallback(async () => {
     setCompanyNewsLoading(true);
@@ -205,6 +244,7 @@ const News = () => {
         const allCompany = Array.from(newsHistory.values()).filter(n => n.id.startsWith('cn')) as CompanyNewsItem[];
         setCompanyNews(allCompany);
         cachedCompanyNews = allCompany;
+        saveToLS(LS_COMPANY_NEWS, allCompany);
         toast.success(`Found news for ${mapped.length} companies`);
       }
     } catch (e) {
@@ -237,9 +277,11 @@ const News = () => {
         const allLive = Array.from(newsHistory.values()).filter(n => !n.id.startsWith('cn') && !n.id.startsWith('custom-intel-'));
         setLiveNews(allLive);
         cachedLiveNews = allLive;
+        saveToLS(LS_LIVE_NEWS, allLive);
         const now = new Date();
         setLastRefreshed(now);
         cachedLastRefreshed = now;
+        saveToLS(LS_LAST_REFRESHED, now);
         toast.success('Market news updated');
       }
     } catch (e) {
@@ -885,7 +927,7 @@ const News = () => {
                             className="mb-1.5 text-sm font-semibold text-foreground leading-snug cursor-pointer hover:text-primary transition-colors"
                             onClick={() => {
                               setExpandedNewsId(isExpanded ? null : news.id);
-                              if (!isRead) setReadIds(prev => new Set(prev).add(news.id));
+                              if (!isRead) markAsRead(news.id);
                             }}
                           >
                             {news.title}
@@ -896,7 +938,7 @@ const News = () => {
                           <button
                             onClick={() => {
                               setExpandedNewsId(isExpanded ? null : news.id);
-                              if (!isRead) setReadIds(prev => new Set(prev).add(news.id));
+                              if (!isRead) markAsRead(news.id);
                             }}
                             className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
                               totalCount > 0 ? 'bg-primary/5 hover:bg-primary/10' : 'bg-secondary/30 hover:bg-secondary/50'

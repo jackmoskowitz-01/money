@@ -1,3 +1,5 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -13,6 +15,8 @@ const SEARCH_QUERIES = [
   'coworking office space Washington DC',
 ];
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
 // Generate realistic tenants for a building based on its name/address/types
 function generateTenants(building: any): any[] {
   const industries = [
@@ -26,31 +30,39 @@ function generateTenants(building: any): any[] {
     { name: 'Real Estate', companies: ['CBRE DC', 'JLL Government', 'Cushman & Wakefield', 'Newmark Knight Frank', 'Savills Studley', 'Transwestern'] },
   ];
 
-  const floors = Math.floor(Math.random() * 12) + 4;
-  const numTenants = Math.floor(Math.random() * 4) + 2;
+  // Use building id as seed for deterministic tenants
+  let seed = 0;
+  for (let i = 0; i < building.id.length; i++) seed += building.id.charCodeAt(i);
+  const seededRandom = (max: number) => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return Math.floor((seed / 233280) * max);
+  };
+
+  const floors = seededRandom(12) + 4;
+  const numTenants = seededRandom(4) + 2;
   const usedIndustries = new Set<number>();
   const tenants = [];
 
   for (let i = 0; i < numTenants; i++) {
     let industryIdx: number;
     do {
-      industryIdx = Math.floor(Math.random() * industries.length);
+      industryIdx = seededRandom(industries.length);
     } while (usedIndustries.has(industryIdx) && usedIndustries.size < industries.length);
     usedIndustries.add(industryIdx);
 
     const industry = industries[industryIdx];
-    const company = industry.companies[Math.floor(Math.random() * industry.companies.length)];
-    const sqft = (Math.floor(Math.random() * 30) + 5) * 1000;
-    const floor = `${Math.floor(Math.random() * floors) + 1}`;
-    const leaseYear = 2025 + Math.floor(Math.random() * 5);
-    const leaseMonth = Math.floor(Math.random() * 12) + 1;
+    const company = industry.companies[seededRandom(industry.companies.length)];
+    const sqft = (seededRandom(30) + 5) * 1000;
+    const floor = `${seededRandom(floors) + 1}`;
+    const leaseYear = 2025 + seededRandom(5);
+    const leaseMonth = seededRandom(12) + 1;
 
     const firstNames = ['James', 'Sarah', 'Michael', 'Emily', 'David', 'Jennifer', 'Robert', 'Lisa', 'William', 'Amanda'];
     const lastNames = ['Thompson', 'Mitchell', 'Rodriguez', 'Chen', 'Williams', 'Davis', 'Martinez', 'Anderson', 'Taylor', 'Wilson'];
     const titles = ['Managing Director', 'VP of Operations', 'Senior Partner', 'Office Manager', 'Regional Director', 'General Counsel'];
 
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const firstName = firstNames[seededRandom(firstNames.length)];
+    const lastName = lastNames[seededRandom(lastNames.length)];
 
     const urgencyOptions: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
     const outreachTypes: Array<{ type: string; title: string; description: string }> = [
@@ -60,16 +72,16 @@ function generateTenants(building: any): any[] {
       { type: 'contraction', title: 'Space Reduction', description: 'May be looking to downsize' },
     ];
 
-    const numReasons = Math.floor(Math.random() * 2) + 1;
+    const numReasons = seededRandom(2) + 1;
     const reasons = [];
     const usedReasonIdx = new Set<number>();
     for (let r = 0; r < numReasons; r++) {
       let rIdx: number;
-      do { rIdx = Math.floor(Math.random() * outreachTypes.length); } while (usedReasonIdx.has(rIdx));
+      do { rIdx = seededRandom(outreachTypes.length); } while (usedReasonIdx.has(rIdx));
       usedReasonIdx.add(rIdx);
       reasons.push({
         ...outreachTypes[rIdx],
-        urgency: urgencyOptions[Math.floor(Math.random() * urgencyOptions.length)],
+        urgency: urgencyOptions[seededRandom(urgencyOptions.length)],
       });
     }
 
@@ -81,7 +93,7 @@ function generateTenants(building: any): any[] {
       floor,
       leaseExpiration: `${leaseMonth}/${leaseYear}`,
       contactName: `${firstName} ${lastName}`,
-      contactTitle: titles[Math.floor(Math.random() * titles.length)],
+      contactTitle: titles[seededRandom(titles.length)],
       contactEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${company.toLowerCase().replace(/[^a-z]/g, '')}.com`,
       headcount: Math.floor(sqft / 200),
       outreachReasons: reasons,
@@ -89,6 +101,35 @@ function generateTenants(building: any): any[] {
   }
 
   return tenants;
+}
+
+function enrichBuilding(b: any) {
+  const tenants = generateTenants(b);
+  const totalSqft = tenants.reduce((sum: number, t: any) => sum + t.sqft, 0) + 20000;
+  
+  // Use seeded random for deterministic enrichment
+  let seed = 0;
+  for (let i = 0; i < b.id.length; i++) seed += b.id.charCodeAt(i);
+  const seededRandom = (max: number) => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return Math.floor((seed / 233280) * max);
+  };
+
+  const floors = seededRandom(15) + 4;
+  const vacancyRate = Math.round(seededRandom(250)) / 10;
+  const classOptions = ['A', 'B', 'C'];
+  const classIdx = b.rating && b.rating >= 4.5 ? 0 : b.rating && b.rating >= 3.5 ? seededRandom(2) : seededRandom(3);
+
+  return {
+    ...b,
+    sqft: totalSqft,
+    floors,
+    yearBuilt: 1960 + seededRandom(60),
+    vacancyRate,
+    owner: ['Boston Properties', 'Brookfield Properties', 'Vornado Realty Trust', 'Columbia Property Trust', 'Carr Properties', 'JBG SMITH', 'Tishman Speyer', 'Brandywine Realty Trust', 'Paramount Group', 'Douglas Development'][seededRandom(10)],
+    class: classOptions[classIdx],
+    tenants,
+  };
 }
 
 Deno.serve(async (req) => {
@@ -105,37 +146,66 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { queryIndex = 0 } = await req.json().catch(() => ({ queryIndex: 0 }));
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const db = createClient(supabaseUrl, supabaseServiceKey);
 
+    const { queryIndex = 0, forceRefresh = false } = await req.json().catch(() => ({ queryIndex: 0, forceRefresh: false }));
+
+    // 1. Check cache first
+    if (!forceRefresh) {
+      const cutoff = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+      const { data: cached, error: cacheErr } = await db
+        .from('cached_buildings')
+        .select('*')
+        .eq('query_index', queryIndex)
+        .gte('fetched_at', cutoff);
+
+      if (!cacheErr && cached && cached.length > 0) {
+        console.log(`Serving ${cached.length} cached buildings for query ${queryIndex}`);
+        const buildings = cached.map((row: any) => {
+          const base = {
+            id: row.id,
+            name: row.name,
+            address: row.address,
+            lat: row.lat,
+            lng: row.lng,
+            rating: row.rating,
+            ratingCount: row.rating_count,
+            types: row.types,
+            businessStatus: row.business_status,
+            photoUrl: row.photo_url,
+          };
+          return enrichBuilding(base);
+        });
+
+        return new Response(
+          JSON.stringify({ success: true, buildings, totalQueries: SEARCH_QUERIES.length, currentQuery: queryIndex, cached: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 2. Fetch fresh from Google Places
     const textQuery = SEARCH_QUERIES[queryIndex] || SEARCH_QUERIES[0];
-    const searchUrl = 'https://places.googleapis.com/v1/places:searchText';
+    console.log(`Cache miss — fetching from Google Places: "${textQuery}"`);
 
-    const body = {
-      textQuery,
-      locationBias: {
-        circle: {
-          center: { latitude: 38.9072, longitude: -77.0369 },
-          radius: 15000.0,
-        },
-      },
-      maxResultCount: 20,
-      languageCode: 'en',
-    };
-
-    console.log(`Fetching DC buildings with query: "${textQuery}"`);
-
-    const response = await fetch(searchUrl, {
+    const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.businessStatus,places.rating,places.userRatingCount,places.photos',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        textQuery,
+        locationBias: { circle: { center: { latitude: 38.9072, longitude: -77.0369 }, radius: 15000.0 } },
+        maxResultCount: 20,
+        languageCode: 'en',
+      }),
     });
 
     const data = await response.json();
-
     if (!response.ok) {
       console.error('Google Places API error:', data);
       return new Response(
@@ -144,16 +214,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    const buildings = (data.places || []).map((place: any, index: number) => {
-      // Build photo URL from the first photo reference if available
+    // 3. Map and cache results
+    const places = data.places || [];
+    const rows: any[] = [];
+    const buildingBases: any[] = [];
+
+    for (let i = 0; i < places.length; i++) {
+      const place = places[i];
       let photoUrl: string | null = null;
       if (place.photos && place.photos.length > 0) {
-        const photoName = place.photos[0].name; // e.g. "places/PLACE_ID/photos/PHOTO_REF"
+        const photoName = place.photos[0].name;
         photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${apiKey}`;
       }
 
-      const b = {
-        id: place.id || `gp-${queryIndex}-${index}`,
+      const base = {
+        id: place.id || `gp-${queryIndex}-${i}`,
         name: place.displayName?.text || 'Unknown Building',
         address: place.formattedAddress || '',
         lat: place.location?.latitude || 0,
@@ -165,34 +240,40 @@ Deno.serve(async (req) => {
         photoUrl,
       };
 
-      const tenants = generateTenants(b);
-      const totalSqft = tenants.reduce((sum: number, t: any) => sum + t.sqft, 0) + Math.floor(Math.random() * 50000) + 20000;
-      const floors = Math.floor(Math.random() * 15) + 4;
-      const vacancyRate = Math.round(Math.random() * 25 * 10) / 10;
-      const classOptions = ['A', 'B', 'C'];
-      const buildingClass = classOptions[Math.floor(Math.random() * (place.rating && place.rating >= 4.5 ? 1 : place.rating && place.rating >= 3.5 ? 2 : 3))];
+      buildingBases.push(base);
+      rows.push({
+        id: base.id,
+        name: base.name,
+        address: base.address,
+        lat: base.lat,
+        lng: base.lng,
+        rating: base.rating,
+        rating_count: base.ratingCount,
+        types: base.types,
+        business_status: base.businessStatus,
+        photo_url: base.photoUrl,
+        building_data: {},
+        query_index: queryIndex,
+        fetched_at: new Date().toISOString(),
+      });
+    }
 
-      return {
-        ...b,
-        sqft: totalSqft,
-        floors,
-        yearBuilt: 1960 + Math.floor(Math.random() * 60),
-        vacancyRate,
-        owner: ['Boston Properties', 'Brookfield Properties', 'Vornado Realty Trust', 'Columbia Property Trust', 'Carr Properties', 'JBG SMITH', 'Tishman Speyer', 'Brandywine Realty Trust', 'Paramount Group', 'Douglas Development'][Math.floor(Math.random() * 10)],
-        class: buildingClass,
-        tenants,
-      };
-    });
+    // Upsert into cache (fire-and-forget, don't block response)
+    if (rows.length > 0) {
+      db.from('cached_buildings')
+        .upsert(rows, { onConflict: 'id' })
+        .then(({ error }) => {
+          if (error) console.error('Cache upsert error:', error);
+          else console.log(`Cached ${rows.length} buildings for query ${queryIndex}`);
+        });
+    }
 
-    console.log(`Found ${buildings.length} buildings for query "${textQuery}"`);
+    const buildings = buildingBases.map(enrichBuilding);
+
+    console.log(`Fetched & caching ${buildings.length} buildings for query "${textQuery}"`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        buildings,
-        totalQueries: SEARCH_QUERIES.length,
-        currentQuery: queryIndex,
-      }),
+      JSON.stringify({ success: true, buildings, totalQueries: SEARCH_QUERIES.length, currentQuery: queryIndex, cached: false }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

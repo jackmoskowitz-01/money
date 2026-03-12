@@ -145,6 +145,13 @@ Deno.serve(async (req) => {
     }
 
     const buildings = (data.places || []).map((place: any, index: number) => {
+      // Build photo URL from the first photo reference if available
+      let photoUrl: string | null = null;
+      if (place.photos && place.photos.length > 0) {
+        const photoName = place.photos[0].name; // e.g. "places/PLACE_ID/photos/PHOTO_REF"
+        photoUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=800&key=${apiKey}`;
+      }
+
       const b = {
         id: place.id || `gp-${queryIndex}-${index}`,
         name: place.displayName?.text || 'Unknown Building',
@@ -155,6 +162,7 @@ Deno.serve(async (req) => {
         ratingCount: place.userRatingCount || 0,
         types: place.types || [],
         businessStatus: place.businessStatus || 'OPERATIONAL',
+        photoUrl,
       };
 
       const tenants = generateTenants(b);

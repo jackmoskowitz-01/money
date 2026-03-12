@@ -831,11 +831,13 @@ const News = () => {
               </div>
             </div>
 
-            {(newsLoading || companyNewsLoading) && (
+            {(newsLoading || companyNewsLoading || industryNewsLoading) && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                 <span className="text-xs text-primary">
-                  {newsLoading && companyNewsLoading
+                  {industryNewsLoading
+                    ? `Searching ${activeIndustry} industry news for CRE opportunities...`
+                    : newsLoading && companyNewsLoading
                     ? 'Searching real-time market news & scanning your companies...'
                     : newsLoading
                     ? 'Searching real-time market news via Perplexity...'

@@ -442,103 +442,123 @@ const CustomProspectDetail = () => {
 
           {/* Company Contacts */}
           <div className="mb-8">
-            <CompanyContacts
-              entityId={prospectId!}
-              onContactsChange={() => setContactsVersion(v => v + 1)}
-            />
+            <Collapsible defaultOpen>
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Contacts</h2>
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <CompanyContacts
+                  entityId={prospectId!}
+                  onContactsChange={() => setContactsVersion(v => v + 1)}
+                />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           <div className="grid gap-10 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4">
 
-              {/* Quick Actions: Email Templates + Direct Email */}
-              <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h2>
-                <Card className="border-primary/20 bg-primary/5 p-4">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <EmailComposer
-                      tenantId={prospectId!}
-                      buildingId=""
-                      tenantName={prospect.name}
-                      contactName={primaryContact?.name || prospect.name}
-                      contactEmail={primaryContact?.email}
-                      buildingName={prospect.address}
-                      recipients={recipients}
-                    />
-                    {primaryContact?.email && (
-                      <a href={`mailto:${primaryContact.email}`}>
-                        <Button size="sm" variant="outline" className="text-xs h-9">
-                          <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
-                        </Button>
-                      </a>
-                    )}
-                  </div>
-                </Card>
-              </div>
-
-              {/* Activity Log — prominent placement */}
-              <div>
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Activity History</h2>
-                <ActivityLog
-                  tenantId={prospectId!}
-                  buildingId=""
-                  outreachReasonTitles={[]}
-                  contactsVersion={contactsVersion}
-                />
-              </div>
-
-              {/* Divider */}
-              <div className="border-t border-border" />
-
-              {/* 1. Custom Outreach Reason */}
-              <div>
-                {customReasonOpen ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2"
-                  >
-                    <p className="text-xs font-semibold text-foreground flex items-center gap-1">
-                      <Plus className="h-3.5 w-3.5 text-primary" /> Custom Outreach Reason
-                    </p>
-                    <textarea
-                      value={customReasonText}
-                      onChange={e => setCustomReasonText(e.target.value)}
-                      placeholder="Type your reason to reach out to this prospect..."
-                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                      rows={3}
-                      autoFocus
-                    />
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" className="text-xs h-7" disabled={!customReasonText.trim() || !!generatingKey} onClick={generateCustomEmail}>
-                        <Send className="mr-1 h-3 w-3" /> Generate Email
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setCustomReasonOpen(false); setCustomReasonText(''); }}>
-                        Cancel
-                      </Button>
+              {/* Quick Actions */}
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Quick Actions</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <Card className="border-primary/20 bg-primary/5 p-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <EmailComposer
+                        tenantId={prospectId!}
+                        buildingId=""
+                        tenantName={prospect.name}
+                        contactName={primaryContact?.name || prospect.name}
+                        contactEmail={primaryContact?.email}
+                        buildingName={prospect.address}
+                        recipients={recipients}
+                      />
+                      {primaryContact?.email && (
+                        <a href={`mailto:${primaryContact.email}`}>
+                          <Button size="sm" variant="outline" className="text-xs h-9">
+                            <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
+                          </Button>
+                        </a>
+                      )}
                     </div>
-                  </motion.div>
-                ) : (
-                  <button
-                    onClick={() => setCustomReasonOpen(true)}
-                    className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/5 p-3 text-xs font-medium text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="h-4 w-4" /> Insert Custom Outreach Reason
-                  </button>
-                )}
-              </div>
+                  </Card>
+                </CollapsibleContent>
+              </Collapsible>
 
-              {/* Auto-generated Outreach Reasons from Enrichment */}
+              {/* Activity Log */}
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Activity History</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <ActivityLog
+                    tenantId={prospectId!}
+                    buildingId=""
+                    outreachReasonTitles={[]}
+                    contactsVersion={contactsVersion}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Custom Outreach Reason */}
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Plus className="h-3.5 w-3.5 text-primary" /> Custom Outreach
+                  </h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  {customReasonOpen ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2"
+                    >
+                      <textarea
+                        value={customReasonText}
+                        onChange={e => setCustomReasonText(e.target.value)}
+                        placeholder="Type your reason to reach out to this prospect..."
+                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" className="text-xs h-7" disabled={!customReasonText.trim() || !!generatingKey} onClick={generateCustomEmail}>
+                          <Send className="mr-1 h-3 w-3" /> Generate Email
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => { setCustomReasonOpen(false); setCustomReasonText(''); }}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <button
+                      onClick={() => setCustomReasonOpen(true)}
+                      className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/5 p-3 text-xs font-medium text-primary hover:border-primary/50 hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="h-4 w-4" /> Insert Custom Outreach Reason
+                    </button>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Outreach Reasons */}
               {outreachReasons.length > 0 && (
                 <Collapsible defaultOpen>
-                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2 text-left transition-colors hover:bg-secondary/50 group">
-                    <p className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                    <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground flex items-center gap-1.5">
                       <Zap className="h-3.5 w-3.5 text-primary" /> Outreach Reasons
                       <Badge variant="outline" className="text-[9px] px-1.5 py-0 ml-1 bg-primary/10 text-primary">{outreachReasons.length}</Badge>
-                    </p>
+                    </h2>
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-1.5">
+                  <CollapsibleContent className="mt-3 space-y-1.5">
                     {outreachReasons
                       .sort((a, b) => {
                         const order = { high: 0, medium: 1, low: 2 };
@@ -633,58 +653,92 @@ const CustomProspectDetail = () => {
               })}
 
               {/* Real-Time Company News */}
-              <CompanyNewsCard
-                companyId={prospectId!}
-                companyName={prospect.name}
-                onNewsLoaded={handleNewsLoaded}
-                onOutreachTrigger={(title, summary) => {
-                  setCustomReasonText(`${title} — ${summary}`);
-                  setCustomReasonOpen(true);
-                }}
-              />
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Real-Time News</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <CompanyNewsCard
+                    companyId={prospectId!}
+                    companyName={prospect.name}
+                    onNewsLoaded={handleNewsLoaded}
+                    onOutreachTrigger={(title, summary) => {
+                      setCustomReasonText(`${title} — ${summary}`);
+                      setCustomReasonOpen(true);
+                    }}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
 
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
-              <MeetingPrepBrief
-                tenantName={prospect.name}
-                industry={prospect.enrichment?.industry || ''}
-                sqft={0}
-                headcount={0}
-                leaseExpiration=""
-                floor=""
-                contactName={primaryContact?.name || prospect.name}
-                contactTitle={primaryContact?.title || ''}
-                contactEmail={primaryContact?.email || ''}
-                buildingName={prospect.address}
-                buildingClass=""
-                buildingFloors={0}
-                buildingYearBuilt={0}
-                vacancyRate={0}
-                owner=""
-                outreachReasons={[]}
-                submarketNews={[]}
-                scoopIntel={[]}
-              />
-              <ResearchBrief
-                tenantName={prospect.name}
-                industry={prospect.enrichment?.industry || ''}
-                sqft={0}
-                buildingName={prospect.address}
-                leaseExpiration=""
-                headcount={0}
-                contactName={primaryContact?.name || prospect.name}
-                contactTitle={primaryContact?.title || ''}
-              />
-              <ProspectEnrichmentCard
-                prospectId={prospectId!}
-                companyName={prospect.name}
-                website={prospect.website}
-                address={prospect.address}
-                cachedEnrichment={prospect.enrichment}
-                onEnriched={handleEnriched}
-              />
+            <div className="space-y-4">
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Meeting Prep Brief</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <MeetingPrepBrief
+                    tenantName={prospect.name}
+                    industry={prospect.enrichment?.industry || ''}
+                    sqft={0}
+                    headcount={0}
+                    leaseExpiration=""
+                    floor=""
+                    contactName={primaryContact?.name || prospect.name}
+                    contactTitle={primaryContact?.title || ''}
+                    contactEmail={primaryContact?.email || ''}
+                    buildingName={prospect.address}
+                    buildingClass=""
+                    buildingFloors={0}
+                    buildingYearBuilt={0}
+                    vacancyRate={0}
+                    owner=""
+                    outreachReasons={[]}
+                    submarketNews={[]}
+                    scoopIntel={[]}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Research Brief</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <ResearchBrief
+                    tenantName={prospect.name}
+                    industry={prospect.enrichment?.industry || ''}
+                    sqft={0}
+                    buildingName={prospect.address}
+                    leaseExpiration=""
+                    headcount={0}
+                    contactName={primaryContact?.name || prospect.name}
+                    contactTitle={primaryContact?.title || ''}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible defaultOpen>
+                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md bg-secondary/30 px-3 py-2.5 text-left transition-colors hover:bg-secondary/50 group">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground">Company Intel</h2>
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <ProspectEnrichmentCard
+                    prospectId={prospectId!}
+                    companyName={prospect.name}
+                    website={prospect.website}
+                    address={prospect.address}
+                    cachedEnrichment={prospect.enrichment}
+                    onEnriched={handleEnriched}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </div>
         </motion.div>

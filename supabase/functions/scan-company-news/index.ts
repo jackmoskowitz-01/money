@@ -43,7 +43,12 @@ serve(async (req) => {
 
       if (cacheAge < effectiveTtl) {
         console.log(`Serving DB-cached news for ${companyName} (items: ${cachedItems.length}, age: ${Math.round(cacheAge / 60000)}min)`);
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: cachedItems.length > 0 ? "cached" : "empty_cached",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -89,7 +94,12 @@ serve(async (req) => {
       // If API fails, serve stale cache if available
       if (cached) {
         console.log("API failed, serving stale cached news");
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -155,7 +165,12 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     if (!structureResp.ok) {
       if (cached) {
         console.log("Structure API failed, serving stale cached news");
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -181,11 +196,21 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     } catch {
       console.error("Failed to parse company news:", cleaned);
       if (cached) {
-        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+        return new Response(JSON.stringify({
+          companyNews: cached.news_items,
+          citations: cached.citations,
+          fetchedAt: cached.fetched_at,
+          freshness: "stale_cache",
+        }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ companyNews: [], citations }), {
+      return new Response(JSON.stringify({
+        companyNews: [],
+        citations,
+        fetchedAt: new Date().toISOString(),
+        freshness: "fresh_empty",
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -204,6 +229,8 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     // Sort by relevance score descending
     mergedItems.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
+    const fetchedAt = new Date().toISOString();
+
     // Persist to DB cache (upsert)
     const { error: upsertError } = await supabase
       .from("cached_company_news")
@@ -212,7 +239,7 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
         company_name: companyName,
         news_items: mergedItems,
         citations,
-        fetched_at: new Date().toISOString(),
+        fetched_at: fetchedAt,
       }, { onConflict: "company_id" });
 
     if (upsertError) {
@@ -221,7 +248,12 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
       console.log(`Cached ${mergedItems.length} news items for ${companyName} in DB`);
     }
 
-    return new Response(JSON.stringify({ companyNews: mergedItems, citations }), {
+    return new Response(JSON.stringify({
+      companyNews: mergedItems,
+      citations,
+      fetchedAt,
+      freshness: mergedItems.length > 0 ? "fresh" : "fresh_empty",
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

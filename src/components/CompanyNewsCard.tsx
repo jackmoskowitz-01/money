@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Newspaper, ExternalLink, RefreshCw, Zap } from 'lucide-react';
+import { Loader2, Newspaper, ExternalLink, RefreshCw, Zap, Clock3 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,8 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
   const [news, setNews] = useState<CompanyNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const [freshness, setFreshness] = useState<string>('fresh');
 
   const fetchNews = useCallback(async () => {
     setLoading(true);
@@ -61,10 +63,15 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
       }
 
       const data = await resp.json();
-      if (data.companyNews && Array.isArray(data.companyNews)) {
-        setNews(data.companyNews);
-        onNewsLoaded?.(data.companyNews);
+      const incomingNews = Array.isArray(data.companyNews) ? data.companyNews : [];
+
+      setNews(prev => (incomingNews.length > 0 ? incomingNews : prev.length > 0 ? prev : incomingNews));
+      if (incomingNews.length > 0) {
+        onNewsLoaded?.(incomingNews);
       }
+
+      setLastFetchedAt(data.fetchedAt || new Date().toISOString());
+      setFreshness(data.freshness || 'fresh');
       setHasLoaded(true);
     } catch (e) {
       console.error('Company news fetch failed:', e);
@@ -73,7 +80,7 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
     } finally {
       setLoading(false);
     }
-  }, [companyId, companyName, buildingId]);
+  }, [companyId, companyName, buildingId, onNewsLoaded]);
 
   useEffect(() => {
     fetchNews();
@@ -90,6 +97,15 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
     if (days < 30) return `${Math.floor(days / 7)}w ago`;
     return dateStr;
   };
+
+  const freshnessLabel =
+    freshness === 'cached'
+      ? 'From daily cache'
+      : freshness === 'stale_cache'
+        ? 'Using fallback cache'
+        : freshness === 'empty_cached'
+          ? 'No news cached yet'
+          : 'Fresh lookup';
 
   return (
     <Card className="border-border bg-card overflow-hidden">
@@ -114,6 +130,14 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
           <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
+
+      {lastFetchedAt && (
+        <div className="border-b border-border bg-muted/20 px-4 py-2">
+          <p className="inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Clock3 className="h-3 w-3" /> Updated {getTimeSince(lastFetchedAt)} · {freshnessLabel}
+          </p>
+        </div>
+      )}
 
       <div className="p-3">
         {loading && !hasLoaded ? (

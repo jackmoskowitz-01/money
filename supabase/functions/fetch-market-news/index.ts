@@ -90,7 +90,7 @@ Each item must have:
 - url: source URL if available from citations, otherwise null
 - companyMentions: array of company/organization names mentioned in this news item
 
-Extract 6-10 distinct news items from the content. Each should be a separate, actionable piece of intelligence.`,
+Extract 10-15 distinct news items from the content. Prioritize the most significant and actionable items first. Each should be a separate piece of intelligence — do not combine multiple stories into one item.`,
           },
           {
             role: "user",

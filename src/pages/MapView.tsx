@@ -273,8 +273,10 @@ const MapView = () => {
             <Card className="border-border bg-card/95 p-4 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
               <div className="mb-3 flex items-start justify-between">
                 <div>
-                  <h3 className="font-display text-lg font-bold">{selectedBuilding.name}</h3>
-                  <p className="text-xs text-muted-foreground">{selectedBuilding.address}</p>
+                  <h3 className="font-display text-lg font-bold">{selectedBuilding.address}</h3>
+                  {selectedBuilding.name && selectedBuilding.name !== selectedBuilding.address && (
+                    <p className="text-xs text-muted-foreground">{selectedBuilding.name}</p>
+                  )}
                 </div>
                 <button
                   onClick={() => setSelectedBuilding(null)}

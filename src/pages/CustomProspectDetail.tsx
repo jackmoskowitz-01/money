@@ -16,6 +16,7 @@ import ProspectEnrichmentCard from '@/components/ProspectEnrichmentCard';
 import CompanyContacts from '@/components/CompanyContacts';
 import ActivityLog from '@/components/ActivityLog';
 import ResearchBrief from '@/components/ResearchBrief';
+import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
@@ -280,6 +281,7 @@ const CustomProspectDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <AddToListButton tenantId={prospectId!} buildingId="" tenantName={prospect.name} />
               <Badge variant="outline" className="text-[10px]">
                 <Calendar className="h-3 w-3 mr-1" />
                 Added {format(new Date(prospect.createdAt), 'MMM d, yyyy')}

@@ -348,27 +348,82 @@ const CustomProspectDetail = () => {
             </div>
             <div className="flex items-center gap-3">
               <AddToListButton tenantId={prospectId!} buildingId="" tenantName={prospect.name} />
-              <AccountOwnerBadge prospectId={prospectId!} />
             </div>
           </div>
 
-          {/* Pipeline Stage */}
-          <Card className="mb-8 border-border bg-card p-4">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-medium text-muted-foreground">Pipeline Stage:</span>
-              <select
-                value={currentStage}
-                onChange={e => handleStageChange(e.target.value as PipelineStage)}
-                className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground"
-              >
-                {stages.map(s => (
-                  <option key={s} value={s}>{stageLabels[s]}</option>
-                ))}
-              </select>
-              <Badge variant="outline" className={`text-[10px] ${stageColors[currentStage]}`}>
-                {stageLabels[currentStage]}
-              </Badge>
+          {/* Combined Status Banner — Pipeline + Account Owner */}
+          <Card className={`mb-8 border p-4 ${outreachBlocked ? 'border-destructive/40 bg-destructive/5' : 'border-border bg-card'}`}>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              {/* Pipeline Stage */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-muted-foreground">Pipeline:</span>
+                <select
+                  value={currentStage}
+                  onChange={e => handleStageChange(e.target.value as PipelineStage)}
+                  disabled={ownedBySomeoneElse}
+                  className="rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground disabled:opacity-60"
+                >
+                  {stages.map(s => (
+                    <option key={s} value={s}>{stageLabels[s]}</option>
+                  ))}
+                </select>
+                <Badge variant="outline" className={`text-[10px] ${stageColors[currentStage]}`}>
+                  {stageLabels[currentStage]}
+                </Badge>
+              </div>
+
+              {/* Account Owner */}
+              <div className="flex items-center gap-2">
+                {ownerLoading ? (
+                  <Badge variant="outline" className="text-[10px] gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Owner
+                  </Badge>
+                ) : !isClaimed ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-[10px] h-7 gap-1.5 border-dashed border-primary/40 text-primary hover:bg-primary/10"
+                    onClick={claimAccount}
+                    disabled={ownerActing}
+                  >
+                    {ownerActing ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                    Claim as My Account
+                  </Button>
+                ) : isMyAccount ? (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="text-[10px] gap-1 bg-primary/10 text-primary border-primary/20">
+                      <UserCheck className="h-3 w-3" /> My Account
+                    </Badge>
+                    <button
+                      onClick={releaseAccount}
+                      disabled={ownerActing}
+                      className="rounded p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                      title="Release ownership"
+                    >
+                      {ownerActing ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <X className="h-3 w-3" />}
+                    </button>
+                  </div>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] gap-1 bg-muted text-muted-foreground">
+                    <UserCheck className="h-3 w-3" /> {owner!.owner_name}'s Account
+                  </Badge>
+                )}
+              </div>
             </div>
+
+            {/* Warning banner when someone else has an active deal */}
+            {outreachBlocked && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-3 flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2"
+              >
+                <ShieldAlert className="h-4 w-4 text-destructive shrink-0" />
+                <p className="text-[11px] text-destructive font-medium">
+                  {owner!.owner_name} has an active {stageLabels[currentStage].toLowerCase()} on this account — do not reach out.
+                </p>
+              </motion.div>
+            )}
           </Card>
 
           {/* Company Contacts */}

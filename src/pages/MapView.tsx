@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, CheckSquare, Square, Send } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles } from 'lucide-react';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +10,22 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import EmailDisplay from '@/components/EmailDisplay';
+import { getContacts } from '@/data/companyContacts';
+import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
 const MapView = () => {
   const navigate = useNavigate();
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [selectedTenants, setSelectedTenants] = useState<Set<string>>(new Set());
+  const [outreachReason, setOutreachReason] = useState('');
+  const [generatingKeys, setGeneratingKeys] = useState<Set<string>>(new Set());
+  const [generatedEmails, setGeneratedEmails] = useState<Record<string, string>>({});
+  const [activeEmailKey, setActiveEmailKey] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [panelOpen, setPanelOpen] = useState(true);
   const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);
@@ -130,10 +139,117 @@ const MapView = () => {
     );
   }, [searchQuery, allBuildingsList]);
 
-  // Clear tenant selections when building changes
+  // Clear state when building changes
   useEffect(() => {
     setSelectedTenants(new Set());
+    setOutreachReason('');
+    setGeneratedEmails({});
+    setGeneratingKeys(new Set());
+    setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
+
+  const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
+    const list: EmailRecipient[] = [{
+      id: 'primary',
+      name: tenant.contactName,
+      email: tenant.contactEmail,
+      title: tenant.contactTitle,
+      isPrimary: true,
+    }];
+    getContacts(tenant.id).forEach(c => {
+      list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+    });
+    return list;
+  };
+
+  const generateEmailForTenant = useCallback(async (tenant: Tenant, building: Building, reason: string, key: string) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const clientsInBuilding = building.tenants
+        .filter(t => t.isClient && t.id !== tenant.id)
+        .map(t => t.name);
+
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: tenant.name,
+          buildingName: building.name,
+          contactName: tenant.contactName,
+          contactTitle: tenant.contactTitle,
+          industry: tenant.industry,
+          sqft: tenant.sqft,
+          leaseExpiration: tenant.leaseExpiration,
+          outreachReason: reason,
+          vacancyRate: building.vacancyRate,
+          headcount: tenant.headcount,
+          clientsInBuilding,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        toast.error(`Failed to generate email for ${tenant.name}`);
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+      toast.error(`Failed to generate email for ${tenant.name}`);
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const generateForSelected = useCallback(() => {
+    if (!selectedBuilding || selectedTenants.size === 0) return;
+    const reason = outreachReason.trim() || 'General outreach for building tenants';
+
+    for (const tenantId of selectedTenants) {
+      const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
+      if (tenant) {
+        const key = `map-${selectedBuilding.id}-${tenant.id}`;
+        generateEmailForTenant(tenant, selectedBuilding, reason, key);
+      }
+    }
+  }, [selectedBuilding, selectedTenants, outreachReason, generateEmailForTenant]);
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
@@ -398,19 +514,82 @@ const MapView = () => {
                 </div>
 
                 {selectedTenants.size > 0 && (
-                  <Button
-                    size="sm"
-                    className="w-full text-xs h-8"
-                    onClick={() => {
-                      // Navigate to first selected tenant's detail page for outreach
-                      const firstId = Array.from(selectedTenants)[0];
-                      navigate(`/building/${selectedBuilding.id}/tenant/${firstId}`);
-                    }}
-                  >
-                    <Send className="mr-1.5 h-3 w-3" />
-                    Reach Out to {selectedTenants.size} {selectedTenants.size === 1 ? 'Tenant' : 'Tenants'}
-                  </Button>
+                  <div className="space-y-2 pt-1 border-t border-border/50">
+                    <div>
+                      <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 block">
+                        <FileText className="h-3 w-3 inline mr-1" />
+                        Outreach Reason / Article
+                      </label>
+                      <textarea
+                        value={outreachReason}
+                        onChange={e => setOutreachReason(e.target.value)}
+                        placeholder="Paste a news article, market insight, or describe why you're reaching out..."
+                        className="w-full rounded-md border border-border bg-secondary/50 px-2.5 py-2 text-[11px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-none"
+                        rows={3}
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full text-xs h-8"
+                      onClick={generateForSelected}
+                      disabled={generatingKeys.size > 0}
+                    >
+                      {generatingKeys.size > 0 ? (
+                        <><Loader2 className="mr-1.5 h-3 w-3 animate-spin" /> Generating...</>
+                      ) : (
+                        <><Sparkles className="mr-1.5 h-3 w-3" /> Generate Emails for {selectedTenants.size} {selectedTenants.size === 1 ? 'Tenant' : 'Tenants'}</>
+                      )}
+                    </Button>
+                  </div>
                 )}
+
+                {/* Generated Emails */}
+                {selectedBuilding && Object.entries(generatedEmails).filter(([k]) => k.startsWith(`map-${selectedBuilding.id}-`)).map(([key, content]) => {
+                  const tenantId = key.split('-').slice(2).join('-');
+                  const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
+                  if (!tenant) return null;
+                  const isGen = generatingKeys.has(key);
+
+                  return (
+                    <div key={key} className="mt-2">
+                      <button
+                        onClick={() => setActiveEmailKey(activeEmailKey === key ? null : key)}
+                        className="flex w-full items-center justify-between rounded-md border border-border bg-secondary/30 px-2.5 py-2 text-left hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs font-medium text-foreground">{tenant.name}</span>
+                        </div>
+                        {isGen ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] bg-primary/10 text-primary">Ready</Badge>
+                        )}
+                      </button>
+                      {activeEmailKey === key && content && (
+                        <div className="mt-1">
+                          <EmailDisplay
+                            emailKey={key}
+                            emailContent={content}
+                            isGenerating={isGen}
+                            label={`Email to ${tenant.name}`}
+                            contactName={tenant.contactName}
+                            contactEmail={tenant.contactEmail}
+                            recipients={buildRecipients(tenant)}
+                            tenantName={tenant.name}
+                            industry={tenant.industry}
+                            buildingName={selectedBuilding.name}
+                            sqft={tenant.sqft}
+                            leaseExpiration={tenant.leaseExpiration}
+                            outreachReason={outreachReason}
+                            onClose={() => setActiveEmailKey(null)}
+                            onUpdateEmail={updateEmail}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
 
               <h4 className="mb-2 text-sm font-semibold">Tenant List</h4>

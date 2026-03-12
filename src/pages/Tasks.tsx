@@ -465,12 +465,33 @@ const Tasks = () => {
                         </div>
                         <div className="mb-3">
                           <label className="mb-1 block text-xs text-muted-foreground">Due Date</label>
-                          <Input
-                            type="date"
-                            value={newTask.dueDate}
-                            onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })}
-                            className="w-48 border-border bg-secondary/50"
-                          />
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-56 justify-start text-left font-normal",
+                                  !newTask.dueDate && "text-muted-foreground"
+                                )}
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {newTask.dueDate
+                                  ? format(new Date(newTask.dueDate + 'T12:00:00'), 'PPP')
+                                  : 'Pick a date'}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={newTask.dueDate ? new Date(newTask.dueDate + 'T12:00:00') : undefined}
+                                onSelect={(date) => {
+                                  if (date) setNewTask({ ...newTask, dueDate: format(date, 'yyyy-MM-dd') });
+                                }}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>

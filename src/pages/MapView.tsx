@@ -544,8 +544,8 @@ const MapView = () => {
                 )}
 
                 {/* Generated Emails */}
-                {selectedBuilding && Object.entries(generatedEmails).filter(([k]) => k.startsWith(`map-${selectedBuilding.id}-`)).map(([key, content]) => {
-                  const tenantId = key.split('-').slice(2).join('-');
+                {selectedBuilding && Object.entries(generatedEmails).filter(([k]) => k.startsWith(`map::${selectedBuilding.id}::`)).map(([key, content]) => {
+                  const tenantId = key.split('::')[2];
                   const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
                   if (!tenant) return null;
                   const isGen = generatingKeys.has(key);

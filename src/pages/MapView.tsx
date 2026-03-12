@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, CheckSquare, Square, Send } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles } from 'lucide-react';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +10,13 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import EmailDisplay from '@/components/EmailDisplay';
+import { getContacts } from '@/data/companyContacts';
+import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
 const MapView = () => {
   const navigate = useNavigate();

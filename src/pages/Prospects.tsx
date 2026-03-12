@@ -82,7 +82,7 @@ const Prospects = () => {
       const bMax = Math.min(...b.tenant.outreachReasons.map(r => urgencyOrder[r.urgency]));
       return aMax - bMax;
     });
-  }, [pipeline]);
+  }, [pipeline, buildings]);
 
   const industries = useMemo(() => {
     const set = new Set(prospects.map(p => p.tenant.industry));

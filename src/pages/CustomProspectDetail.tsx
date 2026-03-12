@@ -72,14 +72,72 @@ const buildReasonsFromEnrichment = (enrichment?: ProspectEnrichment): AutoOutrea
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
   const prospect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const { user, profile } = useAuth();
+  const { pipeline, updateStage } = usePipeline();
 
-  const [currentStage, setCurrentStage] = useState<PipelineStage>(() => {
-    if (prospectId) {
-      const item = getOrCreatePipelineItem(prospectId, 'custom');
-      return item.stage;
-    }
-    return 'meeting_set';
+  // Get DB-backed pipeline stage for this prospect
+  const pipelineItem = useMemo(() => {
+    return pipeline.find(p => p.tenantId === prospectId);
+  }, [pipeline, prospectId]);
+  const currentStage: PipelineStage = pipelineItem?.stage || 'meeting_set';
+
+  // Account owner state
+  const [owner, setOwner] = useState<{ owner_id: string; owner_name: string } | null>(null);
+  const [ownerLoading, setOwnerLoading] = useState(true);
+  const [ownerActing, setOwnerActing] = useState(false);
+  const isMyAccount = owner?.owner_id === user?.id;
+  const isClaimed = !!owner;
+
+  // Fetch owner
+  useState(() => {
+    const fetchOwner = async () => {
+      if (!prospectId) return;
+      const { data } = await supabase
+        .from('prospect_owners')
+        .select('owner_id, owner_name')
+        .eq('prospect_id', prospectId)
+        .maybeSingle();
+      setOwner(data || null);
+      setOwnerLoading(false);
+    };
+    fetchOwner();
   });
+
+  const claimAccount = async () => {
+    if (!user || !profile) return;
+    setOwnerActing(true);
+    const { error } = await supabase
+      .from('prospect_owners')
+      .insert({
+        prospect_id: prospectId!,
+        owner_id: user.id,
+        owner_name: profile.full_name || profile.email || 'Unknown',
+      });
+    if (error) {
+      toast.error(error.code === '23505' ? 'Already claimed by someone else' : 'Failed to claim');
+    } else {
+      setOwner({ owner_id: user.id, owner_name: profile.full_name || profile.email || 'Unknown' });
+      toast.success('You are now the account owner');
+    }
+    setOwnerActing(false);
+  };
+
+  const releaseAccount = async () => {
+    if (!user) return;
+    setOwnerActing(true);
+    const { error } = await supabase
+      .from('prospect_owners')
+      .delete()
+      .eq('prospect_id', prospectId!)
+      .eq('owner_id', user.id);
+    if (error) {
+      toast.error('Failed to release account');
+    } else {
+      setOwner(null);
+      toast.success('Account ownership released');
+    }
+    setOwnerActing(false);
+  };
 
   const [contactsVersion, setContactsVersion] = useState(0);
   const [customReasonOpen, setCustomReasonOpen] = useState(false);
@@ -96,7 +154,6 @@ const CustomProspectDetail = () => {
   const [newsReasons, setNewsReasons] = useState<AutoOutreachReason[]>([]);
 
   const outreachReasons = useMemo(() => {
-    // Merge enrichment reasons + live news reasons, deduplicate by id
     const all = [...enrichmentReasons, ...newsReasons];
     const seen = new Set<string>();
     return all.filter(r => {
@@ -139,9 +196,9 @@ const CustomProspectDetail = () => {
     );
   }
 
-  const handleStageChange = (stage: PipelineStage) => {
-    updatePipelineStage(prospectId!, 'custom', stage);
-    setCurrentStage(stage);
+  const handleStageChange = async (stage: PipelineStage) => {
+    const buildingId = pipelineItem?.buildingId || 'custom';
+    await updateStage(prospectId!, buildingId, stage);
     addActivity({
       tenantId: prospectId!,
       buildingId: '',
@@ -150,6 +207,12 @@ const CustomProspectDetail = () => {
       description: `Pipeline stage updated from ${stageLabels[currentStage]} to ${stageLabels[stage]}`,
     });
   };
+
+  // Determine if outreach should be blocked (someone else owns + active deal)
+  const activeStages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward'];
+  const isActiveDeal = activeStages.includes(currentStage);
+  const ownedBySomeoneElse = isClaimed && !isMyAccount;
+  const outreachBlocked = ownedBySomeoneElse && isActiveDeal;
 
   const generateCustomEmail = () => {
     if (!customReasonText.trim()) {

@@ -105,8 +105,14 @@ const Tasks = () => {
 
   const handleAdd = async () => {
     if (!newTask.title.trim()) return;
-    await addTask({ ...newTask, completed: false } as any);
-    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd') });
+    await addTask({
+      ...newTask,
+      tenantId: newTask.tenantId || undefined,
+      buildingId: newTask.buildingId || undefined,
+      completed: false,
+    } as any);
+    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '' });
+    setProspectSearch('');
     setShowForm(false);
   };
 

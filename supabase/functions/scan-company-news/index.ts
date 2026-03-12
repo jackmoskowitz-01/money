@@ -229,6 +229,8 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     // Sort by relevance score descending
     mergedItems.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
+    const fetchedAt = new Date().toISOString();
+
     // Persist to DB cache (upsert)
     const { error: upsertError } = await supabase
       .from("cached_company_news")
@@ -237,7 +239,7 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
         company_name: companyName,
         news_items: mergedItems,
         citations,
-        fetched_at: new Date().toISOString(),
+        fetched_at: fetchedAt,
       }, { onConflict: "company_id" });
 
     if (upsertError) {
@@ -246,7 +248,12 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
       console.log(`Cached ${mergedItems.length} news items for ${companyName} in DB`);
     }
 
-    return new Response(JSON.stringify({ companyNews: mergedItems, citations }), {
+    return new Response(JSON.stringify({
+      companyNews: mergedItems,
+      citations,
+      fetchedAt,
+      freshness: mergedItems.length > 0 ? "fresh" : "fresh_empty",
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

@@ -339,9 +339,9 @@ const News = () => {
     }
   }, []);
 
-  // Fetch industry news when filter changes — always fetch fresh on selection
+  // Fetch industry news when filter changes — cache for 1 hour
   useEffect(() => {
-    if (activeIndustry !== 'all') {
+    if (activeIndustry !== 'all' && !industryNews[activeIndustry]?.length) {
       fetchIndustryNews(activeIndustry);
     }
   }, [activeIndustry, fetchIndustryNews]);
@@ -354,7 +354,7 @@ const News = () => {
     const interval = setInterval(() => {
       fetchLiveNews();
       fetchCompanyNews();
-    }, 3 * 60 * 1000);
+    }, 60 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);

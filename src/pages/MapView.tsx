@@ -95,8 +95,8 @@ const MapView = () => {
       const marker = L.marker([b.lat, b.lng], { icon }).addTo(mapInstanceRef.current);
       marker.bindPopup(`
         <div style="min-width:180px">
-          <strong>${b.name}</strong><br/>
-          <span style="font-size:11px;opacity:0.7">${b.address}</span><br/>
+          <strong>${b.address}</strong><br/>
+          ${b.name && b.name !== b.address ? `<span style="font-size:11px;opacity:0.7">${b.name}</span><br/>` : ''}
           <span style="font-size:11px">${b.tenants.length} tenants · ${b.vacancyRate}% vacant</span>
         </div>
       `);

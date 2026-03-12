@@ -576,8 +576,10 @@ const MapView = () => {
                             contactName={tenant.contactName}
                             contactEmail={tenant.contactEmail}
                             recipients={buildRecipients(tenant)}
+                            tenantId={tenant.id}
                             tenantName={tenant.name}
                             industry={tenant.industry}
+                            buildingId={selectedBuilding.id}
                             buildingName={selectedBuilding.name}
                             sqft={tenant.sqft}
                             leaseExpiration={tenant.leaseExpiration}

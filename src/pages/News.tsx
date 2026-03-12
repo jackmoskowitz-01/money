@@ -52,6 +52,7 @@ const LS_LAST_REFRESHED = 'dealflow_news_last_refreshed';
 const LS_NEWS_HISTORY = 'dealflow_news_history';
 const LS_BOOKMARKS = 'dealflow_news_bookmarks';
 const LS_READ_IDS = 'dealflow_news_read';
+const LS_INDUSTRY_NEWS = 'dealflow_industry_news';
 
 const loadFromLS = <T,>(key: string, fallback: T): T => {
   try {
@@ -172,8 +173,10 @@ const News = () => {
   const [showCustomIntel, setShowCustomIntel] = useState(false);
   const [liveNews, setLiveNews] = useState<NewsItem[] | null>(cachedLiveNews);
   const [companyNews, setCompanyNews] = useState<CompanyNewsItem[]>(cachedCompanyNews);
+  const [industryNews, setIndustryNews] = useState<Record<string, NewsItem[]>>(() => loadFromLS<Record<string, NewsItem[]>>(LS_INDUSTRY_NEWS, {}));
   const [newsLoading, setNewsLoading] = useState(false);
   const [companyNewsLoading, setCompanyNewsLoading] = useState(false);
+  const [industryNewsLoading, setIndustryNewsLoading] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(cachedLastRefreshed);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_BOOKMARKS, [])));
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set(loadFromLS<string[]>(LS_READ_IDS, [])));
@@ -292,6 +295,47 @@ const News = () => {
     }
   }, []);
 
+  const fetchIndustryNews = useCallback(async (ind: string) => {
+    if (ind === 'all') return;
+    setIndustryNewsLoading(true);
+    try {
+      const resp = await fetch(NEWS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ industry: ind }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to fetch industry news');
+      }
+      const data = await resp.json();
+      if (data.news && Array.isArray(data.news)) {
+        mergeIntoHistory(data.news);
+        setIndustryNews(prev => {
+          const updated = { ...prev, [ind]: data.news };
+          saveToLS(LS_INDUSTRY_NEWS, updated);
+          return updated;
+        });
+        toast.success(`Found ${data.news.length} ${ind} industry items`);
+      }
+    } catch (e) {
+      console.error('Failed to fetch industry news:', e);
+      toast.error(`Failed to fetch ${ind} news`);
+    } finally {
+      setIndustryNewsLoading(false);
+    }
+  }, []);
+
+  // Fetch industry news when filter changes
+  useEffect(() => {
+    if (activeIndustry !== 'all' && !industryNews[activeIndustry]) {
+      fetchIndustryNews(activeIndustry);
+    }
+  }, [activeIndustry, fetchIndustryNews]);
+
   // Initial fetch only if no cache; auto-refresh every 3 minutes
   useEffect(() => {
     if (!cachedLiveNews) fetchLiveNews();
@@ -307,9 +351,17 @@ const News = () => {
 
   const currentNews: NewsItem[] = useMemo(() => {
     const all = [...customIntelItems, ...companyNews, ...(liveNews || [])];
+    // Include industry-specific news
+    Object.values(industryNews).forEach(items => {
+      items.forEach(item => {
+        if (!all.some(n => n.id === item.id)) {
+          all.push(item);
+        }
+      });
+    });
     // Sort by date descending (newest first)
     return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [customIntelItems, companyNews, liveNews]);
+  }, [customIntelItems, companyNews, liveNews, industryNews]);
 
   const addCustomIntel = useCallback(() => {
     const text = customIntelInput.trim();
@@ -337,6 +389,11 @@ const News = () => {
     }
     if (activeIndustry !== 'all') {
       result = result.filter(news => {
+        // Match industry-tagged news first
+        if ((news as any).industryTag === activeIndustry) return true;
+        // Also match by id prefix for industry-fetched items
+        if (news.id.startsWith(`ind-${activeIndustry.toLowerCase().replace(/[^a-z]/g, '')}`)) return true;
+        // Existing matching logic
         const prospects = getAffectedProspects(news);
         return prospects.some(p => p.tenant.industry === activeIndustry) ||
           news.relatedTenants?.some(tid => {
@@ -772,13 +829,27 @@ const News = () => {
                   )}
                 </AnimatePresence>
               </div>
+              {activeIndustry !== 'all' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-[10px] text-primary"
+                  onClick={() => fetchIndustryNews(activeIndustry)}
+                  disabled={industryNewsLoading}
+                >
+                  <RefreshCw className={`h-3 w-3 ${industryNewsLoading ? 'animate-spin' : ''}`} />
+                  Refresh {activeIndustry}
+                </Button>
+              )}
             </div>
 
-            {(newsLoading || companyNewsLoading) && (
+            {(newsLoading || companyNewsLoading || industryNewsLoading) && (
               <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
                 <span className="text-xs text-primary">
-                  {newsLoading && companyNewsLoading
+                  {industryNewsLoading
+                    ? `Searching ${activeIndustry} industry news for CRE opportunities...`
+                    : newsLoading && companyNewsLoading
                     ? 'Searching real-time market news & scanning your companies...'
                     : newsLoading
                     ? 'Searching real-time market news via Perplexity...'

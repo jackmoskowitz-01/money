@@ -82,12 +82,29 @@ const EmailDisplay = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const logActivity = async (recipientEmails?: string[]) => {
+    try {
+      const toList = recipientEmails?.join(', ') || contactEmail || 'unknown';
+      await supabase.from('activities').insert({
+        type: 'email',
+        title: `Email sent to ${contactName || tenantName || 'prospect'}`,
+        description: `Outreach email sent to ${toList}${outreachReason ? `. Reason: ${outreachReason}` : ''}`,
+        tenant_id: tenantId || tenantName || 'unknown',
+        building_id: buildingId || buildingName || '',
+        outreach_reason_used: outreachReason || null,
+      });
+    } catch (err) {
+      console.error('Failed to log activity:', err);
+    }
+  };
+
   const openInEmailClient = (toEmails?: string[]) => {
     const to = toEmails ? toEmails.join(',') : (contactEmail || '');
     const subj = selectedSubject || parsedSubject || subject || (label ? `Re: ${label}` : '');
     const mailto = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(displayBody)}`;
     window.open(mailto, '_blank');
-    toast.success('Opening email client...');
+    logActivity(toEmails);
+    toast.success('Opening email client & logging activity...');
   };
 
   const startEditing = () => {

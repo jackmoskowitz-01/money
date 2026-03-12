@@ -309,6 +309,14 @@ const News = () => {
       });
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({}));
+        if (resp.status === 402) {
+          toast.error('AI credits exhausted — add credits in Settings → Workspace → Usage');
+          return;
+        }
+        if (resp.status === 429) {
+          toast.error('Rate limit hit — please wait a moment and try again');
+          return;
+        }
         throw new Error(err.error || 'Failed to fetch industry news');
       }
       const data = await resp.json();

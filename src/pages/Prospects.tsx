@@ -181,6 +181,7 @@ const Prospects = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
         headers: {
@@ -201,6 +202,7 @@ const Prospects = () => {
           clientsInBuilding: building.tenants
             .filter(t => t.isClient && t.id !== tenant.id)
             .map(t => t.name),
+          greeting,
         }),
       });
 

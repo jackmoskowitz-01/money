@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Building2, ExternalLink, Users, Mail, Loader2, Copy, Check, Send, Plus, Search,
   RefreshCw, FileText, Sparkles, ChevronDown, X, Filter, Clock, Bookmark, BookmarkCheck,
-  Zap, AlertTriangle, BarChart3, ListPlus
+  Zap, AlertTriangle, BarChart3, ListPlus, Newspaper, Eye, Rss
 } from 'lucide-react';
 import { buildings, getCategoryColor, type NewsItem, type Tenant, type Building } from '@/data/mockData';
 import { toast } from 'sonner';
@@ -15,6 +15,8 @@ import { getProspectLists } from '@/data/prospectLists';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import EmailDisplay from '@/components/EmailDisplay';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
@@ -75,7 +77,6 @@ let cachedLastRefreshed: Date | null = (() => {
   const v = localStorage.getItem(LS_LAST_REFRESHED);
   return v ? new Date(JSON.parse(v)) : null;
 })();
-// Accumulated history — news items are never removed, only added
 let newsHistory: Map<string, NewsItem> = new Map(
   loadFromLS<[string, NewsItem][]>(LS_NEWS_HISTORY, [])
 );
@@ -156,6 +157,18 @@ const getTimeSince = (dateStr: string) => {
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days}d ago`;
   return dateStr;
+};
+
+const getCategorySemanticColor = (category: string) => {
+  switch (category) {
+    case 'lease': return 'bg-info';
+    case 'sale': return 'bg-success';
+    case 'expansion': return 'bg-success';
+    case 'vacancy': return 'bg-warning';
+    case 'market': return 'bg-primary';
+    case 'contraction': return 'bg-destructive';
+    default: return 'bg-muted-foreground';
+  }
 };
 
 const News = () => {
@@ -245,7 +258,6 @@ const News = () => {
           relatedTenants: cn.matchedCompanyId ? [cn.matchedCompanyId] : undefined,
           relatedBuildings: cn.matchedBuildingId ? [cn.matchedBuildingId] : undefined,
         }));
-        // Accumulate into history
         mergeIntoHistory(mapped);
         const allCompany = Array.from(newsHistory.values()).filter(n => n.id.startsWith('cn')) as CompanyNewsItem[];
         setCompanyNews(allCompany);
@@ -278,7 +290,6 @@ const News = () => {
       }
       const data = await resp.json();
       if (data.news && Array.isArray(data.news)) {
-        // Accumulate into history
         mergeIntoHistory(data.news);
         const allLive = Array.from(newsHistory.values()).filter(n => !n.id.startsWith('cn') && !n.id.startsWith('custom-intel-'));
         setLiveNews(allLive);
@@ -340,14 +351,12 @@ const News = () => {
     }
   }, []);
 
-  // Fetch industry news when filter changes — cache for 1 hour
   useEffect(() => {
     if (activeIndustry !== 'all' && !industryNews[activeIndustry]?.length) {
       fetchIndustryNews(activeIndustry);
     }
   }, [activeIndustry, fetchIndustryNews]);
 
-  // Initial fetch only if no cache; auto-refresh every 3 minutes
   useEffect(() => {
     if (!cachedLiveNews) fetchLiveNews();
     if (cachedCompanyNews.length === 0) fetchCompanyNews();
@@ -362,7 +371,6 @@ const News = () => {
 
   const currentNews: NewsItem[] = useMemo(() => {
     const all = [...customIntelItems, ...companyNews, ...(liveNews || [])];
-    // Include industry-specific news
     Object.values(industryNews).forEach(items => {
       items.forEach(item => {
         if (!all.some(n => n.id === item.id)) {
@@ -370,7 +378,6 @@ const News = () => {
         }
       });
     });
-    // Sort by date descending (newest first)
     return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [customIntelItems, companyNews, liveNews, industryNews]);
 
@@ -400,11 +407,8 @@ const News = () => {
     }
     if (activeIndustry !== 'all') {
       result = result.filter(news => {
-        // Match industry-tagged news first
         if ((news as any).industryTag === activeIndustry) return true;
-        // Also match by id prefix for industry-fetched items
         if (news.id.startsWith(`ind-${activeIndustry.toLowerCase().replace(/[^a-z]/g, '')}`)) return true;
-        // Existing matching logic
         const prospects = getAffectedProspects(news);
         return prospects.some(p => p.tenant.industry === activeIndustry) ||
           news.relatedTenants?.some(tid => {
@@ -416,6 +420,24 @@ const News = () => {
     }
     return result;
   }, [currentNews, activeCategory, activeIndustry]);
+
+  // Derived data for tabs
+  const bookmarkedNews = useMemo(() => filteredNews.filter(n => bookmarkedIds.has(n.id)), [filteredNews, bookmarkedIds]);
+  const companyOnlyNews = useMemo(() => filteredNews.filter(n => n.id.startsWith('cn')), [filteredNews]);
+  const unreadCount = useMemo(() => currentNews.filter(n => !readIds.has(n.id) && !dismissedIds.has(n.id)).length, [currentNews, readIds, dismissedIds]);
+  const companiesScanned = useMemo(() => {
+    const set = new Set<string>();
+    companyNews.forEach(cn => { if (cn.matchedCompanyName) set.add(cn.matchedCompanyName); });
+    return set.size;
+  }, [companyNews]);
+
+  // ───── Stats ─────
+  const stats = useMemo(() => [
+    { label: 'Total Articles', value: currentNews.length, icon: Newspaper, color: 'text-primary bg-primary/10' },
+    { label: 'Unread', value: unreadCount, icon: Eye, color: 'text-info bg-info/10' },
+    { label: 'Companies Scanned', value: companiesScanned, icon: Building2, color: 'text-success bg-success/10' },
+    { label: 'Bookmarked', value: bookmarkedIds.size, icon: Bookmark, color: 'text-warning bg-warning/10' },
+  ], [currentNews.length, unreadCount, companiesScanned, bookmarkedIds.size]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];
@@ -470,7 +492,6 @@ const News = () => {
       return;
     }
 
-    // For each entry in the list, try to find the matching tenant in buildings
     const manual = manualProspects[newsId] || [];
     const existingIds = new Set(manual.map(p => p.tenant.id));
     let addedCount = 0;
@@ -481,7 +502,6 @@ const News = () => {
     for (const entry of list.entries) {
       if (existingIds.has(entry.tenantId)) continue;
 
-      // Try to find in buildings data
       let found = false;
       for (const building of buildings) {
         const tenant = building.tenants.find(t => t.id === entry.tenantId);
@@ -494,7 +514,6 @@ const News = () => {
         }
       }
 
-      // If not found in buildings, add as custom prospect
       if (!found) {
         newCustom.push({ id: entry.tenantId, name: entry.tenantName });
         addedCount++;
@@ -731,15 +750,511 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: content }));
   }, []);
 
+  // ───── Shared news card renderer ─────
+  const renderNewsCard = (news: NewsItem, i: number) => {
+    const isCustomIntel = news.id.startsWith('custom-intel-');
+    const isCompanyNews = news.id.startsWith('cn');
+    const companyItem = isCompanyNews ? (news as CompanyNewsItem) : null;
+    const autoProspects = getAffectedProspects(news);
+    const manual = manualProspects[news.id] || [];
+    const customs = customProspects[news.id] || [];
+    const allProspects = [...autoProspects, ...manual];
+    const totalCount = allProspects.length + customs.length;
+    const isExpanded = expandedNewsId === news.id;
+    const selected = selectedProspects[news.id] || new Set();
+    const allSelected = totalCount > 0 && selected.size === totalCount;
+    const searchResults = getSearchResults(news.id, autoProspects);
+    const isBookmarked = bookmarkedIds.has(news.id);
+    const isRead = readIds.has(news.id);
+    const CategoryIcon = categoryIcons[news.category] || Zap;
+
+    return (
+      <motion.div
+        key={news.id}
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: i * 0.03 }}
+        className="relative pl-12 pb-6"
+      >
+        {/* Timeline dot */}
+        <div className={`absolute left-3.5 top-4 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-background ${
+          isCustomIntel ? 'bg-primary' : isRead ? 'bg-muted-foreground/30' : 'bg-primary'
+        }`}>
+          <div className="h-1.5 w-1.5 rounded-full bg-background" />
+        </div>
+
+        {/* Time label */}
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="text-[10px] font-medium text-muted-foreground">{getTimeSince(news.date)}</span>
+          {isCustomIntel && (
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[8px] py-0">
+              Your Intel
+            </Badge>
+          )}
+          {isCompanyNews && companyItem?.matchedCompanyName && (
+            <Badge variant="outline" className="bg-accent text-accent-foreground text-[8px] py-0">
+              📡 {companyItem.matchedCompanyName}
+            </Badge>
+          )}
+          {(news as any).url && (
+            <a
+              href={(news as any).url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
+              onClick={e => e.stopPropagation()}
+            >
+              <ExternalLink className="h-2.5 w-2.5" /> Source
+            </a>
+          )}
+        </div>
+
+        <Card className={`border-border bg-card overflow-hidden transition-all ${
+          isExpanded ? 'ring-1 ring-primary/20' : 'hover:border-primary/20'
+        } ${isRead ? 'opacity-75' : ''}`}>
+          {/* Category stripe — semantic colors */}
+          <div className={`h-0.5 ${getCategorySemanticColor(news.category)}`} />
+
+          <div className="p-4">
+            {/* Top row */}
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className={`flex h-6 w-6 items-center justify-center rounded-md ${getCategoryColor(news.category)} bg-opacity-20`}>
+                  <CategoryIcon className="h-3 w-3" />
+                </div>
+                <Badge variant="outline" className={`text-[10px] ${getCategoryColor(news.category)}`}>{news.category}</Badge>
+                <span className="text-[10px] text-muted-foreground/60">{news.source}</span>
+              </div>
+
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleBookmark(news.id); }}
+                  className="rounded p-1.5 hover:bg-secondary transition-colors"
+                  title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
+                >
+                  {isBookmarked
+                    ? <BookmarkCheck className="h-3.5 w-3.5 text-primary" />
+                    : <Bookmark className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
+                  }
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(`${news.title}\n\n${news.summary}`);
+                    toast.success('Copied to clipboard');
+                  }}
+                  className="rounded p-1.5 hover:bg-secondary transition-colors"
+                  title="Copy"
+                >
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); dismissNews(news.id); }}
+                  className="rounded p-1.5 hover:bg-destructive/10 transition-colors"
+                  title="Dismiss"
+                >
+                  <X className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
+                </button>
+                {totalCount > 0 && !isExpanded && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExpandedNewsId(news.id);
+                      selectAll(news.id, allProspects, customs);
+                      sendToSelected(news.id, news, allProspects, customs);
+                    }}
+                    className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1 ml-1 transition-colors"
+                    title="Generate emails for all prospects"
+                  >
+                    <Mail className="h-3 w-3" /> Quick Draft
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Headline + summary */}
+            <h3
+              className="mb-1.5 text-sm font-semibold text-foreground leading-snug cursor-pointer hover:text-primary transition-colors"
+              onClick={() => {
+                setExpandedNewsId(isExpanded ? null : news.id);
+                if (!isRead) markAsRead(news.id);
+              }}
+            >
+              {news.title}
+            </h3>
+            <p className="text-xs leading-relaxed text-muted-foreground mb-3">{news.summary}</p>
+
+            {/* Prospect bar */}
+            <button
+              onClick={() => {
+                setExpandedNewsId(isExpanded ? null : news.id);
+                if (!isRead) markAsRead(news.id);
+              }}
+              className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
+                totalCount > 0 ? 'bg-primary/5 hover:bg-primary/10' : 'bg-secondary/30 hover:bg-secondary/50'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5 text-primary" />
+              <span className="flex-1 text-xs font-medium text-primary">
+                {totalCount > 0
+                  ? `${totalCount} prospect${totalCount !== 1 ? 's' : ''} matched`
+                  : 'Add prospects for outreach'
+                }
+              </span>
+              {(manual.length + customs.length) > 0 && (
+                <span className="text-[10px] text-muted-foreground">+{manual.length + customs.length} added</span>
+              )}
+              <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {/* Expanded prospect panel */}
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="border-t border-border px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
+                    <div className="flex items-center gap-2">
+                      {allProspects.length > 0 && (
+                        <button
+                          onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects, customs)}
+                          className="text-[10px] text-primary hover:underline"
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {allProspects.map(({ tenant, building: bldg }, idx) => {
+                    const emailKey = `news-${news.id}-${tenant.id}`;
+                    const isChecked = selected.has(tenant.id);
+                    const isGenerating = generatingKeys.has(emailKey);
+                    const hasEmail = generatedEmails[emailKey] !== undefined;
+                    const hasClient = bldg.tenants.some(t => t.isClient && t.id !== tenant.id);
+                    const isManual = idx >= autoProspects.length;
+
+                    return (
+                      <div key={tenant.id} className="space-y-1">
+                        <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => toggleProspect(news.id, tenant.id)}
+                            className="h-4 w-4"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                to={`/building/${bldg.id}/tenant/${tenant.id}`}
+                                className="text-xs font-semibold text-foreground hover:text-primary truncate"
+                              >
+                                {tenant.name}
+                              </Link>
+                              {hasClient && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 bg-success/10 text-success border-success/30 shrink-0">
+                                  ✓ Client in bldg
+                                </Badge>
+                              )}
+                              {isManual && (
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
+                                  Added
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {bldg.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
+                            </p>
+                          </div>
+                          {isManual && !hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => removeManualProspect(news.id, tenant.id)}
+                              className="shrink-0 rounded p-1 hover:bg-destructive/10"
+                            >
+                              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          )}
+                          {!hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => generateEmailForProspect(tenant, bldg, news, emailKey)}
+                              className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                            >
+                              <Mail className="h-3 w-3" /> Generate
+                            </button>
+                          )}
+                          {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                          {hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                              className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                            >
+                              <Check className="h-3 w-3" /> View
+                            </button>
+                          )}
+                        </div>
+
+                        <AnimatePresence>
+                          {activeEmailKey === emailKey && hasEmail && (
+                            <EmailDisplay
+                              emailKey={emailKey}
+                              emailContent={generatedEmails[emailKey]}
+                              isGenerating={isGenerating}
+                              label={`Email to ${tenant.contactName}`}
+                              contactName={tenant.contactName}
+                              contactEmail={tenant.contactEmail}
+                              subject={`${news.title} — ${tenant.name}`}
+                              recipients={buildRecipients(tenant)}
+                              tenantId={tenant.id}
+                              tenantName={tenant.name}
+                              buildingId={bldg.id}
+                              buildingName={bldg.name}
+                              outreachReason={news.title}
+                              onClose={() => setActiveEmailKey(null)}
+                              onUpdateEmail={updateEmail}
+                            />
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+
+                  {/* Custom prospects */}
+                  {customs.map(custom => {
+                    const emailKey = `news-${news.id}-${custom.id}`;
+                    const isChecked = selected.has(custom.id);
+                    const isGenerating = generatingKeys.has(emailKey);
+                    const hasEmail = generatedEmails[emailKey] !== undefined;
+
+                    return (
+                      <div key={custom.id} className="space-y-1">
+                        <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => toggleProspect(news.id, custom.id)}
+                            className="h-4 w-4"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-foreground truncate">
+                                {custom.name}
+                              </span>
+                              <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
+                                Custom
+                              </Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Not in database — AI will research and tailor</p>
+                          </div>
+                          {!hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => removeCustomProspect(news.id, custom.id)}
+                              className="shrink-0 rounded p-1 hover:bg-destructive/10"
+                            >
+                              <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                            </button>
+                          )}
+                          {!hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => generateEmailForCustom(custom.name, news, emailKey)}
+                              className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
+                            >
+                              <Mail className="h-3 w-3" /> Generate
+                            </button>
+                          )}
+                          {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
+                          {hasEmail && !isGenerating && (
+                            <button
+                              onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
+                              className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
+                            >
+                              <Check className="h-3 w-3" /> View
+                            </button>
+                          )}
+                        </div>
+
+                        <AnimatePresence>
+                          {activeEmailKey === emailKey && hasEmail && (
+                            <EmailDisplay
+                              emailKey={emailKey}
+                              emailContent={generatedEmails[emailKey]}
+                              isGenerating={isGenerating}
+                              label={`Email to ${custom.name}`}
+                              subject={`${news.title} — ${custom.name}`}
+                              tenantName={custom.name}
+                              outreachReason={news.title}
+                              onClose={() => setActiveEmailKey(null)}
+                              onUpdateEmail={updateEmail}
+                            />
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+
+                  {/* Add Prospect Search */}
+                  <div className="pt-2 border-t border-border/50">
+                    {showSearchFor === news.id ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="relative flex-1">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                            <input
+                              type="text"
+                              placeholder="Search or type a name to add..."
+                              value={prospectSearch[news.id] || ''}
+                              onChange={e => setProspectSearch(prev => ({ ...prev, [news.id]: e.target.value }))}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && (prospectSearch[news.id] || '').trim()) {
+                                  if (searchResults.length > 0) {
+                                    addManualProspect(news.id, searchResults[0]);
+                                  } else {
+                                    addCustomProspect(news.id, prospectSearch[news.id]);
+                                  }
+                                }
+                              }}
+                              className="w-full rounded-md border border-input bg-background pl-7 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              autoFocus
+                            />
+                          </div>
+                          <button
+                            onClick={() => { setShowSearchFor(null); setProspectSearch(prev => ({ ...prev, [news.id]: '' })); }}
+                            className="shrink-0 rounded p-1 hover:bg-secondary"
+                          >
+                            <X className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        </div>
+                        {searchResults.length > 0 && (
+                          <div className="space-y-1">
+                            {searchResults.map(prospect => (
+                              <button
+                                key={prospect.tenant.id}
+                                onClick={() => addManualProspect(news.id, prospect)}
+                                className="flex w-full items-center gap-3 rounded-md bg-secondary/20 p-2 text-left hover:bg-secondary/40 transition-colors"
+                              >
+                                <Plus className="h-3 w-3 text-primary shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-foreground truncate">{prospect.tenant.name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">
+                                    {prospect.building.name} · {prospect.tenant.industry} · {prospect.tenant.sqft.toLocaleString()} SF
+                                  </p>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {(prospectSearch[news.id] || '').trim() && searchResults.length === 0 && (
+                          <button
+                            onClick={() => addCustomProspect(news.id, prospectSearch[news.id])}
+                            className="flex w-full items-center gap-3 rounded-md bg-primary/5 p-2.5 text-left hover:bg-primary/10 transition-colors"
+                          >
+                            <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-primary">Add "{(prospectSearch[news.id] || '').trim()}" as custom prospect</p>
+                              <p className="text-[10px] text-muted-foreground">AI will tailor outreach based on the news and what it knows about them</p>
+                            </div>
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowSearchFor(news.id)}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" /> Add prospect manually
+                        </button>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
+                            >
+                              <ListPlus className="h-3 w-3" /> Add a list
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 p-2" align="end">
+                            <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              Choose a List
+                            </p>
+                            {(() => {
+                              const lists = getProspectLists();
+                              return lists.length > 0 ? (
+                                <div className="max-h-48 space-y-0.5 overflow-y-auto">
+                                  {lists.map(list => (
+                                    <button
+                                      key={list.id}
+                                      onClick={() => addListToNews(news.id, list.id)}
+                                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
+                                    >
+                                      <span className="truncate">{list.name}</span>
+                                      <Badge variant="outline" className="text-[9px] shrink-0">{list.entries.length}</Badge>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="px-2 py-3 text-[11px] text-muted-foreground text-center">No lists yet — create one from Tasks → Lists</p>
+                              );
+                            })()}
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                    )}
+                  </div>
+
+                  {selected.size > 0 && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                      <Button
+                        size="sm"
+                        className="text-xs h-8 flex-1"
+                        onClick={() => sendToSelected(news.id, news, allProspects, customs)}
+                        disabled={generatingKeys.size > 0}
+                      >
+                        {generatingKeys.size > 0 ? (
+                          <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...</>
+                        ) : (
+                          <><Send className="mr-1 h-3 w-3" /> Generate for {selected.size} selected</>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderTimeline = (items: NewsItem[]) => (
+    <div className="relative">
+      <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+      <div className="space-y-0">
+        {items.length > 0 ? (
+          items.map((news, i) => renderNewsCard(news, i))
+        ) : (
+          <div className="pl-12 py-12 text-center">
+            <Newspaper className="mx-auto mb-3 h-10 w-10 text-muted-foreground/20" />
+            <p className="text-sm font-medium text-muted-foreground">No articles found</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Try adjusting your filters or refresh the feed</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen pt-14">
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <div className="flex items-end justify-between">
             <div>
-              <h1 className="font-display text-3xl font-bold tracking-tight">Market Intelligence</h1>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Market Intelligence</h1>
               <p className="mt-1 text-sm text-muted-foreground">Real-time news matched to your prospect universe</p>
             </div>
             <div className="flex items-center gap-2">
@@ -756,7 +1271,7 @@ const News = () => {
                 disabled={companyNewsLoading}
               >
                 <Search className={`h-3.5 w-3.5 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
-                Scan Companies
+                <span className="hidden sm:inline">Scan Companies</span>
               </Button>
               <Button
                 variant="outline"
@@ -766,76 +1281,121 @@ const News = () => {
                 disabled={newsLoading || companyNewsLoading}
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
-                Refresh All
+                <span className="hidden sm:inline">Refresh All</span>
               </Button>
             </div>
           </div>
         </motion.div>
 
-        <div>
-          {/* News Feed */}
-          <div>
-            {/* Custom Intel Input */}
-            <AnimatePresence>
-              {showCustomIntel ? (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="overflow-hidden mb-5"
-                >
-                  <Card className="border-primary/20 bg-card p-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <FileText className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold text-foreground">Custom Intel</p>
-                      <button onClick={() => setShowCustomIntel(false)} className="ml-auto rounded p-1 hover:bg-secondary">
-                        <X className="h-3.5 w-3.5 text-muted-foreground" />
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mb-2">
-                      Paste a news article, market data, or type your own intel. This becomes an outreach trigger you can generate emails from.
-                    </p>
-                    <textarea
-                      value={customIntelInput}
-                      onChange={e => setCustomIntelInput(e.target.value)}
-                      placeholder={"Paste an article, URL, or type market intelligence here...\n\nExample: 'The American Bar Association is reportedly exploring a move from their current 50,000 SF space at 1050 Connecticut Ave as their lease expires in Q2 2026...'"}
-                      className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-                      autoFocus
-                    />
-                    <div className="flex items-center justify-between mt-3">
-                      <p className="text-[10px] text-muted-foreground">
-                        {customIntelInput.trim().length > 0 ? `${customIntelInput.trim().length} chars` : 'Start typing or paste content'}
-                      </p>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={addCustomIntel}
-                        disabled={!customIntelInput.trim()}
-                      >
-                        <Sparkles className="mr-1 h-3 w-3" /> Create Outreach Trigger
-                      </Button>
-                    </div>
-                  </Card>
-                </motion.div>
-              ) : (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-5">
-                  <button
-                    onClick={() => setShowCustomIntel(true)}
-                    className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5"
-                  >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-                      <FileText className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-foreground">Drop in your own intel</p>
-                      <p className="text-[10px] text-muted-foreground">Paste a news article or type custom market intelligence to generate outreach</p>
-                    </div>
-                    <Plus className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {/* ═══ Stat Cards ═══ */}
+        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {stats.map((stat, i) => (
+            <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-start justify-between">
+                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.color}`}>
+                    <stat.icon className="h-4.5 w-4.5" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <p className="text-2xl font-bold text-foreground tabular-nums">{stat.value}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
 
+        {/* ═══ Custom Intel (Dialog) ═══ */}
+        <div className="mb-6">
+          <Dialog open={showCustomIntel} onOpenChange={setShowCustomIntel}>
+            <DialogTrigger asChild>
+              <button className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+                  <FileText className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-foreground">Drop in your own intel</p>
+                  <p className="text-[10px] text-muted-foreground">Paste a news article or type custom market intelligence to generate outreach</p>
+                </div>
+                <Plus className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Custom Intel
+                </DialogTitle>
+              </DialogHeader>
+              <p className="text-xs text-muted-foreground">
+                Paste a news article, market data, or type your own intel. This becomes an outreach trigger you can generate emails from.
+              </p>
+              <textarea
+                value={customIntelInput}
+                onChange={e => setCustomIntelInput(e.target.value)}
+                placeholder={"Paste an article, URL, or type market intelligence here...\n\nExample: 'The American Bar Association is reportedly exploring a move from their current 50,000 SF space at 1050 Connecticut Ave as their lease expires in Q2 2026...'"}
+                className="w-full min-h-[160px] rounded-md border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+                autoFocus
+              />
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] text-muted-foreground">
+                  {customIntelInput.trim().length > 0 ? `${customIntelInput.trim().length} chars` : 'Start typing or paste content'}
+                </p>
+                <Button
+                  size="sm"
+                  className="text-xs"
+                  onClick={addCustomIntel}
+                  disabled={!customIntelInput.trim()}
+                >
+                  <Sparkles className="mr-1 h-3 w-3" /> Create Outreach Trigger
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* ═══ Loading indicator ═══ */}
+        {(newsLoading || companyNewsLoading || industryNewsLoading) && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+            <span className="text-xs text-primary">
+              {industryNewsLoading
+                ? `Searching latest ${activeIndustry} industry news...`
+                : newsLoading && companyNewsLoading
+                ? 'Searching real-time market news & scanning your companies...'
+                : newsLoading
+                ? 'Searching real-time market news via Perplexity...'
+                : 'Scanning your companies for recent news...'}
+            </span>
+          </div>
+        )}
+
+        {/* ═══ Tabbed Sections ═══ */}
+        <Tabs defaultValue="feed" className="w-full">
+          <TabsList className="w-full justify-start bg-secondary/30 border border-border rounded-lg p-1 mb-6">
+            <TabsTrigger value="feed" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Rss className="h-3 w-3" /> Feed
+              {unreadCount > 0 && (
+                <Badge className="ml-1 bg-primary/15 text-primary border-0 text-[9px] px-1.5 py-0 font-bold">{unreadCount}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="bookmarked" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Bookmark className="h-3 w-3" /> Bookmarked
+              {bookmarkedIds.size > 0 && (
+                <Badge className="ml-1 bg-warning/15 text-warning border-0 text-[9px] px-1.5 py-0 font-bold">{bookmarkedIds.size}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="company" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Building2 className="h-3 w-3" /> Company Scans
+              {companyOnlyNews.length > 0 && (
+                <Badge className="ml-1 bg-success/15 text-success border-0 text-[9px] px-1.5 py-0 font-bold">{companyOnlyNews.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── FEED TAB ── */}
+          <TabsContent value="feed" className="mt-0">
             {/* Filters */}
             <div className="mb-5 flex flex-wrap items-center gap-2">
               {categories.map(cat => (
@@ -878,7 +1438,7 @@ const News = () => {
                         <button
                           onClick={() => { setActiveIndustry('all'); setShowIndustryFilter(false); }}
                           className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
-                            activeIndustry === 'all' ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                            activeIndustry === 'all' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-secondary'
                           }`}
                         >
                           All Industries
@@ -888,7 +1448,7 @@ const News = () => {
                             key={ind}
                             onClick={() => { setActiveIndustry(ind); setShowIndustryFilter(false); }}
                             className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
-                              activeIndustry === ind ? 'bg-primary/10 text-primary font-semibold' : 'text-foreground hover:bg-secondary'
+                              activeIndustry === ind ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-secondary'
                             }`}
                           >
                             {ind}
@@ -913,517 +1473,32 @@ const News = () => {
               )}
             </div>
 
-            {(newsLoading || companyNewsLoading || industryNewsLoading) && (
-              <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span className="text-xs text-primary">
-                  {industryNewsLoading
-                    ? `Searching latest ${activeIndustry} industry news...`
-                    : newsLoading && companyNewsLoading
-                    ? 'Searching real-time market news & scanning your companies...'
-                    : newsLoading
-                    ? 'Searching real-time market news via Perplexity...'
-                    : 'Scanning your companies for recent news...'}
-                </span>
-              </div>
-            )}
+            {renderTimeline(filteredNews)}
+          </TabsContent>
 
-            {/* Timeline Feed */}
-            <div className="relative">
-              {/* Timeline line */}
-              <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+          {/* ── BOOKMARKED TAB ── */}
+          <TabsContent value="bookmarked" className="mt-0">
+            {renderTimeline(bookmarkedNews)}
+          </TabsContent>
 
-              <div className="space-y-0">
-                {filteredNews.map((news, i) => {
-                  const isCustomIntel = news.id.startsWith('custom-intel-');
-                  const isCompanyNews = news.id.startsWith('cn');
-                  const companyItem = isCompanyNews ? (news as CompanyNewsItem) : null;
-                  const autoProspects = getAffectedProspects(news);
-                  const manual = manualProspects[news.id] || [];
-                  const customs = customProspects[news.id] || [];
-                  const allProspects = [...autoProspects, ...manual];
-                  const totalCount = allProspects.length + customs.length;
-                  const isExpanded = expandedNewsId === news.id;
-                  const selected = selectedProspects[news.id] || new Set();
-                  const allSelected = totalCount > 0 && selected.size === totalCount;
-                  const searchResults = getSearchResults(news.id, autoProspects);
-                  const isBookmarked = bookmarkedIds.has(news.id);
-                  const isRead = readIds.has(news.id);
-                  const CategoryIcon = categoryIcons[news.category] || Zap;
-
-                  return (
-                    <motion.div
-                      key={news.id}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="relative pl-12 pb-6"
-                    >
-                      {/* Timeline dot */}
-                      <div className={`absolute left-3.5 top-4 z-10 flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 border-background ${
-                        isCustomIntel ? 'bg-primary' : isRead ? 'bg-muted-foreground/30' : 'bg-primary'
-                      }`}>
-                        <div className="h-1.5 w-1.5 rounded-full bg-background" />
-                      </div>
-
-                      {/* Time label */}
-                      <div className="mb-1.5 flex items-center gap-2">
-                        <span className="text-[10px] font-medium text-muted-foreground">{getTimeSince(news.date)}</span>
-                        {isCustomIntel && (
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[8px] py-0">
-                            Your Intel
-                          </Badge>
-                        )}
-                        {isCompanyNews && companyItem?.matchedCompanyName && (
-                          <Badge variant="outline" className="bg-accent text-accent-foreground text-[8px] py-0">
-                            📡 {companyItem.matchedCompanyName}
-                          </Badge>
-                        )}
-                        {(news as any).url && (
-                          <a
-                            href={(news as any).url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary hover:underline flex items-center gap-0.5"
-                            onClick={e => e.stopPropagation()}
-                          >
-                            <ExternalLink className="h-2.5 w-2.5" /> Source
-                          </a>
-                        )}
-                      </div>
-
-                      <Card className={`border-border bg-card overflow-hidden transition-all ${
-                        isExpanded ? 'ring-1 ring-primary/20' : 'hover:border-primary/20'
-                      } ${isRead ? 'opacity-75' : ''}`}>
-                        {/* Card header with category stripe */}
-                        <div className={`h-0.5 ${
-                          news.category === 'lease' ? 'bg-blue-500' :
-                          news.category === 'sale' ? 'bg-emerald-500' :
-                          news.category === 'expansion' ? 'bg-green-500' :
-                          news.category === 'vacancy' ? 'bg-amber-500' :
-                          news.category === 'market' ? 'bg-purple-500' :
-                          'bg-red-500'
-                        }`} />
-
-                        <div className="p-4">
-                          {/* Top row: category + source + quick actions */}
-                          <div className="flex items-center justify-between mb-2.5">
-                            <div className="flex items-center gap-2">
-                              <div className={`flex h-6 w-6 items-center justify-center rounded-md ${getCategoryColor(news.category)} bg-opacity-20`}>
-                                <CategoryIcon className="h-3 w-3" />
-                              </div>
-                              <Badge variant="outline" className={`text-[10px] ${getCategoryColor(news.category)}`}>{news.category}</Badge>
-                              <span className="text-[10px] text-muted-foreground/60">{news.source}</span>
-                            </div>
-
-                            {/* Quick actions */}
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={(e) => { e.stopPropagation(); toggleBookmark(news.id); }}
-                                className="rounded p-1.5 hover:bg-secondary transition-colors"
-                                title={isBookmarked ? 'Remove bookmark' : 'Bookmark'}
-                              >
-                                {isBookmarked
-                                  ? <BookmarkCheck className="h-3.5 w-3.5 text-primary" />
-                                  : <Bookmark className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
-                                }
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigator.clipboard.writeText(`${news.title}\n\n${news.summary}`);
-                                  toast.success('Copied to clipboard');
-                                }}
-                                className="rounded p-1.5 hover:bg-secondary transition-colors"
-                                title="Copy"
-                              >
-                                <Copy className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-foreground" />
-                              </button>
-                              <button
-                                onClick={(e) => { e.stopPropagation(); dismissNews(news.id); }}
-                                className="rounded p-1.5 hover:bg-destructive/10 transition-colors"
-                                title="Dismiss"
-                              >
-                                <X className="h-3.5 w-3.5 text-muted-foreground/50 hover:text-destructive" />
-                              </button>
-                              {totalCount > 0 && !isExpanded && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpandedNewsId(news.id);
-                                    selectAll(news.id, allProspects, customs);
-                                    sendToSelected(news.id, news, allProspects, customs);
-                                  }}
-                                  className="rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1 ml-1 transition-colors"
-                                  title="Generate emails for all prospects"
-                                >
-                                  <Mail className="h-3 w-3" /> Quick Draft
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Headline + summary */}
-                          <h3
-                            className="mb-1.5 text-sm font-semibold text-foreground leading-snug cursor-pointer hover:text-primary transition-colors"
-                            onClick={() => {
-                              setExpandedNewsId(isExpanded ? null : news.id);
-                              if (!isRead) markAsRead(news.id);
-                            }}
-                          >
-                            {news.title}
-                          </h3>
-                          <p className="text-xs leading-relaxed text-muted-foreground mb-3">{news.summary}</p>
-
-                          {/* Prospect bar */}
-                          <button
-                            onClick={() => {
-                              setExpandedNewsId(isExpanded ? null : news.id);
-                              if (!isRead) markAsRead(news.id);
-                            }}
-                            className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
-                              totalCount > 0 ? 'bg-primary/5 hover:bg-primary/10' : 'bg-secondary/30 hover:bg-secondary/50'
-                            }`}
-                          >
-                            <Users className="h-3.5 w-3.5 text-primary" />
-                            <span className="flex-1 text-xs font-medium text-primary">
-                              {totalCount > 0
-                                ? `${totalCount} prospect${totalCount !== 1 ? 's' : ''} matched`
-                                : 'Add prospects for outreach'
-                              }
-                            </span>
-                            {(manual.length + customs.length) > 0 && (
-                              <span className="text-[10px] text-muted-foreground">+{manual.length + customs.length} added</span>
-                            )}
-                            <ChevronDown className={`h-3.5 w-3.5 text-primary transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                          </button>
-                        </div>
-
-                        {/* Expanded prospect panel */}
-                        <AnimatePresence>
-                          {isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="overflow-hidden"
-                            >
-                              <div className="border-t border-border px-4 py-3 space-y-2">
-                                <div className="flex items-center justify-between mb-1">
-                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Select prospects to outreach</p>
-                                  <div className="flex items-center gap-2">
-                                    {allProspects.length > 0 && (
-                                      <button
-                                        onClick={() => allSelected ? deselectAll(news.id) : selectAll(news.id, allProspects, customs)}
-                                        className="text-[10px] text-primary hover:underline"
-                                      >
-                                        {allSelected ? 'Deselect All' : 'Select All'}
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {allProspects.map(({ tenant, building: bldg }, idx) => {
-                                  const emailKey = `news-${news.id}-${tenant.id}`;
-                                  const isChecked = selected.has(tenant.id);
-                                  const isGenerating = generatingKeys.has(emailKey);
-                                  const hasEmail = generatedEmails[emailKey] !== undefined;
-                                  const hasClient = bldg.tenants.some(t => t.isClient && t.id !== tenant.id);
-                                  const isManual = idx >= autoProspects.length;
-
-                                  return (
-                                    <div key={tenant.id} className="space-y-1">
-                                      <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
-                                        <Checkbox
-                                          checked={isChecked}
-                                          onCheckedChange={() => toggleProspect(news.id, tenant.id)}
-                                          className="h-4 w-4"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2">
-                                            <Link
-                                              to={`/building/${bldg.id}/tenant/${tenant.id}`}
-                                              className="text-xs font-semibold text-foreground hover:text-primary truncate"
-                                            >
-                                              {tenant.name}
-                                            </Link>
-                                            {hasClient && (
-                                              <Badge variant="outline" className="text-[8px] px-1 py-0 bg-success/10 text-success border-success/30 shrink-0">
-                                                ✓ Client in bldg
-                                              </Badge>
-                                            )}
-                                            {isManual && (
-                                              <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
-                                                Added
-                                              </Badge>
-                                            )}
-                                          </div>
-                                          <p className="text-[10px] text-muted-foreground truncate">
-                                            {bldg.name} · {tenant.industry} · {tenant.sqft.toLocaleString()} SF
-                                          </p>
-                                        </div>
-                                        {isManual && !hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => removeManualProspect(news.id, tenant.id)}
-                                            className="shrink-0 rounded p-1 hover:bg-destructive/10"
-                                          >
-                                            <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                          </button>
-                                        )}
-                                        {!hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => generateEmailForProspect(tenant, bldg, news, emailKey)}
-                                            className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
-                                          >
-                                            <Mail className="h-3 w-3" /> Generate
-                                          </button>
-                                        )}
-                                        {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
-                                        {hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
-                                            className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
-                                          >
-                                            <Check className="h-3 w-3" /> View
-                                          </button>
-                                        )}
-                                      </div>
-
-                                      <AnimatePresence>
-                                        {activeEmailKey === emailKey && hasEmail && (
-                                          <EmailDisplay
-                                            emailKey={emailKey}
-                                            emailContent={generatedEmails[emailKey]}
-                                            isGenerating={isGenerating}
-                                            label={`Email to ${tenant.contactName}`}
-                                            contactName={tenant.contactName}
-                                            contactEmail={tenant.contactEmail}
-                                            subject={`${news.title} — ${tenant.name}`}
-                                            recipients={buildRecipients(tenant)}
-                                            tenantId={tenant.id}
-                                            tenantName={tenant.name}
-                                            buildingId={bldg.id}
-                                            buildingName={bldg.name}
-                                            outreachReason={news.title}
-                                            onClose={() => setActiveEmailKey(null)}
-                                            onUpdateEmail={updateEmail}
-                                          />
-                                        )}
-                                      </AnimatePresence>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* Custom (typed-in) prospects */}
-                                {customs.map(custom => {
-                                  const emailKey = `news-${news.id}-${custom.id}`;
-                                  const isChecked = selected.has(custom.id);
-                                  const isGenerating = generatingKeys.has(emailKey);
-                                  const hasEmail = generatedEmails[emailKey] !== undefined;
-
-                                  return (
-                                    <div key={custom.id} className="space-y-1">
-                                      <div className="flex items-center gap-3 rounded-md bg-secondary/30 p-2.5">
-                                        <Checkbox
-                                          checked={isChecked}
-                                          onCheckedChange={() => toggleProspect(news.id, custom.id)}
-                                          className="h-4 w-4"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-xs font-semibold text-foreground truncate">
-                                              {custom.name}
-                                            </span>
-                                            <Badge variant="outline" className="text-[8px] px-1 py-0 bg-accent text-accent-foreground shrink-0">
-                                              Custom
-                                            </Badge>
-                                          </div>
-                                          <p className="text-[10px] text-muted-foreground">Not in database — AI will research and tailor</p>
-                                        </div>
-                                        {!hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => removeCustomProspect(news.id, custom.id)}
-                                            className="shrink-0 rounded p-1 hover:bg-destructive/10"
-                                          >
-                                            <X className="h-3 w-3 text-muted-foreground hover:text-destructive" />
-                                          </button>
-                                        )}
-                                        {!hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => generateEmailForCustom(custom.name, news, emailKey)}
-                                            className="shrink-0 rounded-md bg-primary/10 px-2 py-1 text-[10px] font-medium text-primary hover:bg-primary/20 flex items-center gap-1"
-                                          >
-                                            <Mail className="h-3 w-3" /> Generate
-                                          </button>
-                                        )}
-                                        {isGenerating && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary" />}
-                                        {hasEmail && !isGenerating && (
-                                          <button
-                                            onClick={() => setActiveEmailKey(activeEmailKey === emailKey ? null : emailKey)}
-                                            className="shrink-0 rounded-md bg-success/10 px-2 py-1 text-[10px] font-medium text-success hover:bg-success/20 flex items-center gap-1"
-                                          >
-                                            <Check className="h-3 w-3" /> View
-                                          </button>
-                                        )}
-                                      </div>
-
-                                      <AnimatePresence>
-                                        {activeEmailKey === emailKey && hasEmail && (
-                                          <EmailDisplay
-                                            emailKey={emailKey}
-                                            emailContent={generatedEmails[emailKey]}
-                                            isGenerating={isGenerating}
-                                            label={`Email to ${custom.name}`}
-                                            subject={`${news.title} — ${custom.name}`}
-                                            tenantName={custom.name}
-                                            outreachReason={news.title}
-                                            onClose={() => setActiveEmailKey(null)}
-                                            onUpdateEmail={updateEmail}
-                                          />
-                                        )}
-                                      </AnimatePresence>
-                                    </div>
-                                  );
-                                })}
-
-                                {/* Add Prospect Search */}
-                                <div className="pt-2 border-t border-border/50">
-                                  {showSearchFor === news.id ? (
-                                    <div className="space-y-2">
-                                      <div className="flex items-center gap-2">
-                                        <div className="relative flex-1">
-                                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
-                                          <input
-                                            type="text"
-                                            placeholder="Search or type a name to add..."
-                                            value={prospectSearch[news.id] || ''}
-                                            onChange={e => setProspectSearch(prev => ({ ...prev, [news.id]: e.target.value }))}
-                                            onKeyDown={e => {
-                                              if (e.key === 'Enter' && (prospectSearch[news.id] || '').trim()) {
-                                                if (searchResults.length > 0) {
-                                                  addManualProspect(news.id, searchResults[0]);
-                                                } else {
-                                                  addCustomProspect(news.id, prospectSearch[news.id]);
-                                                }
-                                              }
-                                            }}
-                                            className="w-full rounded-md border border-input bg-background pl-7 pr-3 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                            autoFocus
-                                          />
-                                        </div>
-                                        <button
-                                          onClick={() => { setShowSearchFor(null); setProspectSearch(prev => ({ ...prev, [news.id]: '' })); }}
-                                          className="shrink-0 rounded p-1 hover:bg-secondary"
-                                        >
-                                          <X className="h-3.5 w-3.5 text-muted-foreground" />
-                                        </button>
-                                      </div>
-                                      {searchResults.length > 0 && (
-                                        <div className="space-y-1">
-                                          {searchResults.map(prospect => (
-                                            <button
-                                              key={prospect.tenant.id}
-                                              onClick={() => addManualProspect(news.id, prospect)}
-                                              className="flex w-full items-center gap-3 rounded-md bg-secondary/20 p-2 text-left hover:bg-secondary/40 transition-colors"
-                                            >
-                                              <Plus className="h-3 w-3 text-primary shrink-0" />
-                                              <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-medium text-foreground truncate">{prospect.tenant.name}</p>
-                                                <p className="text-[10px] text-muted-foreground truncate">
-                                                  {prospect.building.name} · {prospect.tenant.industry} · {prospect.tenant.sqft.toLocaleString()} SF
-                                                </p>
-                                              </div>
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
-                                      {(prospectSearch[news.id] || '').trim() && searchResults.length === 0 && (
-                                        <button
-                                          onClick={() => addCustomProspect(news.id, prospectSearch[news.id])}
-                                          className="flex w-full items-center gap-3 rounded-md bg-primary/5 p-2.5 text-left hover:bg-primary/10 transition-colors"
-                                        >
-                                          <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
-                                          <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-primary">Add "{(prospectSearch[news.id] || '').trim()}" as custom prospect</p>
-                                            <p className="text-[10px] text-muted-foreground">AI will tailor outreach based on the news and what it knows about them</p>
-                                          </div>
-                                        </button>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex gap-2">
-                                      <button
-                                        onClick={() => setShowSearchFor(news.id)}
-                                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
-                                      >
-                                        <Plus className="h-3 w-3" /> Add prospect manually
-                                      </button>
-                                      <Popover>
-                                        <PopoverTrigger asChild>
-                                          <button
-                                            className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-[10px] font-medium text-muted-foreground hover:text-primary hover:border-primary/30 transition-colors"
-                                          >
-                                            <ListPlus className="h-3 w-3" /> Add a list
-                                          </button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-56 p-2" align="end">
-                                          <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                            Choose a List
-                                          </p>
-                                          {(() => {
-                                            const lists = getProspectLists();
-                                            return lists.length > 0 ? (
-                                              <div className="max-h-48 space-y-0.5 overflow-y-auto">
-                                                {lists.map(list => (
-                                                  <button
-                                                    key={list.id}
-                                                    onClick={() => addListToNews(news.id, list.id)}
-                                                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-foreground hover:bg-secondary transition-colors"
-                                                  >
-                                                    <span className="truncate">{list.name}</span>
-                                                    <Badge variant="outline" className="text-[9px] shrink-0">{list.entries.length}</Badge>
-                                                  </button>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <p className="px-2 py-3 text-[11px] text-muted-foreground text-center">No lists yet — create one from Tasks → Lists</p>
-                                            );
-                                          })()}
-                                        </PopoverContent>
-                                      </Popover>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {selected.size > 0 && (
-                                  <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                                    <Button
-                                      size="sm"
-                                      className="text-xs h-8 flex-1"
-                                      onClick={() => sendToSelected(news.id, news, allProspects, customs)}
-                                      disabled={generatingKeys.size > 0}
-                                    >
-                                      {generatingKeys.size > 0 ? (
-                                        <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Generating...</>
-                                      ) : (
-                                        <><Send className="mr-1 h-3 w-3" /> Generate for {selected.size} selected</>
-                                      )}
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
+          {/* ── COMPANY SCANS TAB ── */}
+          <TabsContent value="company" className="mt-0">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-xs text-muted-foreground">News discovered by scanning your prospect companies</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs"
+                onClick={fetchCompanyNews}
+                disabled={companyNewsLoading}
+              >
+                <Search className={`h-3 w-3 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
+                Re-scan
+              </Button>
             </div>
-          </div>
-        </div>
+            {renderTimeline(companyOnlyNews)}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -6,8 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// In-memory cache per company (edge function instance lifetime)
-const newsCache = new Map<string, { items: any[]; citations: string[]; fetchedAt: number }>();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 serve(async (req) => {
@@ -22,16 +20,29 @@ serve(async (req) => {
       });
     }
 
-    // Check cache for each company
-    const now = Date.now();
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
     const companyId = companies[0]?.id;
-    const cached = companyId ? newsCache.get(companyId) : null;
-    
-    if (cached && (now - cached.fetchedAt) < CACHE_TTL_MS) {
-      console.log(`Serving cached news for ${companies[0]?.name} (age: ${Math.round((now - cached.fetchedAt) / 1000)}s)`);
-      return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const companyName = companies[0]?.name || "";
+    const now = Date.now();
+
+    // Check DB cache
+    const { data: cached } = await supabase
+      .from("cached_company_news")
+      .select("news_items, citations, fetched_at")
+      .eq("company_id", companyId)
+      .single();
+
+    if (cached) {
+      const cacheAge = now - new Date(cached.fetched_at).getTime();
+      if (cacheAge < CACHE_TTL_MS) {
+        console.log(`Serving DB-cached news for ${companyName} (age: ${Math.round(cacheAge / 60000)}min)`);
+        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
@@ -41,11 +52,10 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const today = new Date().toISOString().split("T")[0];
-
     const companyNames = companies.map((c: { name: string }) => c.name);
     const companyList = companyNames.join(", ");
 
-    console.log(`Scanning news for ${companyNames.length} companies`);
+    console.log(`Scanning news for ${companyNames.length} companies (cache expired or missing)`);
 
     const perplexityResp = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
@@ -72,15 +82,15 @@ serve(async (req) => {
     if (!perplexityResp.ok) {
       const errText = await perplexityResp.text();
       console.error("Perplexity error:", perplexityResp.status, errText);
+      // If API fails, serve stale cache if available
+      if (cached) {
+        console.log("API failed, serving stale cached news");
+        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       if (perplexityResp.status === 402) {
-        // If we have stale cache, serve it rather than showing nothing
-        if (cached) {
-          console.log("Credits exhausted, serving stale cache");
-          return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        return new Response(JSON.stringify({ error: "Perplexity credits exhausted. Please top up." }), {
+        return new Response(JSON.stringify({ error: "Perplexity credits exhausted." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -139,12 +149,13 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     });
 
     if (!structureResp.ok) {
+      if (cached) {
+        console.log("Structure API failed, serving stale cached news");
+        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       if (structureResp.status === 429) {
-        if (cached) {
-          return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
         return new Response(JSON.stringify({ error: "Rate limit exceeded." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -165,9 +176,8 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
       newsItems = JSON.parse(cleaned);
     } catch {
       console.error("Failed to parse company news:", cleaned);
-      // If parse fails but we have cached results, merge/keep them
       if (cached) {
-        return new Response(JSON.stringify({ companyNews: cached.items, citations: cached.citations }), {
+        return new Response(JSON.stringify({ companyNews: cached.news_items, citations: cached.citations }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -178,10 +188,10 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
 
     // Merge new results with cached results (keep previously found items that aren't duplicates)
     let mergedItems = [...newsItems];
-    if (cached && cached.items.length > 0) {
+    if (cached && Array.isArray(cached.news_items) && cached.news_items.length > 0) {
       const newTitles = new Set(newsItems.map((n: any) => n.title?.toLowerCase()));
-      for (const oldItem of cached.items) {
-        if (!newTitles.has(oldItem.title?.toLowerCase())) {
+      for (const oldItem of cached.news_items) {
+        if (!newTitles.has((oldItem as any).title?.toLowerCase())) {
           mergedItems.push(oldItem);
         }
       }
@@ -190,10 +200,21 @@ Only include news items where you found REAL news. Do not fabricate. If no news 
     // Sort by relevance score descending
     mergedItems.sort((a: any, b: any) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
-    // Cache the merged results
-    if (companyId) {
-      newsCache.set(companyId, { items: mergedItems, citations, fetchedAt: now });
-      console.log(`Cached ${mergedItems.length} news items for ${companies[0]?.name}`);
+    // Persist to DB cache (upsert)
+    const { error: upsertError } = await supabase
+      .from("cached_company_news")
+      .upsert({
+        company_id: companyId,
+        company_name: companyName,
+        news_items: mergedItems,
+        citations,
+        fetched_at: new Date().toISOString(),
+      }, { onConflict: "company_id" });
+
+    if (upsertError) {
+      console.error("Failed to cache news:", upsertError);
+    } else {
+      console.log(`Cached ${mergedItems.length} news items for ${companyName} in DB`);
     }
 
     return new Response(JSON.stringify({ companyNews: mergedItems, citations }), {

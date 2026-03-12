@@ -159,7 +159,7 @@ const Tasks = () => {
 
   const getTenantInfo = (task: { tenantId?: string; buildingId?: string }) => {
     if (!task.tenantId || !task.buildingId) return null;
-    const building = buildings.find(b => b.id === task.buildingId);
+    const building = allBuildings.find(b => b.id === task.buildingId);
     const tenant = building?.tenants.find(t => t.id === task.tenantId);
     return tenant ? { tenant, building } : null;
   };

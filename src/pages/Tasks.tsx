@@ -330,7 +330,9 @@ const Tasks = () => {
                                   {(() => {
                                     const b = allBuildings.find(b => b.id === newTask.buildingId);
                                     const t = b?.tenants.find(t => t.id === newTask.tenantId);
-                                    return t ? `${t.name} — ${b?.name}` : 'Unknown';
+                                    if (t) return `${t.name} — ${b?.name}`;
+                                    const cp = getCustomProspects().find(p => p.id === newTask.tenantId);
+                                    return cp ? cp.name : 'Unknown';
                                   })()}
                                 </span>
                               </div>

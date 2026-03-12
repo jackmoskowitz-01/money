@@ -648,6 +648,7 @@ const News = () => {
     setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
 
     try {
+      const greeting = await getUserGreeting();
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
         headers: {
@@ -667,6 +668,7 @@ const News = () => {
           headcount: 0,
           clientsInBuilding: [],
           isCustomProspect: true,
+          greeting,
         }),
       });
 

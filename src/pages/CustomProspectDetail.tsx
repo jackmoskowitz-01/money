@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import AccountOwnerBadge from '@/components/AccountOwnerBadge';
 import { getCustomProspect, type ProspectEnrichment } from '@/data/customProspects';
 import EmailComposer from '@/components/EmailComposer';
 import EmailDisplay from '@/components/EmailDisplay';

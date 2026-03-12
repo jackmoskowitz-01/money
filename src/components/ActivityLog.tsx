@@ -13,6 +13,8 @@ import {
   activityTypeLabels, activityTypeIcons,
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
+import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
+import { toast } from 'sonner';
 
 const typeOptions: { value: ActivityType; label: string; icon: typeof Mail; defaultTitle: string }[] = [
   { value: 'email_sent', label: 'Email', icon: Mail, defaultTitle: 'Sent email' },

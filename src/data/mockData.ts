@@ -12,6 +12,7 @@ export type Building = {
   leasingBroker?: string;
   class: 'A' | 'B' | 'C';
   recentSale?: { date: string; price: string };
+  photoUrl?: string | null;
   tenants: Tenant[];
 };
 

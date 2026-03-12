@@ -270,7 +270,18 @@ const MapView = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="absolute right-4 top-4 z-[1000] w-96"
           >
-            <Card className="border-border bg-card/95 p-4 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
+              {selectedBuilding.photoUrl && (
+                <div className="w-full h-40 overflow-hidden rounded-t-lg">
+                  <img
+                    src={selectedBuilding.photoUrl}
+                    alt={selectedBuilding.address}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+              <div className="p-4">
               <div className="mb-3 flex items-start justify-between">
                 <div>
                   <h3 className="font-display text-lg font-bold">{selectedBuilding.address}</h3>
@@ -352,6 +363,7 @@ const MapView = () => {
                     </Link>
                   );
                 })}
+              </div>
               </div>
             </Card>
           </motion.div>

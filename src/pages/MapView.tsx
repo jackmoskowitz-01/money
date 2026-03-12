@@ -139,10 +139,117 @@ const MapView = () => {
     );
   }, [searchQuery, allBuildingsList]);
 
-  // Clear tenant selections when building changes
+  // Clear state when building changes
   useEffect(() => {
     setSelectedTenants(new Set());
+    setOutreachReason('');
+    setGeneratedEmails({});
+    setGeneratingKeys(new Set());
+    setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
+
+  const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
+    const list: EmailRecipient[] = [{
+      id: 'primary',
+      name: tenant.contactName,
+      email: tenant.contactEmail,
+      title: tenant.contactTitle,
+      isPrimary: true,
+    }];
+    getContacts(tenant.id).forEach(c => {
+      list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+    });
+    return list;
+  };
+
+  const generateEmailForTenant = useCallback(async (tenant: Tenant, building: Building, reason: string, key: string) => {
+    if (generatedEmails[key]) return;
+    setGeneratingKeys(prev => new Set(prev).add(key));
+    setGeneratedEmails(prev => ({ ...prev, [key]: '' }));
+
+    try {
+      const clientsInBuilding = building.tenants
+        .filter(t => t.isClient && t.id !== tenant.id)
+        .map(t => t.name);
+
+      const resp = await fetch(OUTREACH_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          tenantName: tenant.name,
+          buildingName: building.name,
+          contactName: tenant.contactName,
+          contactTitle: tenant.contactTitle,
+          industry: tenant.industry,
+          sqft: tenant.sqft,
+          leaseExpiration: tenant.leaseExpiration,
+          outreachReason: reason,
+          vacancyRate: building.vacancyRate,
+          headcount: tenant.headcount,
+          clientsInBuilding,
+        }),
+      });
+
+      if (!resp.ok) {
+        setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+        setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+        toast.error(`Failed to generate email for ${tenant.name}`);
+        return;
+      }
+
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let full = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let idx: number;
+        while ((idx = buffer.indexOf('\n')) !== -1) {
+          let line = buffer.slice(0, idx);
+          buffer = buffer.slice(idx + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6).trim();
+          if (json === '[DONE]') break;
+          try {
+            const parsed = JSON.parse(json);
+            const content = parsed.choices?.[0]?.delta?.content;
+            if (content) {
+              full += content;
+              setGeneratedEmails(prev => ({ ...prev, [key]: full }));
+            }
+          } catch { /* partial */ }
+        }
+      }
+    } catch {
+      setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; });
+      toast.error(`Failed to generate email for ${tenant.name}`);
+    }
+    setGeneratingKeys(prev => { const n = new Set(prev); n.delete(key); return n; });
+  }, [generatedEmails]);
+
+  const generateForSelected = useCallback(() => {
+    if (!selectedBuilding || selectedTenants.size === 0) return;
+    const reason = outreachReason.trim() || 'General outreach for building tenants';
+
+    for (const tenantId of selectedTenants) {
+      const tenant = selectedBuilding.tenants.find(t => t.id === tenantId);
+      if (tenant) {
+        const key = `map-${selectedBuilding.id}-${tenant.id}`;
+        generateEmailForTenant(tenant, selectedBuilding, reason, key);
+      }
+    }
+  }, [selectedBuilding, selectedTenants, outreachReason, generateEmailForTenant]);
+
+  const updateEmail = useCallback((key: string, content: string) => {
+    setGeneratedEmails(prev => ({ ...prev, [key]: content }));
+  }, []);
 
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;

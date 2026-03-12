@@ -281,6 +281,7 @@ const CustomProspectDetail = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <AddToListButton tenantId={prospectId!} buildingId="" tenantName={prospect.name} />
               <Badge variant="outline" className="text-[10px]">
                 <Calendar className="h-3 w-3 mr-1" />
                 Added {format(new Date(prospect.createdAt), 'MMM d, yyyy')}

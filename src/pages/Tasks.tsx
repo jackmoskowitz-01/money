@@ -106,7 +106,7 @@ const Tasks = () => {
   }, [tasks, filter, selectedDate]);
 
   const handleAdd = async () => {
-    if (!newTask.title.trim()) return;
+    if (!newTask.title.trim() || !newTask.tenantId) return;
     await addTask({
       ...newTask,
       tenantId: newTask.tenantId || undefined,

@@ -1,4 +1,4 @@
-// Prospect Lists — lightweight local-storage–backed lists
+// Prospect Lists — single source of truth for all list management
 
 export type ProspectListEntry = {
   tenantId: string;
@@ -10,6 +10,7 @@ export type ProspectListEntry = {
 export type ProspectList = {
   id: string;
   name: string;
+  industry?: string;
   createdAt: string;
   entries: ProspectListEntry[];
 };
@@ -36,21 +37,44 @@ export const getProspectLists = (): ProspectList[] => {
     const stored = localStorage.getItem(LISTS_KEY);
     const lists: ProspectList[] = stored ? JSON.parse(stored) : seedLists;
     if (!stored) localStorage.setItem(LISTS_KEY, JSON.stringify(seedLists));
-    return lists;
+    // Migrate old format: if list has 'prospects' array instead of 'entries'
+    const migrated = lists.map((l: any) => {
+      if (l.prospects && !l.entries) {
+        return {
+          ...l,
+          entries: l.prospects.map((p: any) => ({
+            tenantId: p.tenantId,
+            buildingId: p.buildingId,
+            tenantName: p.tenantName || '',
+            addedAt: p.addedAt || l.createdAt,
+          })),
+        };
+      }
+      return l;
+    });
+    if (JSON.stringify(migrated) !== JSON.stringify(lists)) {
+      localStorage.setItem(LISTS_KEY, JSON.stringify(migrated));
+    }
+    return migrated;
   } catch {
     return [];
   }
 };
 
-export const createProspectList = (name: string): ProspectList => {
+const saveLists = (lists: ProspectList[]) => {
+  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+};
+
+export const createProspectList = (name: string, industry?: string): ProspectList => {
   const lists = getProspectLists();
   const newList: ProspectList = {
     id: `pl-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
     name,
+    industry,
     createdAt: new Date().toISOString(),
     entries: [],
   };
-  localStorage.setItem(LISTS_KEY, JSON.stringify([newList, ...lists]));
+  saveLists([newList, ...lists]);
   return newList;
 };
 
@@ -69,7 +93,7 @@ export const addProspectsToList = (
       added++;
     }
   }
-  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  saveLists(lists);
   return added;
 };
 
@@ -78,10 +102,10 @@ export const removeProspectFromList = (listId: string, tenantId: string) => {
   const list = lists.find(l => l.id === listId);
   if (!list) return;
   list.entries = list.entries.filter(e => e.tenantId !== tenantId);
-  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  saveLists(lists);
 };
 
 export const deleteProspectList = (listId: string) => {
   const lists = getProspectLists().filter(l => l.id !== listId);
-  localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
+  saveLists(lists);
 };

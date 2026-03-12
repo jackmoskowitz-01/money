@@ -1196,6 +1196,11 @@ const News = () => {
                                             contactEmail={tenant.contactEmail}
                                             subject={`${news.title} — ${tenant.name}`}
                                             recipients={buildRecipients(tenant)}
+                                            tenantId={tenant.id}
+                                            tenantName={tenant.name}
+                                            buildingId={bldg.id}
+                                            buildingName={bldg.name}
+                                            outreachReason={news.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />

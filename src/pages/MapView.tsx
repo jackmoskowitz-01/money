@@ -233,8 +233,10 @@ const MapView = () => {
                           : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-foreground">{b.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{b.address}</p>
+                      <p className="text-sm font-semibold text-foreground">{b.address}</p>
+                      {b.name && b.name !== b.address && (
+                        <p className="text-[11px] text-muted-foreground">{b.name}</p>
+                      )}
                       <div className="mt-1.5 flex items-center gap-3 text-[11px]">
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Users className="h-3 w-3" /> {b.tenants.length} tenants

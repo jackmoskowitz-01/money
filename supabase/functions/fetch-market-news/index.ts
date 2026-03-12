@@ -27,74 +27,76 @@ serve(async (req) => {
     // Build prompts based on whether an industry filter is active
     const industryPrompts: Record<string, { system: string; user: string }> = {
       Defense: {
-        system: "You are an elite intelligence analyst tracking defense industry news that creates commercial real estate opportunities in the Washington DC metro area. Search defense publications (Defense One, Defense News, Breaking Defense, Military Times), government contracting sites (GovWin, SAM.gov announcements, FedScoop), mainstream business news (Bloomberg, WSJ, Reuters), and CRE publications. Return ONLY factual, sourced news with specific details.",
-        user: `Find the most important recent defense and national security news that could drive commercial real estate demand in the DC metro area. Search for ALL of these:
+        system: "You are an elite intelligence analyst covering the defense and national security industry. Search defense publications (Defense One, Defense News, Breaking Defense, Military Times, Jane's), government contracting sites (GovWin, SAM.gov, FedScoop), and mainstream business news (Bloomberg, WSJ, Reuters). Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important and recent defense and national security news. Search for ALL of these:
 
-1. DEFENSE SPENDING: New defense authorization/appropriations bills, Pentagon budget changes, supplemental funding, NDAA provisions
-2. CONTRACT AWARDS: Major defense contracts awarded to DC-area companies (Lockheed Martin, Northrop Grumman, Raytheon, Booz Allen, Leidos, SAIC, General Dynamics, L3Harris, BAE Systems, ManTech, CACI, Peraton)
-3. COMPANY GROWTH: Defense/intel contractors expanding, hiring surges, new program wins, M&A activity, new office openings
-4. GOVERNMENT PROGRAMS: New military/intel programs, DARPA initiatives, Space Force growth, cyber command expansion, AI/ML defense programs
-5. BASE REALIGNMENT: BRAC-related moves, military base expansions near DC, Pentagon reorganizations
-6. CLEARED SPACE: SCIF demand, cleared facility construction, intel community space needs
-7. POLICY SHIFTS: Administration defense policy changes, NATO commitments, Indo-Pacific strategy impacts on DC contractors
+1. DEFENSE SPENDING: New defense authorization/appropriations bills, Pentagon budget changes, supplemental funding, NDAA provisions, major budget debates
+2. CONTRACT AWARDS: Major defense contracts awarded — who won, how much, what program (Lockheed Martin, Northrop Grumman, Raytheon, Booz Allen, Leidos, SAIC, General Dynamics, L3Harris, BAE Systems, ManTech, CACI, Peraton, Palantir, Anduril, Shield AI)
+3. FUNDING & INVESTMENT: Defense tech startups raising capital, VC funding rounds, private equity deals in defense sector, SPACs, IPOs
+4. M&A ACTIVITY: Mergers, acquisitions, divestitures among defense contractors and tech companies
+5. GOVERNMENT PROGRAMS: New military/intel programs, DARPA initiatives, Space Force growth, cyber command expansion, AI/ML defense programs, classified program hints
+6. GEOPOLITICAL: Major geopolitical events driving defense spending — conflicts, NATO decisions, Indo-Pacific strategy, arms deals, sanctions
+7. WORKFORCE & LEADERSHIP: CEO changes, major hires, layoffs, hiring surges at defense companies, Pentagon leadership changes
+8. TECHNOLOGY: New weapons systems, autonomous systems, hypersonics, directed energy, space capabilities, cyber tools
 
-Focus on how each item creates potential office space demand — new contracts mean headcount growth, which means space needs. Include company names, contract values, employee counts, locations.`
+Include company names, contract values, funding amounts, deal sizes, and key people involved.`
       },
       Healthcare: {
-        system: "You are an elite analyst tracking healthcare industry news that creates commercial real estate opportunities in the Washington DC metro area. Search healthcare publications (Modern Healthcare, Fierce Healthcare, STAT News, Healthcare Dive), NIH/HHS announcements, and business news. Return ONLY factual, sourced news with specific details.",
-        user: `Find recent healthcare and life sciences news that could drive commercial real estate demand in the DC metro area:
+        system: "You are an elite analyst covering the healthcare and life sciences industry. Search healthcare publications (Modern Healthcare, Fierce Healthcare, STAT News, Healthcare Dive, Endpoints News, BioPharma Dive), NIH/HHS announcements, and business news (Bloomberg, WSJ). Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent healthcare and life sciences news:
 
-1. FUNDING & GRANTS: NIH funding decisions, HHS grants, biotech venture funding for DC-area companies
-2. COMPANY MOVES: Healthcare companies, biotech firms, health IT companies expanding/relocating in DC area
-3. POLICY & REGULATION: ACA changes, FDA policy shifts, Medicare/Medicaid changes affecting healthcare organizations headquartered in DC
-4. ASSOCIATIONS: Healthcare associations (AMA, AHA, PhRMA, BIO) expanding, relocating, or hosting major events
-5. LIFE SCIENCES: Lab space demand, biotech corridor growth, NIH campus developments
-6. DIGITAL HEALTH: Health IT companies (telehealth, EHR vendors) growing in DC metro area
-7. HOSPITAL SYSTEMS: Major health systems (MedStar, Inova, Johns Hopkins) expanding administrative/office footprint
+1. FUNDING & INVESTMENT: Biotech/pharma venture funding rounds, IPOs, major NIH grants, HHS funding decisions, Series A/B/C rounds
+2. M&A & DEALS: Pharma mergers, acquisitions, licensing deals, partnerships, major drug deals
+3. FDA & REGULATORY: Drug approvals, rejections, breakthrough designations, FDA policy changes, clinical trial results
+4. POLICY & LEGISLATION: ACA changes, Medicare/Medicaid reform, drug pricing legislation, healthcare bills in Congress
+5. COMPANY NEWS: Major healthcare companies expanding, restructuring, layoffs, leadership changes, earnings surprises
+6. DIGITAL HEALTH & HEALTH IT: Telehealth companies, EHR vendors, AI in healthcare, digital therapeutics funding
+7. HOSPITAL SYSTEMS & PAYERS: Health system mergers, insurance company moves, hospital expansions, financial performance
+8. LIFE SCIENCES: Lab space developments, biotech corridor growth, clinical research organizations, contract manufacturers
 
-Include company names, square footages, locations, funding amounts, employee growth numbers.`
+Include company names, funding amounts, deal values, drug names, and key details.`
       },
       Government: {
-        system: "You are an elite analyst tracking federal government and government services news that creates commercial real estate opportunities in the Washington DC metro area. Search government sources (GSA, FedScoop, GovExec, Federal News Network, NextGov), and business news. Return ONLY factual, sourced news with specific details.",
-        user: `Find recent federal government news that impacts commercial real estate in DC:
+        system: "You are an elite analyst covering federal government, policy, and government services news. Search government sources (GSA, FedScoop, GovExec, Federal News Network, NextGov, Government Accountability Office), and mainstream news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent federal government and government services news:
 
-1. GSA ACTIONS: Lease awards, lease expirations, new space requirements, consolidation plans, DOGE space reduction mandates
-2. AGENCY MOVES: Federal agencies relocating, expanding, or consolidating offices
-3. GOVERNMENT SERVICES: Federal IT contractors, consulting firms winning major task orders
-4. RETURN TO OFFICE: Federal RTO mandates, telework policy changes, space utilization data
-5. BUDGET: Federal budget impacts on agency space needs, continuing resolutions, government shutdowns
-6. CONTRACTING: Major government contract awards that will drive office demand (IT, consulting, professional services)
-7. WORKFORCE: Federal hiring freezes or surges, agency reorganizations, new office establishments
+1. BUDGET & SPENDING: Federal budget proposals, continuing resolutions, shutdown risks, agency funding levels, supplemental appropriations
+2. POLICY & EXECUTIVE ORDERS: Major executive orders, policy shifts, regulatory changes, agency reorganizations
+3. GOVERNMENT CONTRACTING: Major contract awards (IT, consulting, professional services), task orders, GWAC/BPA awards, protest decisions
+4. AGENCY NEWS: Federal agency expansions, consolidations, new offices, DOGE efficiency mandates, workforce changes
+5. TECHNOLOGY & MODERNIZATION: Federal IT modernization, cloud adoption, cybersecurity mandates, AI executive orders, FedRAMP
+6. WORKFORCE: Federal hiring freezes or surges, RTO mandates, telework policy, union negotiations, pay changes
+7. GSA & REAL ESTATE: Lease actions, space consolidation, disposal of federal properties, co-working initiatives
 
-Include agency names, addresses, square footages, contract values, employee counts.`
+Include agency names, contract values, policy details, and company names involved.`
       },
       Lobbying: {
-        system: "You are an elite analyst tracking lobbying, public affairs, and political news that creates commercial real estate opportunities in the Washington DC metro area. Search political publications (Politico, The Hill, Roll Call, OpenSecrets, LDA filings), and business news. Return ONLY factual, sourced news with specific details.",
-        user: `Find recent lobbying, public affairs, and political news that could drive CRE demand in DC:
+        system: "You are an elite analyst covering lobbying, public affairs, and political influence. Search political publications (Politico, The Hill, Roll Call, OpenSecrets, LDA filings, Axios), and business news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent lobbying, public affairs, and political news:
 
-1. K STREET MOVES: Lobbying firms expanding, merging, relocating, or opening new offices
-2. POLITICAL SHIFTS: New administration policies creating lobbying demand (trade, tech regulation, energy, healthcare)
-3. INDUSTRY COALITIONS: New trade associations or coalitions forming in DC, existing ones expanding
-4. CAMPAIGN & PAC: Political organizations setting up or expanding DC offices
-5. REGULATORY: Major regulatory actions (FTC, SEC, EPA, FCC) that drive companies to increase DC lobbying presence
-6. PUBLIC AFFAIRS: PR/communications firms growing, mergers, new DC office openings
-7. FOREIGN LOBBYING: FARA registrations, foreign governments/companies expanding DC presence
+1. LOBBYING ACTIVITY: Major lobbying campaigns, new registrations, big-spending industries, top lobbying firms by revenue
+2. POLITICAL SHIFTS: Administration policy changes creating new lobbying demand (trade, tech regulation, energy, crypto, AI, healthcare)
+3. REGULATORY BATTLES: Major regulatory actions (FTC, SEC, EPA, FCC, DOJ) driving corporate lobbying spend
+4. FIRM NEWS: Lobbying firm mergers, leadership changes, major new client wins, revenue milestones, new firm launches
+5. INDUSTRY COALITIONS: New trade associations or coalitions forming, major advocacy campaigns
+6. CAMPAIGN & ELECTIONS: PAC spending, campaign finance news, election impacts on lobbying landscape
+7. FOREIGN INFLUENCE: FARA registrations, foreign government lobbying, international trade lobbying
 
-Include firm names, K Street addresses, revenue figures, new hires, square footage changes.`
+Include firm names, client names, spending amounts, revenue figures, and key policy issues.`
       },
       "Nonprofit/Association": {
-        system: "You are an elite analyst tracking nonprofit, association, and NGO news that creates commercial real estate opportunities in the Washington DC metro area. Search nonprofit publications (Chronicle of Philanthropy, NonProfit Times, ASAE), association news, and business publications. Return ONLY factual, sourced news with specific details.",
-        user: `Find recent nonprofit and association news that could drive CRE demand in DC:
+        system: "You are an elite analyst covering the nonprofit, association, and NGO sector. Search nonprofit publications (Chronicle of Philanthropy, NonProfit Times, ASAE, Association Forum, Inside Philanthropy), and mainstream business news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent nonprofit, association, and foundation news:
 
-1. ASSOCIATION MOVES: Trade associations, professional societies relocating or expanding in DC (there are 3,000+ associations in DC metro)
-2. FUNDING & GRANTS: Major foundation grants, government funding for nonprofits, endowment changes
-3. MERGERS & CONSOLIDATIONS: Associations merging, nonprofits consolidating office space
-4. LEASE EVENTS: Known association lease expirations, relocations from traditional corridors (K Street, Connecticut Ave, Mass Ave)
-5. MEMBERSHIP GROWTH: Associations with growing membership/revenue that may need more space
-6. NEW ORGANIZATIONS: New nonprofits, think tanks, or advocacy groups establishing DC presence
-7. EVENTS & CONFERENCES: Major association conferences in DC driving temporary/permanent space needs
+1. MAJOR GRANTS & GIVING: Large foundation grants, mega-donations, corporate giving announcements, endowment performance
+2. ORGANIZATION NEWS: Major nonprofits and associations — leadership changes, restructuring, strategic pivots, financial challenges
+3. FUNDING & REVENUE: Association membership trends, dues changes, conference revenue, fundraising results
+4. MERGERS & CONSOLIDATIONS: Associations merging, nonprofits closing or consolidating
+5. POLICY & ADVOCACY: Major advocacy campaigns, nonprofit sector policy (tax reform, charitable deduction changes)
+6. NEW ORGANIZATIONS: New think tanks, advocacy groups, foundations launching, especially in DC
+7. SECTOR TRENDS: Philanthropic trends, ESG/impact investing, volunteer trends, technology adoption in nonprofits
 
-Include organization names, current addresses, square footages, budgets, membership numbers.`
+Include organization names, grant amounts, revenue figures, membership numbers, and key people.`
       },
     };
 
@@ -163,14 +165,14 @@ Provide as many specific details as possible — company names, exact addresses,
         messages: [
           {
             role: "system",
-            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.${industry ? ` These are ${industry} industry news items being analyzed for commercial real estate outreach opportunities.` : ""}
+            content: `You are a data structuring assistant. Convert raw news content into a JSON array of structured news items. Today's date is ${today}.${industry ? ` These are ${industry} industry news items — major industry developments, funding, deals, and policy changes.` : ""}
 
 IMPORTANT: Return ONLY a valid JSON array. No markdown, no code blocks, no extra text.
 
 Each item must have:
 - id: unique string (${industry ? `"ind-${industry.toLowerCase().replace(/[^a-z]/g, "")}-1"` : '"n1"'}, etc.)
 - title: compelling headline (max 80 chars)
-- summary: 2-3 sentence description with specific details from the source.${industry ? " Include a brief note on why this creates a CRE opportunity (e.g., 'This contract win likely means 200+ new hires needing office space in Northern Virginia')." : ""}
+- summary: 2-3 sentence description with specific details from the source.${industry ? " Focus on the significance of this news — deal size, funding amount, policy impact, or strategic importance." : ""}
 - source: the actual publication name if mentioned, otherwise "Market Intelligence"
 - date: the date mentioned in the article, or today's date, in YYYY-MM-DD format
 - category: one of "lease", "sale", "expansion", "vacancy", "market", "contraction"

@@ -1271,6 +1271,8 @@ const News = () => {
                                             isGenerating={isGenerating}
                                             label={`Email to ${custom.name}`}
                                             subject={`${news.title} — ${custom.name}`}
+                                            tenantName={custom.name}
+                                            outreachReason={news.title}
                                             onClose={() => setActiveEmailKey(null)}
                                             onUpdateEmail={updateEmail}
                                           />

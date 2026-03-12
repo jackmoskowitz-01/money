@@ -40,6 +40,8 @@ const CompanyNewsCard = ({ companyId, companyName, buildingId, onOutreachTrigger
   const [news, setNews] = useState<CompanyNewsItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const [freshness, setFreshness] = useState<string>('fresh');
 
   const fetchNews = useCallback(async () => {
     setLoading(true);

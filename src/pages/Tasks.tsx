@@ -436,6 +436,7 @@ const Tasks = () => {
                               )}
                             </div>
                           )}
+                        </div>
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
                           <Button size="sm" onClick={handleAdd}>Create Task</Button>

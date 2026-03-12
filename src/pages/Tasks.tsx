@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { buildings } from '@/data/mockData';
-import { useTasks, type TaskPriority, type TaskType } from '@/hooks/useTasks';
+import { useTasks, type TaskPriority, type TaskType, type Task } from '@/hooks/useTasks';
 import ProspectLists from '@/components/ProspectLists';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
@@ -38,6 +38,26 @@ const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: 
   low: { icon: ArrowDown, label: 'Low', class: 'text-muted-foreground bg-muted border-border', sortOrder: 2 },
 };
 
+// Suggest the next logical task type after completing one
+const nextTypeMap: Record<string, TaskType> = {
+  email: 'call',
+  call: 'meeting',
+  meeting: 'follow_up',
+  follow_up: 'call',
+  research: 'email',
+  other: 'follow_up',
+};
+
+// Suggest days offset for follow-up based on type
+const followUpDaysMap: Record<string, number> = {
+  call: 3,
+  email: 2,
+  meeting: 7,
+  follow_up: 3,
+  research: 1,
+  other: 3,
+};
+
 const Tasks = () => {
   const navigate = useNavigate();
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
@@ -46,6 +66,12 @@ const Tasks = () => {
   const [showForm, setShowForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd') });
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+
+  // Follow-up state: which task ID is showing the follow-up inline form
+  const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
+  const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({
+    title: '', description: '', type: 'call', priority: 'medium', dueDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
+  });
 
   const taskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -85,7 +111,36 @@ const Tasks = () => {
   const handleToggle = async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
-    await updateTask(id, { completed: !task.completed });
+    const wasCompleted = task.completed;
+    await updateTask(id, { completed: !wasCompleted });
+
+    // If we just completed the task, show follow-up prompt
+    if (!wasCompleted) {
+      const suggestedType = nextTypeMap[task.type] || 'follow_up';
+      const suggestedDays = followUpDaysMap[suggestedType] || 3;
+      const subjectMatch = task.title.match(/(?:with|for|to)\s+(.+)/i);
+      const subject = subjectMatch ? subjectMatch[1] : '';
+      const typeLabel = suggestedType.replace('_', ' ');
+
+      setFollowUp({
+        title: subject ? `${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} with ${subject}` : '',
+        description: `Follow-up from: ${task.title}`,
+        type: suggestedType,
+        priority: task.priority || 'medium',
+        dueDate: format(addDays(new Date(), suggestedDays), 'yyyy-MM-dd'),
+      });
+      setFollowUpTaskId(id);
+    }
+  };
+
+  const handleFollowUpCreate = async (sourceTask: Task) => {
+    if (!followUp.title.trim()) return;
+    await addTask({
+      ...followUp,
+      tenantId: sourceTask.tenantId,
+      buildingId: sourceTask.buildingId,
+    });
+    setFollowUpTaskId(null);
   };
 
   const handleDelete = async (id: string) => {
@@ -331,6 +386,7 @@ const Tasks = () => {
                         const Icon = taskTypeIcons[task.type] || StickyNote;
                         const info = getTenantInfo(task);
                         const isOverdue = !task.completed && task.dueDate < format(new Date(), 'yyyy-MM-dd');
+                        const showFollowUp = followUpTaskId === task.id;
 
                         return (
                           <motion.div
@@ -397,6 +453,107 @@ const Tasks = () => {
                                 </button>
                               </div>
                             </Card>
+
+                            {/* Follow-up inline form */}
+                            <AnimatePresence>
+                              {showFollowUp && (
+                                <motion.div
+                                  initial={{ opacity: 0, height: 0 }}
+                                  animate={{ opacity: 1, height: 'auto' }}
+                                  exit={{ opacity: 0, height: 0 }}
+                                  className="overflow-hidden"
+                                >
+                                  <Card className="ml-8 mt-1 border-primary/30 bg-primary/5 p-3">
+                                    <div className="mb-2 flex items-center gap-2 text-xs font-medium text-primary">
+                                      <CornerDownRight className="h-3.5 w-3.5" />
+                                      Schedule follow-up
+                                    </div>
+
+                                    <Input
+                                      placeholder="Follow-up title..."
+                                      value={followUp.title}
+                                      onChange={e => setFollowUp({ ...followUp, title: e.target.value })}
+                                      className="mb-2 h-8 border-border bg-card text-sm"
+                                      onClick={e => e.stopPropagation()}
+                                      autoFocus
+                                    />
+
+                                    <div className="mb-2 flex flex-wrap gap-1.5">
+                                      {Object.entries(taskTypeIcons).map(([type, TIcon]) => (
+                                        <button
+                                          key={type}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            const days = followUpDaysMap[type] || 3;
+                                            setFollowUp({
+                                              ...followUp,
+                                              type: type as TaskType,
+                                              dueDate: format(addDays(new Date(), days), 'yyyy-MM-dd'),
+                                            });
+                                          }}
+                                          className={`flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                                            followUp.type === type
+                                              ? taskTypeColors[type]
+                                              : 'bg-secondary text-muted-foreground hover:text-foreground'
+                                          }`}
+                                        >
+                                          <TIcon className="h-2.5 w-2.5" />
+                                          {type.replace('_', ' ')}
+                                        </button>
+                                      ))}
+                                    </div>
+
+                                    <div className="mb-2 flex items-center gap-2">
+                                      <Input
+                                        type="date"
+                                        value={followUp.dueDate}
+                                        onChange={e => setFollowUp({ ...followUp, dueDate: e.target.value })}
+                                        className="h-8 w-40 border-border bg-card text-xs"
+                                        onClick={e => e.stopPropagation()}
+                                      />
+                                      <div className="flex gap-1">
+                                        {[1, 2, 3, 5, 7].map(d => (
+                                          <button
+                                            key={d}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setFollowUp({ ...followUp, dueDate: format(addDays(new Date(), d), 'yyyy-MM-dd') });
+                                            }}
+                                            className={`rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${
+                                              followUp.dueDate === format(addDays(new Date(), d), 'yyyy-MM-dd')
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-secondary text-muted-foreground hover:text-foreground'
+                                            }`}
+                                          >
+                                            {d}d
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={(e) => { e.stopPropagation(); setFollowUpTaskId(null); }}
+                                      >
+                                        Skip
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        className="h-7 text-xs"
+                                        onClick={(e) => { e.stopPropagation(); handleFollowUpCreate(task); }}
+                                        disabled={!followUp.title.trim()}
+                                      >
+                                        <Plus className="mr-1 h-3 w-3" />
+                                        Create Follow-up
+                                      </Button>
+                                    </div>
+                                  </Card>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
                           </motion.div>
                         );
                       })

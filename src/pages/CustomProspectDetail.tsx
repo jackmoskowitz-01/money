@@ -248,8 +248,8 @@ const CustomProspectDetail = () => {
   const primaryContact = recipients[0];
 
   return (
-    <div className="min-h-screen pt-14">
-      <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="min-h-screen pt-14 bg-background">
+      <div className="mx-auto max-w-5xl px-4 py-10">
         <Link to="/" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </Link>

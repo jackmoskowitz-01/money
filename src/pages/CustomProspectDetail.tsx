@@ -320,34 +320,43 @@ const CustomProspectDetail = () => {
             <div className="lg:col-span-2 space-y-6">
 
               {/* Quick Actions: Email Templates + Direct Email */}
-              <Card className="border-primary/20 bg-primary/5 p-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <EmailComposer
-                    tenantId={prospectId!}
-                    buildingId=""
-                    tenantName={prospect.name}
-                    contactName={primaryContact?.name || prospect.name}
-                    contactEmail={primaryContact?.email}
-                    buildingName={prospect.address}
-                    recipients={recipients}
-                  />
-                  {primaryContact?.email && (
-                    <a href={`mailto:${primaryContact.email}`}>
-                      <Button size="sm" variant="outline" className="text-xs h-9">
-                        <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
-                      </Button>
-                    </a>
-                  )}
-                </div>
-              </Card>
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Quick Actions</h2>
+                <Card className="border-primary/20 bg-primary/5 p-4">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <EmailComposer
+                      tenantId={prospectId!}
+                      buildingId=""
+                      tenantName={prospect.name}
+                      contactName={primaryContact?.name || prospect.name}
+                      contactEmail={primaryContact?.email}
+                      buildingName={prospect.address}
+                      recipients={recipients}
+                    />
+                    {primaryContact?.email && (
+                      <a href={`mailto:${primaryContact.email}`}>
+                        <Button size="sm" variant="outline" className="text-xs h-9">
+                          <Mail className="mr-1.5 h-4 w-4" /> Email {primaryContact.name.split(' ')[0]}
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                </Card>
+              </div>
 
               {/* Activity Log — prominent placement */}
-              <ActivityLog
-                tenantId={prospectId!}
-                buildingId=""
-                outreachReasonTitles={[]}
-                contactsVersion={contactsVersion}
-              />
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Activity History</h2>
+                <ActivityLog
+                  tenantId={prospectId!}
+                  buildingId=""
+                  outreachReasonTitles={[]}
+                  contactsVersion={contactsVersion}
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-border" />
 
               {/* 1. Custom Outreach Reason */}
               <div>

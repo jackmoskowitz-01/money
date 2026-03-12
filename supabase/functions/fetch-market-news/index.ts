@@ -196,6 +196,11 @@ Extract 10-15 distinct news items from the content. Prioritize the most signific
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (structureResp.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const t = await structureResp.text();
       console.error("Structure AI error:", structureResp.status, t);
       throw new Error("Failed to structure news");

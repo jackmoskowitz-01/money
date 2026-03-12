@@ -354,7 +354,7 @@ const News = () => {
     const interval = setInterval(() => {
       fetchLiveNews();
       fetchCompanyNews();
-    }, 3 * 60 * 1000);
+    }, 60 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);

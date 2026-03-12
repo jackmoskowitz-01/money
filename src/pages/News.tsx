@@ -927,7 +927,7 @@ const News = () => {
                             className="mb-1.5 text-sm font-semibold text-foreground leading-snug cursor-pointer hover:text-primary transition-colors"
                             onClick={() => {
                               setExpandedNewsId(isExpanded ? null : news.id);
-                              if (!isRead) setReadIds(prev => new Set(prev).add(news.id));
+                              if (!isRead) markAsRead(news.id);
                             }}
                           >
                             {news.title}

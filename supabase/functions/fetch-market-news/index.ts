@@ -98,6 +98,64 @@ Include firm names, client names, spending amounts, revenue figures, and key pol
 
 Include organization names, grant amounts, revenue figures, membership numbers, and key people.`
       },
+      Legal: {
+        system: "You are an elite analyst covering the legal industry. Search legal publications (The American Lawyer, Law360, Reuters Legal, National Law Journal, Above the Law, Legal Dive), and mainstream business news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent legal industry news:
+
+1. LAW FIRM M&A: Mergers between firms, acquisitions, dissolutions, firm splits
+2. LATERAL MOVES: Major partner departures, practice group moves, leadership changes at Am Law 100/200 firms
+3. FINANCIALS: Am Law rankings, revenue per lawyer, profits per partner, firm financial performance
+4. MAJOR LITIGATION: High-profile cases, class actions, regulatory enforcement, Supreme Court decisions with business impact
+5. PRACTICE TRENDS: Growing practice areas (AI/tech, ESG, crypto, national security), declining areas
+6. OFFICE MOVES: Law firms relocating, expanding, or downsizing offices, new market entries
+7. LEGAL TECH: AI in legal practice, legal tech funding, automation trends, new tools
+8. REGULATORY: DOJ actions, SEC enforcement, FTC cases, major regulatory changes
+
+Include firm names, deal values, headcounts, office locations, and key partners involved.`
+      },
+      Technology: {
+        system: "You are an elite analyst covering the technology industry. Search tech publications (TechCrunch, The Verge, Ars Technica, Wired, The Information, Protocol), venture capital news (PitchBook, Crunchbase News), and mainstream business news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent technology industry news:
+
+1. FUNDING & INVESTMENT: Major VC funding rounds, IPOs, SPACs, private equity deals in tech
+2. M&A ACTIVITY: Tech company acquisitions, mergers, divestitures, hostile takeovers
+3. AI & ML: Major AI developments, new models, AI company news, enterprise AI adoption, AI regulation
+4. CLOUD & INFRASTRUCTURE: AWS, Azure, GCP developments, data center expansions, cloud spending trends
+5. COMPANY NEWS: Big tech earnings, layoffs, hiring surges, restructuring, leadership changes (FAANG, enterprise software)
+6. CYBERSECURITY: Major breaches, security company funding, government cyber mandates, zero-trust adoption
+7. REGULATION & POLICY: Antitrust actions, tech regulation bills, Section 230, data privacy laws, AI governance
+8. STARTUPS: Notable startup launches, pivots, shutdowns, unicorn milestones
+
+Include company names, funding amounts, deal sizes, user/revenue metrics, and key people.`
+      },
+      Consulting: {
+        system: "You are an elite analyst covering the management consulting and professional services industry. Search consulting publications (Consulting Magazine, Management Consulted, Consultancy.org), business news (WSJ, Bloomberg, FT), and industry sources. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent consulting and professional services news:
+
+1. FIRM NEWS: Major consulting firms (McKinsey, BCG, Bain, Deloitte, PwC, EY, KPMG, Accenture) — earnings, restructuring, leadership changes
+2. M&A & PARTNERSHIPS: Consulting firm acquisitions, mergers, new practice launches, strategic partnerships
+3. HIRING & LAYOFFS: Workforce changes at major firms, campus recruiting trends, compensation changes
+4. GOVERNMENT CONSULTING: Federal consulting contract awards, DOGE impact on consulting spend, agency modernization projects
+5. DIGITAL TRANSFORMATION: AI/digital consulting growth, technology advisory, cloud transformation deals
+6. INDUSTRY TRENDS: Consulting market size, growth rates, emerging practice areas, competitive dynamics
+7. OFFICE & REAL ESTATE: Firms opening/closing offices, hybrid work policies, co-location strategies
+
+Include firm names, contract values, headcount changes, revenue figures, and key leaders.`
+      },
+      Coworking: {
+        system: "You are an elite analyst covering the coworking and flexible workspace industry. Search real estate publications (Bisnow, CoStar, Commercial Observer), coworking news (Allwork.Space, Deskmag), and business news. Return ONLY factual, sourced news with specific details.",
+        user: `Find the most important recent coworking and flexible workspace news:
+
+1. OPERATOR NEWS: WeWork, IWG/Regus, Industrious, Convene, Spaces — expansions, closures, restructuring, financial performance
+2. FUNDING & DEALS: Coworking operator funding rounds, acquisitions, partnerships with landlords
+3. NEW LOCATIONS: Flex space openings, market entries, expansion plans
+4. CLOSURES & BANKRUPTCIES: Operator shutdowns, lease rejections, market exits
+5. LANDLORD STRATEGIES: Traditional landlords launching flex offerings, management agreements vs. leases
+6. MARKET TRENDS: Flex space demand, occupancy rates, pricing trends, enterprise adoption
+7. HYBRID WORK: Corporate flex space strategies, satellite office demand, membership trends
+
+Include operator names, locations, square footages, deal terms, and occupancy metrics.`
+      },
     };
 
     let systemPrompt: string;

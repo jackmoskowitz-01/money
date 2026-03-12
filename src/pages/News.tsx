@@ -829,6 +829,18 @@ const News = () => {
                   )}
                 </AnimatePresence>
               </div>
+              {activeIndustry !== 'all' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-[10px] text-primary"
+                  onClick={() => fetchIndustryNews(activeIndustry)}
+                  disabled={industryNewsLoading}
+                >
+                  <RefreshCw className={`h-3 w-3 ${industryNewsLoading ? 'animate-spin' : ''}`} />
+                  Refresh {activeIndustry}
+                </Button>
+              )}
             </div>
 
             {(newsLoading || companyNewsLoading || industryNewsLoading) && (

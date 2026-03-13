@@ -457,7 +457,14 @@ const MapView = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="absolute right-4 top-4 z-[1000] w-96"
           >
-            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto relative">
+              {/* Always-visible close button */}
+              <button
+                onClick={() => setSelectedBuilding(null)}
+                className="absolute right-2 top-2 z-10 rounded-md bg-background/80 backdrop-blur-sm p-1 text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
               {selectedBuilding.photoUrl && (
                 <div className="w-full h-40 overflow-hidden rounded-t-lg">
                   <img
@@ -469,19 +476,13 @@ const MapView = () => {
                 </div>
               )}
               <div className="p-4">
-              <div className="mb-3 flex items-start justify-between">
+              <div className="mb-3">
                 <div>
-                  <h3 className="font-display text-lg font-bold">{selectedBuilding.address}</h3>
+                  <h3 className="font-display text-lg font-bold pr-6">{selectedBuilding.address}</h3>
                   {selectedBuilding.name && selectedBuilding.name !== selectedBuilding.address && (
                     <p className="text-xs text-muted-foreground">{selectedBuilding.name}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedBuilding(null)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
 
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">

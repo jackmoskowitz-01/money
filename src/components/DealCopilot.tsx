@@ -1514,6 +1514,7 @@ CRITICAL INSTRUCTIONS:
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,.txt,.csv,.json,.doc,.docx,.md,.xlsx,.xls"
+                  multiple
                   onChange={handleFileSelect}
                   className="hidden"
                 />

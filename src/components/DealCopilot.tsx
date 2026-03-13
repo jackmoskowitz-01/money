@@ -945,6 +945,8 @@ CRITICAL INSTRUCTIONS:
         formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
       } else if (isAbstract) {
         formData.append('question', `Run a complete lease abstract on this document.\n\n${LEASE_ABSTRACT_TEMPLATE}`);
+      } else if (isMatrix) {
+        formData.append('question', `Create a Summary of Proposals deal terms matrix from these documents. Number of files attached: ${attachedFiles.length}.\n\n${MATRIX_TEMPLATE}`);
       } else if (isComp) {
         formData.append('question', `Run a complete Comparison of Options analysis on these documents.\n\n${COMP_COMPARISON_TEMPLATE}`);
       } else {

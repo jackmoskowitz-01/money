@@ -512,6 +512,29 @@ export default function DealCopilot() {
     return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
   };
 
+  // Check if message is a substantial report (abstract, comp, commission, etc.)
+  const isExportableReport = (content: string) => {
+    const len = content.length;
+    if (len < 300) return false;
+    const hasStructure = (content.match(/^#{1,3}\s/gm) || []).length >= 3;
+    const hasTable = content.includes('|') && content.includes('---');
+    return hasStructure || hasTable;
+  };
+
+  // Export message as Word document
+  const handleExportWord = async (content: string) => {
+    // Derive filename from first heading or generic
+    const h1Match = content.match(/^#\s+(.+)/m);
+    const filename = h1Match?.[1]?.slice(0, 50) || 'Copilot_Report';
+    try {
+      await exportToWord(content, filename);
+      toast.success('Word document downloaded');
+    } catch (e) {
+      console.error('Word export error:', e);
+      toast.error('Failed to export document');
+    }
+  };
+
   // Export email draft
   const handleExportEmail = (content: string) => {
     // Extract subject and body from markdown

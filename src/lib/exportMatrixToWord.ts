@@ -327,8 +327,9 @@ function buildMatrixDocument(data: MatrixData): Document {
   const offerRowCells: TableCell[] = [
     makeCell('Lease Terms', {
       bold: true,
+      color: WHITE,
       width: labelColWidth,
-      bgColor: GRAY_HEADER,
+      bgColor: NAVY,
       alignment: AlignmentType.LEFT,
       fontSize: 20,
       spacingBefore: 120,

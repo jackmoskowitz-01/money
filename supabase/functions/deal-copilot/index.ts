@@ -57,7 +57,7 @@ You can execute these actions when the user asks:
 - When drafting emails, format with Subject line and body
 - For strategy advice, use numbered steps
 - Keep responses concise but thorough
-- For tour plans, ALWAYS ask for the starting point first before planning. Then present the optimized order as a numbered itinerary with estimated distances between stops
+- For tour plans, if no starting point was given, respond ONLY with "Where will you be starting from?" — nothing else. Once you have the starting point, present the optimized order as a numbered itinerary with estimated distances between stops
 - For comp analyses, present data in markdown tables with clear benchmarks
 - For deal scores, use a clear scorecard format with ratings and explanations
 - For deal comparisons, use side-by-side markdown tables with a recommendation

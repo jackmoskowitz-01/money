@@ -313,8 +313,8 @@ const MapView = () => {
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Building List Panel */}
-      <div className="absolute left-4 top-4 z-[1000] w-80">
-        <Card className="border-border bg-card/95 backdrop-blur-lg">
+      <div className="absolute left-4 top-4 bottom-4 z-[1000] w-80 flex flex-col">
+        <Card className="border-border bg-card/95 backdrop-blur-lg flex flex-col max-h-full overflow-hidden">
           <button
             onClick={() => setPanelOpen(!panelOpen)}
             className="flex w-full items-center justify-between p-3"

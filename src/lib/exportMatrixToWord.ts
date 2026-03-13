@@ -188,57 +188,14 @@ function buildMatrixDocument(data: MatrixData): Document {
     });
   };
 
-  // === ROW 1: Building address header (dark navy) ===
-  const addressRowCells: TableCell[] = [
-    makeCell('', {
-      width: labelColWidth,
-      bgColor: NAVY,
-      borders: {
-        top: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
-        left: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
-        right: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
-      },
-    }),
-  ];
-
-  for (const group of buildingGroups) {
-    addressRowCells.push(
-      makeCell(group.address, {
-        bold: true,
-        color: WHITE,
-        bgColor: NAVY,
-        fontSize: 22,
-        columnSpan: group.offerLabels.length,
-        width: dataColWidth * group.offerLabels.length,
-        alignment: AlignmentType.CENTER,
-        spacingBefore: 140,
-        spacingAfter: 140,
-        borders: {
-          top: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
-          left: { style: BorderStyle.SINGLE, size: 1, color: '4A5C8A' },
-          right: { style: BorderStyle.SINGLE, size: 1, color: '4A5C8A' },
-        },
-      })
-    );
-  }
-
-  const addressRow = new TableRow({
-    children: addressRowCells,
-    tableHeader: true,
-    height: { value: headerRowHeight, rule: HeightRule.ATLEAST },
-  });
-
-  // === ROW 2: Building image placeholder row ===
+  // === ROW 1: Building image placeholder row (one image per building, spanning its offer columns) ===
   const imageRowCells: TableCell[] = [
     makeCell('', {
       width: labelColWidth,
-      bgColor: WHITE,
       borders: {
-        top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-        bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-        left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        top: { style: BorderStyle.NONE, size: 0, color: WHITE },
+        bottom: { style: BorderStyle.NONE, size: 0, color: WHITE },
+        left: { style: BorderStyle.NONE, size: 0, color: WHITE },
         right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
       },
     }),
@@ -250,10 +207,10 @@ function buildMatrixDocument(data: MatrixData): Document {
         children: [
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 200 },
+            spacing: { before: 200, after: 100 },
             children: [
               new TextRun({
-                text: '[Building Image]',
+                text: '[Building Photo]',
                 color: 'AAAAAA',
                 font: TABLE_FONT,
                 size: 18,
@@ -265,7 +222,12 @@ function buildMatrixDocument(data: MatrixData): Document {
         width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
         verticalAlign: "center",
-        borders: thinBorder,
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          bottom: { style: BorderStyle.NONE, size: 0, color: WHITE },
+          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        },
       })
     );
   }
@@ -273,6 +235,55 @@ function buildMatrixDocument(data: MatrixData): Document {
   const imageRow = new TableRow({
     children: imageRowCells,
     height: { value: imageRowHeight, rule: HeightRule.ATLEAST },
+  });
+
+  // === ROW 2: Building address row (address text below each photo) ===
+  const addressRowCells: TableCell[] = [
+    makeCell('', {
+      width: labelColWidth,
+      borders: {
+        top: { style: BorderStyle.NONE, size: 0, color: WHITE },
+        bottom: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
+        left: { style: BorderStyle.NONE, size: 0, color: WHITE },
+        right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+      },
+    }),
+  ];
+
+  for (const group of buildingGroups) {
+    addressRowCells.push(
+      new TableCell({
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 80, after: 80 },
+            children: [
+              new TextRun({
+                text: group.address,
+                bold: true,
+                color: NAVY,
+                font: TABLE_FONT,
+                size: 20,
+              }),
+            ],
+          }),
+        ],
+        width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
+        columnSpan: group.offerLabels.length,
+        verticalAlign: "center",
+        borders: {
+          top: { style: BorderStyle.NONE, size: 0, color: WHITE },
+          bottom: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
+          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        },
+      })
+    );
+  }
+
+  const addressRow = new TableRow({
+    children: addressRowCells,
+    height: { value: 420, rule: HeightRule.ATLEAST },
   });
 
   // === ROW 3: Offer labels (gray background) ===

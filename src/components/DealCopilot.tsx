@@ -755,6 +755,16 @@ export default function DealCopilot() {
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
+                {/* Voice mode toggle */}
+                <Button
+                  variant={voiceMode ? "default" : "ghost"}
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${voiceMode ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30' : 'text-muted-foreground'}`}
+                  onClick={toggleVoiceMode}
+                  title={voiceMode ? 'End voice conversation' : 'Start voice conversation'}
+                >
+                  <AudioLines className={`h-3.5 w-3.5 ${voiceMode ? 'animate-pulse' : ''}`} />
+                </Button>
                 {user && (
                   <CopilotHistory
                     userId={user.id}

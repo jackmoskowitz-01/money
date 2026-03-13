@@ -665,7 +665,20 @@ export default function DealCopilot() {
             )}
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scroll-smooth">
+              {/* Pinned messages bar */}
+              {messages.some(m => m.pinned) && (
+                <div className="space-y-1.5 mb-2">
+                  <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Pin className="h-3 w-3" /> Pinned
+                  </p>
+                  {messages.filter(m => m.pinned).map((m, pi) => (
+                    <div key={pi} className="text-[11px] text-foreground bg-primary/5 border border-primary/10 rounded-lg px-2.5 py-1.5 line-clamp-2">
+                      {m.content.slice(0, 120)}…
+                    </div>
+                  ))}
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">

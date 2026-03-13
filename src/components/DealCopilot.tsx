@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
+import { useScribe } from '@elevenlabs/react';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;

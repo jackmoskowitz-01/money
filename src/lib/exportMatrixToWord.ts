@@ -227,7 +227,7 @@ function buildMatrixDocument(data: MatrixData): Document {
   const addressRow = new TableRow({
     children: addressRowCells,
     tableHeader: true,
-    height: { value: headerRowHeight, rule: HeightRule.AT_LEAST },
+    height: { value: headerRowHeight, rule: HeightRule.ATLEAST },
   });
 
   // === ROW 2: Building image placeholder row ===

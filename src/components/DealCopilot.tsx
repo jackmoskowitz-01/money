@@ -663,11 +663,20 @@ export default function DealCopilot() {
 
       // Refresh pipeline after any response (in case tools were called)
       refetchPipeline();
+
+      // Voice mode: speak the response
+      if (voiceModeRef.current && assistantSoFar) {
+        speakText(assistantSoFar);
+      }
     } catch (e: any) {
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
+      }
+      // Resume listening on error in voice mode
+      if (voiceModeRef.current) {
+        setTimeout(() => startVoiceListening(), 500);
       }
     }
     setIsLoading(false);

@@ -145,7 +145,7 @@ export default function TerritoryAnalysis({ buildings, onSelectBuilding }: Props
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden"
+            className="overflow-y-auto max-h-[45vh]"
           >
             {loading && !analysis ? (
               <div className="px-3 py-6 text-center">

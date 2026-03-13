@@ -798,7 +798,7 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 # Summary of Proposals
 
-| | [Building 1 Address] | [Building 2 Address] | ... |
+| | [Street Address, City, State] | [Street Address, City, State] | ... |
 |---|---|---|---|
 | **Lease Terms** | **[Offer Label #1]** | **[Offer Label #1]** | ... |
 | **Premises:** | [XX,XXX RSF] | [XX,XXX RSF] | ... |

@@ -551,6 +551,19 @@ export default function DealCopilot() {
     }
   };
 
+  // Export cashflow as Excel
+  const handleExportExcel = async (content: string) => {
+    const h1Match = content.match(/^#\s+(.+)/m);
+    const filename = h1Match?.[1]?.slice(0, 50) || 'Cash_Flow_Analysis';
+    try {
+      await exportCashflowToExcel(content, filename);
+      toast.success('Excel file downloaded');
+    } catch (e) {
+      console.error('Excel export error:', e);
+      toast.error('Failed to export Excel file');
+    }
+  };
+
   // Export email draft
   const handleExportEmail = (content: string) => {
     // Extract subject and body from markdown

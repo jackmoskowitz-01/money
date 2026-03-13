@@ -533,7 +533,11 @@ export default function DealCopilot() {
     const h1Match = content.match(/^#\s+(.+)/m);
     const filename = h1Match?.[1]?.slice(0, 50) || 'Copilot_Report';
     try {
-      await exportToWord(content, filename);
+      if (isMatrixReport(content)) {
+        await exportMatrixToWord(content, filename);
+      } else {
+        await exportToWord(content, filename);
+      }
       toast.success('Word document downloaded');
     } catch (e) {
       console.error('Word export error:', e);

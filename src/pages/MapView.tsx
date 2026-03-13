@@ -314,8 +314,8 @@ const MapView = () => {
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createCircleMarker(L, building, log, thresholdDays);
-        mockMarkersRef.current.push(marker);
+        const marker = createCircleMarker(L, building, log, thresholdDays, map);
+        if (marker) mockMarkersRef.current.push(marker);
       });
 
       mapInstanceRef.current = map;

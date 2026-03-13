@@ -1809,6 +1809,18 @@ For each line item, also produce a monthly breakdown:
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Pitch Deck Viewer */}
+      {pitchDeckContent && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl max-h-[85vh]">
+            <PitchDeckViewer
+              slides={parsePitchSlides(pitchDeckContent)}
+              onClose={() => setPitchDeckContent(null)}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

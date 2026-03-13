@@ -190,7 +190,7 @@ function buildMatrixDocument(data: MatrixData): Document {
       shading: opts.bgColor
         ? { type: ShadingType.SOLID, color: opts.bgColor, fill: opts.bgColor }
         : undefined,
-      verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
+      verticalAlign: opts.verticalAlign || "center",
       columnSpan: opts.columnSpan,
       borders: opts.borders || thinBorder,
     });

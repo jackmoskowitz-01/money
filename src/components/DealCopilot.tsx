@@ -1476,20 +1476,24 @@ CRITICAL INSTRUCTIONS:
                 visible={showSlashCommands}
                 onSelect={handleSlashSelect}
               />
-              {/* Attached file chip */}
-              {attachedFile && (
-                <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
-                  <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-xs text-foreground truncate flex-1">{attachedFile.name}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {(attachedFile.size / 1024).toFixed(0)}KB
-                  </span>
-                  <button
-                    onClick={() => setAttachedFile(null)}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+              {/* Attached file chips */}
+              {attachedFiles.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {attachedFiles.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2 py-1">
+                      <FileText className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-[11px] text-foreground truncate max-w-[120px]">{file.name}</span>
+                      <span className="text-[9px] text-muted-foreground shrink-0">
+                        {(file.size / 1024).toFixed(0)}KB
+                      </span>
+                      <button
+                        onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
               {/* File context indicator */}

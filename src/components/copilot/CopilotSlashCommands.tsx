@@ -7,7 +7,7 @@ const COMMANDS = [
   { command: '/draft', description: 'Draft an outreach email', icon: Mail, template: 'Draft an outreach email for ' },
   { command: '/search', description: 'Search live market data', icon: Search, template: 'Search for ' },
   { command: '/tour', description: 'Plan an optimized tour route', icon: MapPin, template: 'Plan a tour for these addresses: ' },
-  { command: '/comp', description: 'Analyze lease comps for a deal', icon: BarChart3, template: 'Analyze comps for ' },
+  { command: '/comp', description: 'Compare lease offers side-by-side', icon: BarChart3, template: 'Compare these lease offers: ' },
   { command: '/score', description: 'Score & rate a pipeline deal', icon: Star, template: 'Score the deal with ' },
   { command: '/compare', description: 'Compare top deals side-by-side', icon: GitCompare, template: 'Compare my top 3 deals' },
   { command: '/commission', description: 'Calculate broker commission from a lease', icon: Calculator, template: 'Calculate the commission on the attached lease' },

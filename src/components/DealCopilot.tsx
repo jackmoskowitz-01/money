@@ -766,6 +766,109 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 12. If a clause is complex, use sub-bullets to break it down — never collapse detail into a single line.
 13. DO NOT write "See lease for details" — extract and state the actual details.`;
 
+  // Cresa-style Comparison of Options template
+  const COMP_COMPARISON_TEMPLATE = `You are producing a professional "Comparison of Options" analysis. Follow this EXACT structure. Extract every detail from the attached lease offer documents.
+
+## RULES:
+- Create ONE column per offer/proposal. Group columns by building address.
+- If a building has multiple rounds of offers (LL Offer #1, LL Offer #2, Counter #1, etc.), each round gets its own column — label them clearly.
+- If comparing first-round offers from multiple buildings, show one column per building.
+- ONLY include the number of columns needed — do NOT pad with empty columns.
+- Use exact dollar amounts, dates, percentages, and SF numbers from the documents. Never round.
+
+## FORMAT:
+
+# [Client/Tenant Name]: Comparison of Options
+
+## Assumptions
+
+| | [Building 1 Address] | [Building 1 Address] | [Building 2 Address] | ... |
+|---|---|---|---|---|
+| | [Offer Label #1] | [Offer Label #2] | [Offer Label #1] | ... |
+| Premises Size | [X,XXX SF] | ... | ... | ... |
+| Lease Commencement | [date] | ... | ... | ... |
+| Lease Expiration | [date] | ... | ... | ... |
+| Lease Term | [X Yrs X Mo] | ... | ... | ... |
+| Base Rent | [$XX.XX PSF, FS/NNN] | ... | ... | ... |
+| Opex & Tax | [$XX.XX PSF or N/A] | ... | ... | ... |
+| All-In Rent | [$XX.XX PSF] | ... | ... | ... |
+| Rent Escalation | [X.XX%] | ... | ... | ... |
+| Free Rent | [X Mos (details)] | ... | ... | ... |
+| OpEx & Tax Base Amount | [$XX.XX PSF] | ... | ... | ... |
+| Lease Type | [Full Service / Net / etc.] | ... | ... | ... |
+| OpEx & Tax Increase % | [X.XX%] | ... | ... | ... |
+| Improvement Allowance | [$XX.XX PSF] | ... | ... | ... |
+| Buildout Cost | [$XX.XX PSF] | ... | ... | ... |
+| Net Out of Pocket Cost Day 1 | [$XX.XX PSF] | ... | ... | ... |
+
+## Comparable Term Totals ([shortest term] comparison)
+
+| | [Building 1] | [Building 1] | [Building 2] | ... |
+|---|---|---|---|---|
+| | [Offer Label] | [Offer Label] | [Offer Label] | ... |
+| Comparable Begin Period | [date] | ... | ... | ... |
+| Comparable End Period | [date] | ... | ... | ... |
+| Analysis Term | [X Yrs X Mo] | ... | ... | ... |
+| Cumulative Rent | [$XXX,XXX] | ... | ... | ... |
+| Average Annual Rent | [$XXX,XXX] | ... | ... | ... |
+| Net Present Value | [$XXX,XXX] | ... | ... | ... |
+
+## Full Term Totals
+
+| | [Building 1] | [Building 1] | [Building 2] | ... |
+|---|---|---|---|---|
+| | [Offer Label] | [Offer Label] | [Offer Label] | ... |
+| Full Term Commencement | [date] | ... | ... | ... |
+| Full Term End Period | [date] | ... | ... | ... |
+| Analysis Term | [X Yrs X Mo] | ... | ... | ... |
+| Cumulative Rent | [$XXX,XXX] | ... | ... | ... |
+| Average Annual Rent | [$XXX,XXX] | ... | ... | ... |
+| Net Present Value | [$XXX,XXX] | ... | ... | ... |
+| NPV Rate (for all options) | [X%] | | | |
+
+## Detailed Cash Flow
+
+For EACH offer, provide a separate cash flow table:
+
+### [Building Address] — [Offer Label]
+
+Premises Size: [X,XXX SF] | Base Rent: [$XX.XX PSF] | Term: [X Yrs X Mo] | Free Rent: [X Mos] | TI: [$XX.XX PSF]
+
+| | Year 1 | Year 2 | Year 3 | ... |
+|---|---|---|---|---|
+| Beg | [date] | [date] | ... | ... |
+| End | [date] | [date] | ... | ... |
+| Base Rent & Esc. | [$XXX,XXX] | ... | ... | ... |
+| Free Rent | [($XX,XXX)] | ... | ... | ... |
+| OpEx & Taxes | [$X,XXX] | ... | ... | ... |
+| Tenant Improvements | [$X,XXX or -] | ... | ... | ... |
+| Buildout Costs | [$X,XXX or -] | ... | ... | ... |
+| TI Allowance / Rent Credit | [($XX,XXX) or -] | ... | ... | ... |
+| Annual Cost | [$XXX,XXX] | ... | ... | ... |
+| Cumulative Cost | [$XXX,XXX] | ... | ... | ... |
+| Annual Cost PSF | [$XX.XX] | ... | ... | ... |
+
+NPV Over Full Term: $XXX,XXX
+
+[Repeat for each offer]
+
+## Footnotes
+
+- [1] [Explanation of any credits, adjustments, or assumptions]
+- [2] [Additional notes]
+
+---
+
+CRITICAL INSTRUCTIONS:
+1. Extract and calculate ALL numbers — never leave blanks or write "see document."
+2. If multiple rounds of offers exist for one building, show each round as a separate column.
+3. If only first-round offers from different buildings, show one column per building — keep it clean.
+4. Calculate cumulative rent, average annual rent, and NPV (use 8% discount rate unless specified otherwise).
+5. Show rent escalations applied year-over-year in the cash flow tables.
+6. Include ALL footnotes explaining credits, buildout assumptions, or special conditions.
+7. For comparable term analysis, use the SHORTEST lease term among all options as the comparison period.
+8. Label each column header clearly: building address on top, offer round/label below.`;
+
 
   const sendFileMessage = async (question: string) => {
     if (!attachedFile || isLoading) return;
@@ -774,6 +877,7 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
     const userContent = question.trim() || `Analyze this document: ${fileName}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
+    const isComp = /\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent);
     const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
@@ -793,6 +897,8 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
         formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
       } else if (isAbstract) {
         formData.append('question', `Run a complete lease abstract on this document.\n\n${LEASE_ABSTRACT_TEMPLATE}`);
+      } else if (isComp) {
+        formData.append('question', `Run a complete Comparison of Options analysis on this document.\n\n${COMP_COMPARISON_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }

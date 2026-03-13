@@ -192,23 +192,20 @@ const MapView = () => {
     return marker;
   }, []);
 
-  // Refresh marker colors when visitLog or threshold changes
-  const refreshMarkerColors = useCallback(() => {
+  // Refresh marker icons when visitLog, threshold, or tracker toggle changes
+  const refreshMarkerIcons = useCallback(() => {
     const log = getVisitLog();
     [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
       const bid = marker._buildingId;
-      if (!bid) return;
-      const stale = !log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000;
-      marker.setStyle({
-        fillColor: stale ? '#ef4444' : '#3b82f6',
-        color: stale ? '#dc2626' : '#2563eb',
-      });
+      if (!bid || !marker._defaultIcon || !marker._redIcon) return;
+      const stale = trackerEnabled && (!log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000);
+      marker.setIcon(stale ? marker._redIcon : marker._defaultIcon);
     });
-  }, [thresholdDays]);
+  }, [thresholdDays, trackerEnabled]);
 
   useEffect(() => {
-    refreshMarkerColors();
-  }, [visitLog, thresholdDays, refreshMarkerColors]);
+    refreshMarkerIcons();
+  }, [visitLog, thresholdDays, trackerEnabled, refreshMarkerIcons]);
 
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{

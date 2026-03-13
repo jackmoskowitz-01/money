@@ -1262,6 +1262,16 @@ IMPORTANT: Fill in EVERY section. Extract ALL data from the lease. For rent sche
                           >
                             {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
+                          {isExportableReport(msg.content) && (
+                            <button
+                              onClick={() => handleExportWord(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export as Word document"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>Word</span>
+                            </button>
+                          )}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}

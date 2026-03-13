@@ -407,12 +407,18 @@ const MapView = () => {
                   )}
                 </div>
 
-                {/* Territory Analysis */}
+                {/* Territory Threshold Button */}
                 <div className="px-3 pb-3">
-                  <TerritoryAnalysis
-                    buildings={allBuildingsList}
-                    onSelectBuilding={(b) => setSelectedBuilding(b)}
-                  />
+                  <button
+                    onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
+                    className="w-full flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 hover:bg-primary/10 transition-colors"
+                  >
+                    <Radar className="h-4 w-4 text-primary" />
+                    <div className="text-left flex-1">
+                      <p className="text-[11px] font-bold text-foreground">Territory Tracker</p>
+                      <p className="text-[10px] text-muted-foreground">Stale after {thresholdDays} days · Red = needs attention</p>
+                    </div>
+                  </button>
                 </div>
               </motion.div>
             )}

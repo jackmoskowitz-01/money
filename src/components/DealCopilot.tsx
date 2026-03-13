@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
+import { exportToWord } from '@/lib/exportToWord';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';

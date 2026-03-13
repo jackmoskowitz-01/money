@@ -2,11 +2,10 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
 /**
- * Input cell map for the Cash_Flow_Analysis.xlsx template.
- * All other cells contain formulas — we only touch these.
+ * Exact input cells in Cash_Flow_Analysis.xlsx.
+ * We only write these cells so formulas/formatting remain untouched.
  */
 const INPUT_CELLS = {
-  // Lease Terms (Column H)
   leaseCommencementDate: 'H10',
   analysisStartDate: 'H11',
   leaseTerm: 'H12',
@@ -16,7 +15,6 @@ const INPUT_CELLS = {
   escalationMonth: 'H19',
   squareFootage: 'H20',
   totalMonthsFreeRent: 'H24',
-  // Operating Expense Terms (Column M)
   opexBaseYear: 'M12',
   opexBaseMonth: 'M13',
   opexBuildingBaseAmount: 'M17',
@@ -27,193 +25,221 @@ const INPUT_CELLS = {
   retPerAnnumEscalation: 'M26',
 } as const;
 
-interface ExtractedInputs {
-  [key: string]: string | number | Date | null;
+type InputKey = keyof typeof INPUT_CELLS;
+type ExtractedInputs = Partial<Record<InputKey, string | number | Date | null>>;
+
+const KEY_ALIASES: Record<InputKey, string[]> = {
+  leaseCommencementDate: ['lease commencement date', 'commencement date'],
+  analysisStartDate: ['analysis start date', 'compilation start date', 'start date'],
+  leaseTerm: ['lease term months', 'lease term', 'compilation term months', 'compilation term'],
+  leaseExpirationDate: ['lease expiration date', 'expiration date', 'compilation expiration date'],
+  baseRent: ['base rent', 'base rent sf', 'base rent/sf'],
+  perAnnumEscalation: ['per annum escalation', 'annual escalation', 'rent escalation'],
+  escalationMonth: ['escalation month'],
+  squareFootage: ['square feet leased', 'square footage leased', 'square feet', 'sf leased'],
+  totalMonthsFreeRent: ['total months of free rent', 'free rent months', 'total free rent months'],
+  opexBaseYear: ['operating expense base year', 'opex base year', 'oe base year', 'base year'],
+  opexBaseMonth: ['operating expense base month', 'opex base month', 'oe base month', 'base month'],
+  opexBuildingBaseAmount: ['operating expense building base amount', 'opex building base amount', 'oe building base amount'],
+  opexTenantBaseAmount: ['operating expense tenant base amount', 'opex tenant base amount', 'oe tenant base amount'],
+  opexPerAnnumEscalation: ['operating expense per annum escalation', 'opex per annum escalation', 'oe escalation'],
+  retBuildingBaseAmount: ['real estate tax building base amount', 'ret building base amount'],
+  retTenantBaseAmount: ['real estate tax tenant base amount', 'ret tenant base amount'],
+  retPerAnnumEscalation: ['real estate tax per annum escalation', 'ret per annum escalation'],
+};
+
+const DATE_KEYS: InputKey[] = ['leaseCommencementDate', 'analysisStartDate', 'leaseExpirationDate'];
+const PERCENT_KEYS: InputKey[] = ['perAnnumEscalation', 'opexPerAnnumEscalation', 'retPerAnnumEscalation'];
+const NUMBER_KEYS: InputKey[] = [
+  'leaseTerm',
+  'baseRent',
+  'squareFootage',
+  'totalMonthsFreeRent',
+  'opexBaseYear',
+  'opexBuildingBaseAmount',
+  'opexTenantBaseAmount',
+  'retBuildingBaseAmount',
+  'retTenantBaseAmount',
+];
+
+function normalizeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\*\*/g, '')
+    .replace(/[`*_~]/g, '')
+    .replace(/\(.*?\)/g, (m) => m.replace(/[()]/g, ''))
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 }
 
-/**
- * Parse the AI-generated markdown to extract the specific input values
- * that map to template cells.
- */
-function extractInputsFromMarkdown(markdown: string): ExtractedInputs {
-  const inputs: ExtractedInputs = {};
+function cleanValue(value: string): string {
+  return value
+    .replace(/\*\*/g, '')
+    .replace(/`/g, '')
+    .trim();
+}
 
-  const patterns: Record<string, RegExp[]> = {
-    leaseCommencementDate: [
-      /\*\*Lease Commencement Date:?\*\*\s*(.+)/i,
-      /Commencement Date:?\s*(.+)/i,
-    ],
-    analysisStartDate: [
-      /\*\*(?:Analysis|Compilation) Start Date:?\*\*\s*(.+)/i,
-      /Analysis Start Date:?\s*(.+)/i,
-    ],
-    leaseTerm: [
-      /\*\*(?:Lease Term|Compilation Term)\s*\(months\):?\*\*\s*(.+)/i,
-      /Lease Term:?\s*(\d+)/i,
-    ],
-    leaseExpirationDate: [
-      /\*\*(?:Lease Expiration|Compilation Expiration)\s*(?:Date)?:?\*\*\s*(.+)/i,
-      /Expiration Date:?\s*(.+)/i,
-    ],
-    baseRent: [
-      /\*\*Base Rent:?\*\*\s*(.+)/i,
-      /Base Rent(?:\/SF)?:?\s*\$?([\d.,]+)/i,
-    ],
-    perAnnumEscalation: [
-      /\*\*Per Annum Escalation:?\*\*\s*(.+)/i,
-      /(?:Annual|Per Annum) Escalation:?\s*([\d.]+%?)/i,
-    ],
-    escalationMonth: [
-      /\*\*Escalation Month:?\*\*\s*(.+)/i,
-      /Escalation Month:?\s*(.+)/i,
-    ],
-    squareFootage: [
-      /\*\*Square (?:Feet|Footage) Leased:?\*\*\s*(.+)/i,
-      /Square Feet:?\s*([\d,]+)/i,
-    ],
-    totalMonthsFreeRent: [
-      /\*\*Total Months of Free Rent:?\*\*\s*(.+)/i,
-      /Free Rent:?\s*(\d+)\s*months?/i,
-    ],
-    opexBaseYear: [
-      /\*\*Operating Expense Base Year:?\*\*\s*(.+)/i,
-      /(?:OE|OpEx|Operating)\s*(?:Expense)?\s*Base Year:?\s*(.+)/i,
-    ],
-    opexBaseMonth: [
-      /\*\*(?:Operating Expense )?Base Month:?\*\*\s*(.+)/i,
-    ],
-    opexBuildingBaseAmount: [
-      /\*\*Operating Expense Building Base Amount:?\*\*\s*(.+)/i,
-      /(?:OE|OpEx)\s*Building Base\s*(?:Amount)?:?\s*\$?([\d.,]+)/i,
-    ],
-    opexTenantBaseAmount: [
-      /\*\*Operating Expense Tenant Base Amount:?\*\*\s*(.+)/i,
-      /(?:OE|OpEx)\s*Tenant Base\s*(?:Amount)?:?\s*\$?([\d.,]+)/i,
-    ],
-    opexPerAnnumEscalation: [
-      /\*\*Operating Expense Per Annum Escalation:?\*\*\s*(.+)/i,
-      /(?:OE|OpEx)\s*(?:Per Annum |Annual )?Escalation:?\s*([\d.]+%?)/i,
-    ],
-    retBuildingBaseAmount: [
-      /\*\*Real Estate Tax Building Base Amount:?\*\*\s*(.+)/i,
-      /(?:RET|Real Estate Tax)\s*Building Base\s*(?:Amount)?:?\s*\$?([\d.,]+)/i,
-    ],
-    retTenantBaseAmount: [
-      /\*\*Real Estate Tax Tenant Base Amount:?\*\*\s*(.+)/i,
-      /(?:RET|Real Estate Tax)\s*Tenant Base\s*(?:Amount)?:?\s*\$?([\d.,]+)/i,
-    ],
-    retPerAnnumEscalation: [
-      /\*\*Real Estate Tax Per Annum Escalation:?\*\*\s*(.+)/i,
-      /(?:RET|Real Estate Tax)\s*(?:Per Annum |Annual )?Escalation:?\s*([\d.]+%?)/i,
-    ],
-  };
+function parseMarkdownLine(line: string): { key: string; value: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
 
-  for (const [key, regexes] of Object.entries(patterns)) {
-    for (const regex of regexes) {
-      const match = markdown.match(regex);
-      if (match) {
-        inputs[key] = match[1].trim();
-        break;
+  // Table row: | Key | Value |
+  if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+    const cells = trimmed
+      .split('|')
+      .slice(1, -1)
+      .map((c) => cleanValue(c));
+
+    if (cells.length >= 2) {
+      const key = cells[0];
+      const value = cells[1];
+      if (key && value && !/^[-: ]+$/.test(key)) {
+        return { key, value };
       }
     }
+  }
+
+  // Bullet / plain / bold: - **Key:** value OR **Key:** value OR Key: value
+  const colonMatch = trimmed.match(/^(?:[-*]\s+)?(?:\*\*)?([^:|]+?)(?:\*\*)?\s*:\s*(.+)$/);
+  if (colonMatch) {
+    const key = cleanValue(colonMatch[1]);
+    const value = cleanValue(colonMatch[2]);
+    if (key && value) return { key, value };
+  }
+
+  return null;
+}
+
+function collectLabeledValues(markdown: string): Map<string, string> {
+  const map = new Map<string, string>();
+  const lines = markdown.split('\n');
+
+  for (const line of lines) {
+    const parsed = parseMarkdownLine(line);
+    if (!parsed) continue;
+
+    const normalizedKey = normalizeLabel(parsed.key);
+    if (!normalizedKey || !parsed.value) continue;
+
+    // Keep first occurrence by default; many reports repeat values in other sections.
+    if (!map.has(normalizedKey)) {
+      map.set(normalizedKey, parsed.value);
+    }
+  }
+
+  return map;
+}
+
+function findByAliases(values: Map<string, string>, aliases: string[]): string | null {
+  for (const alias of aliases) {
+    const normalizedAlias = normalizeLabel(alias);
+
+    if (values.has(normalizedAlias)) return values.get(normalizedAlias) ?? null;
+
+    // Fuzzy fallback: alias contained in key or key contained in alias.
+    for (const [k, v] of values.entries()) {
+      if (k.includes(normalizedAlias) || normalizedAlias.includes(k)) {
+        return v;
+      }
+    }
+  }
+
+  return null;
+}
+
+function monthNameToNumber(value: string): number | null {
+  const monthNames = [
+    'january', 'february', 'march', 'april', 'may', 'june',
+    'july', 'august', 'september', 'october', 'november', 'december',
+  ];
+
+  const numeric = parseInt(value, 10);
+  if (!isNaN(numeric) && numeric >= 1 && numeric <= 12) return numeric;
+
+  const normalized = value.toLowerCase();
+  const idx = monthNames.findIndex((m) => normalized.startsWith(m) || normalized.startsWith(m.slice(0, 3)));
+  return idx >= 0 ? idx + 1 : null;
+}
+
+function extractInputsFromMarkdown(markdown: string): ExtractedInputs {
+  const values = collectLabeledValues(markdown);
+  const inputs: ExtractedInputs = {};
+
+  (Object.keys(KEY_ALIASES) as InputKey[]).forEach((key) => {
+    const found = findByAliases(values, KEY_ALIASES[key]);
+    if (found) inputs[key] = found;
+  });
+
+  // Derive escalation month from commencement date if not explicitly provided.
+  if (!inputs.escalationMonth && typeof inputs.leaseCommencementDate === 'string') {
+    const dt = new Date(inputs.leaseCommencementDate);
+    if (!isNaN(dt.getTime())) inputs.escalationMonth = dt.getMonth() + 1;
   }
 
   return inputs;
 }
 
-/**
- * Coerce a raw string value into the right type for an Excel cell.
- */
-function coerceValue(key: string, raw: string | number | Date | null | undefined): string | number | Date | null {
+function parseNumeric(value: string): number | null {
+  const cleaned = value.replace(/[^0-9.\-()]/g, '');
+  if (!cleaned) return null;
+
+  const isNegative = cleaned.includes('(') && cleaned.includes(')');
+  const number = parseFloat(cleaned.replace(/[()]/g, ''));
+  if (isNaN(number)) return null;
+
+  return isNegative ? -number : number;
+}
+
+function coerceValue(key: InputKey, raw: string | number | Date | null | undefined): string | number | Date | null {
   if (raw == null || raw === '') return null;
-  const str = String(raw).trim();
 
-  // Date fields
-  const dateFields = ['leaseCommencementDate', 'analysisStartDate', 'leaseExpirationDate'];
-  if (dateFields.includes(key)) {
-    const d = new Date(str);
-    if (!isNaN(d.getTime())) return d;
-    return str; // fallback to string if date can't be parsed
+  if (typeof raw === 'number' || raw instanceof Date) return raw;
+  const value = String(raw).trim();
+
+  if (DATE_KEYS.includes(key)) {
+    const dt = new Date(value);
+    return isNaN(dt.getTime()) ? value : dt;
   }
 
-  // Percentage fields — store as decimal (e.g., 3% → 0.03)
-  const pctFields = ['perAnnumEscalation', 'opexPerAnnumEscalation', 'retPerAnnumEscalation'];
-  if (pctFields.includes(key)) {
-    const cleaned = str.replace(/[%$,]/g, '');
-    const num = parseFloat(cleaned);
-    if (!isNaN(num)) return num > 1 ? num / 100 : num;
-    return str;
+  if (PERCENT_KEYS.includes(key)) {
+    const num = parseNumeric(value);
+    if (num == null) return value;
+    return num > 1 ? num / 100 : num;
   }
 
-  // Dollar/number fields
-  const numFields = [
-    'leaseTerm', 'baseRent', 'squareFootage', 'totalMonthsFreeRent',
-    'opexBaseYear', 'opexBuildingBaseAmount', 'opexTenantBaseAmount',
-    'retBuildingBaseAmount', 'retTenantBaseAmount',
-  ];
-  if (numFields.includes(key)) {
-    const cleaned = str.replace(/[$,]/g, '');
-    const num = parseFloat(cleaned);
-    if (!isNaN(num)) return num;
-    return str;
+  if (NUMBER_KEYS.includes(key)) {
+    const num = parseNumeric(value);
+    return num == null ? value : num;
   }
 
-  // Escalation month — try to parse as a number (month index) or leave as string
-  if (key === 'escalationMonth') {
-    const monthNum = parseInt(str);
-    if (!isNaN(monthNum) && monthNum >= 1 && monthNum <= 12) return monthNum;
-    // Try month name → number
-    const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-    const idx = monthNames.findIndex(m => str.toLowerCase().startsWith(m));
-    if (idx >= 0) return idx + 1;
-    return str;
+  if (key === 'escalationMonth' || key === 'opexBaseMonth') {
+    return monthNameToNumber(value) ?? value;
   }
 
-  // opexBaseMonth — similar to escalation month
-  if (key === 'opexBaseMonth') {
-    const monthNum = parseInt(str);
-    if (!isNaN(monthNum)) return monthNum;
-    const monthNames = ['january','february','march','april','may','june','july','august','september','october','november','december'];
-    const idx = monthNames.findIndex(m => str.toLowerCase().startsWith(m));
-    if (idx >= 0) return idx + 1;
-    return str;
-  }
-
-  return str;
+  return value;
 }
 
 export async function exportCashflowToExcel(markdown: string, filename: string) {
   const inputs = extractInputsFromMarkdown(markdown);
 
-  // Load the template
-  const wb = new ExcelJS.Workbook();
-  try {
-    const response = await fetch('/templates/Cash_Flow_Analysis.xlsx');
-    const arrayBuffer = await response.arrayBuffer();
-    await wb.xlsx.load(arrayBuffer);
-  } catch (err) {
-    console.error('Failed to load template:', err);
-    throw new Error('Could not load Cash Flow template');
+  const workbook = new ExcelJS.Workbook();
+  const response = await fetch('/templates/Cash_Flow_Analysis.xlsx');
+  const arrayBuffer = await response.arrayBuffer();
+  await workbook.xlsx.load(arrayBuffer);
+
+  const sheet = workbook.getWorksheet(1);
+  if (!sheet) throw new Error('No worksheet found in template');
+
+  for (const [key, cellRef] of Object.entries(INPUT_CELLS) as [InputKey, string][]) {
+    const coerced = coerceValue(key, inputs[key]);
+    if (coerced == null) continue;
+    sheet.getCell(cellRef).value = coerced as ExcelJS.CellValue;
   }
 
-  const ws = wb.getWorksheet(1);
-  if (!ws) throw new Error('No worksheet found in template');
-
-  // Inject each extracted value into the correct cell
-  for (const [key, cellRef] of Object.entries(INPUT_CELLS)) {
-    const rawValue = inputs[key];
-    const value = coerceValue(key, rawValue);
-
-    if (value != null) {
-      const cell = ws.getCell(cellRef);
-      cell.value = value as ExcelJS.CellValue;
-    }
-  }
-
-  // Save
-  const buffer = await wb.xlsx.writeBuffer();
+  const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
+
   saveAs(blob, `${filename.replace(/[^a-zA-Z0-9_\- ]/g, '')}.xlsx`);
 }

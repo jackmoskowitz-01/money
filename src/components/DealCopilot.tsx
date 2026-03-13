@@ -725,16 +725,16 @@ export default function DealCopilot() {
     let assistantSoFar = '';
 
     try {
+      // Load templates for context
+      const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx);
+
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        // Load templates for context
-        const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
-        const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx);
-
         body: JSON.stringify({
           messages: updatedMessages,
           context: fullContext,

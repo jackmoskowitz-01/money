@@ -42,6 +42,7 @@ const ProtectedRoutes = () => {
   return (
     <>
       <Navbar />
+      <DealCopilot />
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/map" element={<MapView />} />

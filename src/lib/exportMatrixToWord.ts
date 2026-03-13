@@ -24,7 +24,7 @@ const WHITE = 'FFFFFF';
 const LIGHT_BORDER = 'B0B0B0';
 const TABLE_FONT = 'Calibri';
 
-const thinBorder = {
+const thinBorder: Record<string, { style: (typeof BorderStyle)[keyof typeof BorderStyle]; size: number; color: string }> = {
   top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
   bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
   left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },

@@ -175,6 +175,123 @@ async function searchMarket(query: string): Promise<string> {
   }
 }
 
+// Geocode an address using Google Places/Geocoding API
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; formatted: string } | null> {
+  const apiKey = Deno.env.get("GOOGLE_PLACES_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    const resp = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`
+    );
+    const data = await resp.json();
+    if (data.status === "OK" && data.results?.length > 0) {
+      const r = data.results[0];
+      return {
+        lat: r.geometry.location.lat,
+        lng: r.geometry.location.lng,
+        formatted: r.formatted_address,
+      };
+    }
+  } catch (e) {
+    console.error("Geocode error:", e);
+  }
+  return null;
+}
+
+// Haversine distance in miles
+function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Nearest-neighbor tour optimization
+function optimizeTourOrder(
+  locations: { address: string; formatted: string; lat: number; lng: number }[],
+  startIdx: number = 0
+): { order: typeof locations; legs: { from: string; to: string; miles: number }[]; totalMiles: number } {
+  const visited = new Set<number>();
+  const order: typeof locations = [];
+  const legs: { from: string; to: string; miles: number }[] = [];
+  let current = startIdx;
+  let totalMiles = 0;
+
+  visited.add(current);
+  order.push(locations[current]);
+
+  while (visited.size < locations.length) {
+    let nearest = -1;
+    let nearestDist = Infinity;
+
+    for (let i = 0; i < locations.length; i++) {
+      if (visited.has(i)) continue;
+      const d = haversine(locations[current].lat, locations[current].lng, locations[i].lat, locations[i].lng);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = i;
+      }
+    }
+
+    if (nearest === -1) break;
+    legs.push({
+      from: locations[current].formatted,
+      to: locations[nearest].formatted,
+      miles: Math.round(nearestDist * 10) / 10,
+    });
+    totalMiles += nearestDist;
+    visited.add(nearest);
+    order.push(locations[nearest]);
+    current = nearest;
+  }
+
+  return { order, legs, totalMiles: Math.round(totalMiles * 10) / 10 };
+}
+
+async function planTour(addresses: string[], startAddress?: string): Promise<string> {
+  if (!addresses || addresses.length < 2) return "Please provide at least 2 addresses to plan a tour.";
+
+  const allAddresses = startAddress ? [startAddress, ...addresses.filter(a => a !== startAddress)] : addresses;
+
+  // Geocode all addresses in parallel
+  const geocoded = await Promise.all(allAddresses.map(async (addr) => {
+    const geo = await geocodeAddress(addr);
+    return geo ? { address: addr, formatted: geo.formatted, lat: geo.lat, lng: geo.lng } : null;
+  }));
+
+  const valid = geocoded.filter(Boolean) as { address: string; formatted: string; lat: number; lng: number }[];
+  const failed = allAddresses.filter((_, i) => !geocoded[i]);
+
+  if (valid.length < 2) return "Could not geocode enough addresses. Please check them and try again.";
+
+  const { order, legs, totalMiles } = optimizeTourOrder(valid, 0);
+
+  let result = `## 🗺️ Optimized Tour Route\n\n`;
+  result += `**${order.length} stops** · **${totalMiles} miles** total\n\n`;
+
+  order.forEach((loc, i) => {
+    result += `**${i + 1}.** ${loc.formatted}\n`;
+    if (i < legs.length) {
+      result += `   ↓ *${legs[i].miles} mi*\n`;
+    }
+  });
+
+  if (failed.length > 0) {
+    result += `\n⚠️ Could not locate: ${failed.join(", ")}`;
+  }
+
+  // Add Google Maps directions link
+  const waypoints = order.map(l => encodeURIComponent(l.formatted));
+  const mapsUrl = `https://www.google.com/maps/dir/${waypoints.join("/")}`;
+  result += `\n\n[📍 Open in Google Maps](${mapsUrl})`;
+
+  return result;
+}
+
 async function executeTool(name: string, args: any): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -183,6 +300,9 @@ async function executeTool(name: string, args: any): Promise<string> {
   switch (name) {
     case "search_market":
       return searchMarket(args.query);
+
+    case "plan_tour":
+      return planTour(args.addresses, args.start_address);
 
     case "move_deal_stage": {
       const { error } = await supabase

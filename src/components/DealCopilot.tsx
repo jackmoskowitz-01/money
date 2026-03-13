@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
+import { exportToWord } from '@/lib/exportToWord';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
@@ -509,6 +510,29 @@ export default function DealCopilot() {
   // Check if message contains email draft
   const hasEmailDraft = (content: string) => {
     return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
+  };
+
+  // Check if message is a substantial report (abstract, comp, commission, etc.)
+  const isExportableReport = (content: string) => {
+    const len = content.length;
+    if (len < 300) return false;
+    const hasStructure = (content.match(/^#{1,3}\s/gm) || []).length >= 3;
+    const hasTable = content.includes('|') && content.includes('---');
+    return hasStructure || hasTable;
+  };
+
+  // Export message as Word document
+  const handleExportWord = async (content: string) => {
+    // Derive filename from first heading or generic
+    const h1Match = content.match(/^#\s+(.+)/m);
+    const filename = h1Match?.[1]?.slice(0, 50) || 'Copilot_Report';
+    try {
+      await exportToWord(content, filename);
+      toast.success('Word document downloaded');
+    } catch (e) {
+      console.error('Word export error:', e);
+      toast.error('Failed to export document');
+    }
   };
 
   // Export email draft
@@ -1238,6 +1262,16 @@ IMPORTANT: Fill in EVERY section. Extract ALL data from the lease. For rent sche
                           >
                             {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
+                          {isExportableReport(msg.content) && (
+                            <button
+                              onClick={() => handleExportWord(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export as Word document"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>Word</span>
+                            </button>
+                          )}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}

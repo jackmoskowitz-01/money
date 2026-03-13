@@ -332,7 +332,7 @@ const MapView = () => {
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createCircleMarker(L, building, log, thresholdDays, map);
+        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled, map);
         if (marker) mockMarkersRef.current.push(marker);
       });
 

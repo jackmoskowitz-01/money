@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch, LayoutGrid } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },
@@ -8,6 +8,7 @@ const COMMANDS = [
   { command: '/search', description: 'Search live market data', icon: Search, template: 'Search for ' },
   { command: '/tour', description: 'Plan an optimized tour route', icon: MapPin, template: 'Plan a tour for these addresses: ' },
   { command: '/comp', description: 'Financial Analysis', icon: BarChart3, template: 'Compare these lease offers: ' },
+  { command: '/matrix', description: 'Deal terms matrix', icon: LayoutGrid, template: 'Create a deal terms matrix for ' },
   { command: '/commission', description: 'Calculate broker commission from a lease', icon: Calculator, template: 'Calculate the commission on the attached lease' },
   { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
   { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },

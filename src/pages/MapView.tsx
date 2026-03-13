@@ -673,6 +673,73 @@ const MapView = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Territory Threshold Modal */}
+      <AnimatePresence>
+        {showThresholdModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowThresholdModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-80 rounded-xl border border-border bg-card p-5 shadow-xl"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Radar className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Territory Tracker</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Buildings you haven't viewed within this timeframe will turn <span className="text-destructive font-semibold">red</span> on the map.
+              </p>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Stale threshold (days)
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={thresholdInput}
+                onChange={e => setThresholdInput(e.target.value)}
+                className="h-9 text-sm mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setShowThresholdModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    const days = Math.max(1, Math.min(365, parseInt(thresholdInput, 10) || 14));
+                    setThresholdDays(days);
+                    setThreshold(days);
+                    setShowThresholdModal(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" /> Viewed recently</span>
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" /> Needs attention</span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

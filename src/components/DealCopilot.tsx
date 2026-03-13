@@ -878,14 +878,16 @@ CRITICAL INSTRUCTIONS:
 
 
   const sendFileMessage = async (question: string) => {
-    if (!attachedFile || isLoading) return;
+    if (attachedFiles.length === 0 || isLoading) return;
 
-    const fileName = attachedFile.name;
-    const userContent = question.trim() || `Analyze this document: ${fileName}`;
+    const fileNames = attachedFiles.map(f => f.name);
+    const fileLabel = fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`;
+    const userContent = question.trim() || `Analyze ${fileLabel}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
     const isComp = /\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent);
-    const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
+    const fileChips = fileNames.map(n => `📎 **${n}**`).join('\n');
+    const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
@@ -899,13 +901,13 @@ CRITICAL INSTRUCTIONS:
 
     try {
       const formData = new FormData();
-      formData.append('file', attachedFile);
+      attachedFiles.forEach(f => formData.append('file', f));
       if (isTemplateSave) {
         formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
       } else if (isAbstract) {
         formData.append('question', `Run a complete lease abstract on this document.\n\n${LEASE_ABSTRACT_TEMPLATE}`);
       } else if (isComp) {
-        formData.append('question', `Run a complete Comparison of Options analysis on this document.\n\n${COMP_COMPARISON_TEMPLATE}`);
+        formData.append('question', `Run a complete Comparison of Options analysis on these documents.\n\n${COMP_COMPARISON_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }
@@ -975,15 +977,14 @@ CRITICAL INSTRUCTIONS:
       // Auto-save template if this was a template save request
       if (isTemplateSave && assistantSoFar) {
         const nameMatch = userContent.match(/template\s+(?:called|named)\s+["']?([^"'\n]+)["']?/i);
-        const templateName = nameMatch?.[1]?.trim() || fileName.replace(/\.[^.]+$/, '');
-        // Detect type from filename or content
+        const templateName = nameMatch?.[1]?.trim() || fileNames[0].replace(/\.[^.]+$/, '');
         let templateType = 'general';
-        if (/commission/i.test(userContent) || /commission/i.test(fileName)) templateType = 'commission';
-        else if (/abstract|loi|lease/i.test(userContent) || /abstract|loi|lease/i.test(fileName)) templateType = 'deal_abstract';
-        else if (/comp|comparison/i.test(userContent) || /comp/i.test(fileName)) templateType = 'comp_report';
-        else if (/proposal/i.test(userContent) || /proposal/i.test(fileName)) templateType = 'proposal';
+        if (/commission/i.test(userContent) || /commission/i.test(fileNames[0])) templateType = 'commission';
+        else if (/abstract|loi|lease/i.test(userContent) || /abstract|loi|lease/i.test(fileNames[0])) templateType = 'deal_abstract';
+        else if (/comp|comparison/i.test(userContent) || /comp/i.test(fileNames[0])) templateType = 'comp_report';
+        else if (/proposal/i.test(userContent) || /proposal/i.test(fileNames[0])) templateType = 'proposal';
         
-        await saveTemplate(templateName, assistantSoFar, fileName, templateType);
+        await saveTemplate(templateName, assistantSoFar, fileNames[0], templateType);
       }
     } catch (e: any) {
       console.error('File analysis error:', e);
@@ -993,9 +994,9 @@ CRITICAL INSTRUCTIONS:
 
     // Keep file context for multi-turn follow-ups
     if (assistantSoFar) {
-      setFileContext(`Previously analyzed file "${fileName}". Summary:\n${assistantSoFar.slice(0, 2000)}`);
+      setFileContext(`Previously analyzed files: ${fileNames.join(', ')}. Summary:\n${assistantSoFar.slice(0, 2000)}`);
     }
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setIsLoading(false);
   };
 

@@ -787,8 +787,9 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
   const MATRIX_TEMPLATE = `You are producing a professional "Summary of Proposals" deal terms matrix. Follow this EXACT structure and formatting. Extract every detail from the attached lease/proposal documents.
 
 ## RULES:
-- Create ONE column per offer/proposal attached. If a single building has multiple offer rounds (Landlord Offer #1A, #1B, etc.), each gets its own column.
-- If only ONE document is attached, produce a single-column matrix (just the row labels on the left and one data column).
+- Create ONE column per distinct offer option. If a single lease document contains multiple options (e.g. Option A and Option B, or a 5-year term vs a 10-year term), each option MUST get its own column. Label them clearly (e.g. "Landlord Offer #1A", "Landlord Offer #1B").
+- If a single building has multiple rounds of offers (Landlord Offer #1, #2, etc.), each round gets its own column.
+- If only ONE document is attached with ONE option, produce a single-column matrix. If it has multiple options, produce multiple columns under the same address.
 - If multiple documents are attached, produce as many columns as there are distinct offers — group columns by building address.
 - Use EXACT dollar amounts, dates, percentages, and SF numbers from the documents. Never round or approximate.
 - If a field is not stated in a document, write "Silent" or leave blank.
@@ -798,9 +799,9 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 # Summary of Proposals
 
-| | [Street Address, City, State] | [Street Address, City, State] | ... |
-|---|---|---|---|
-| **Lease Terms** | **[Offer Label #1]** | **[Offer Label #1]** | ... |
+| | [Street Address, City, State] | [Street Address, City, State] | [Street Address, City, State] | ... |
+|---|---|---|---|---|
+| **Lease Terms** | **Landlord Offer #1A** | **Landlord Offer #1B** | **Landlord Offer #1** | ... |
 | **Premises:** | [XX,XXX RSF] | [XX,XXX RSF] | ... |
 | **Term:** | [X years] | [X years] | ... |
 | **Lease Commencement Date:** | [Month Day, Year] | [Month Day, Year] | ... |

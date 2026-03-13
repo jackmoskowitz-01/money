@@ -472,6 +472,9 @@ const MapView = () => {
                 <StackingPlan building={selectedBuilding} />
               </div>
 
+              {/* Auto-Enrich */}
+              <AutoEnrichBadges tenants={selectedBuilding.tenants} buildingName={selectedBuilding.name} />
+
               {/* Outreach Section */}
               <div className="mb-4 rounded-md border border-border bg-secondary/20 p-3">
                 <div className="flex items-center justify-between mb-2">

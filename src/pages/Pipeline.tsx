@@ -46,6 +46,7 @@ const Pipeline = () => {
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<PipelineItem | null>(null);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Email generation state
   const [emailTouchpoint, setEmailTouchpoint] = useState<Touchpoint | null>(null);

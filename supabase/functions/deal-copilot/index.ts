@@ -475,7 +475,7 @@ serve(async (req) => {
     }
 
     // Default streaming mode (backwards compat)
-    let systemMessage = SYSTEM_PROMPT;
+    let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
     if (context) systemMessage += "\n\n## Current Context\n" + context;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -485,7 +485,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: selectedModel,
         messages: [{ role: "system", content: systemMessage }, ...messages],
         stream: true,
       }),

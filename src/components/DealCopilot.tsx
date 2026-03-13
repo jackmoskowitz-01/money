@@ -82,7 +82,15 @@ export default function DealCopilot() {
   const ttsQueueRef = useRef<string[]>([]);
   const ttsPlayingRef = useRef(false);
   const scribeConnectedRef = useRef(false);
+  const messagesRef = useRef<Msg[]>([]);
+  const isLoadingRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
+
+  // Keep refs in sync with state
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
   // Build context string from pipeline + buildings + page
   const buildContext = useCallback(() => {

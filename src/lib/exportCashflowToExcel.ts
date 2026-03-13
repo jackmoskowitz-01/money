@@ -1,9 +1,9 @@
-import ExcelJS from 'exceljs';
+import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 
 /**
  * Exact input cells in Cash_Flow_Analysis.xlsx.
- * We only write these cells so formulas/formatting remain untouched.
+ * Only these cells are updated.
  */
 const INPUT_CELLS = {
   leaseCommencementDate: 'H10',
@@ -27,6 +27,8 @@ const INPUT_CELLS = {
 
 type InputKey = keyof typeof INPUT_CELLS;
 type ExtractedInputs = Partial<Record<InputKey, string | number | Date | null>>;
+
+const SPREADSHEET_NS = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
 const KEY_ALIASES: Record<InputKey, string[]> = {
   leaseCommencementDate: ['lease commencement date', 'commencement date'],
@@ -83,7 +85,6 @@ function parseMarkdownLine(line: string): { key: string; value: string } | null 
   const trimmed = line.trim();
   if (!trimmed) return null;
 
-  // Table row: | Key | Value |
   if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
     const cells = trimmed
       .split('|')
@@ -99,7 +100,6 @@ function parseMarkdownLine(line: string): { key: string; value: string } | null 
     }
   }
 
-  // Bullet / plain / bold: - **Key:** value OR **Key:** value OR Key: value
   const colonMatch = trimmed.match(/^(?:[-*]\s+)?(?:\*\*)?([^:|]+?)(?:\*\*)?\s*:\s*(.+)$/);
   if (colonMatch) {
     const key = cleanValue(colonMatch[1]);
@@ -121,7 +121,6 @@ function collectLabeledValues(markdown: string): Map<string, string> {
     const normalizedKey = normalizeLabel(parsed.key);
     if (!normalizedKey || !parsed.value) continue;
 
-    // Keep first occurrence by default; many reports repeat values in other sections.
     if (!map.has(normalizedKey)) {
       map.set(normalizedKey, parsed.value);
     }
@@ -136,7 +135,6 @@ function findByAliases(values: Map<string, string>, aliases: string[]): string |
 
     if (values.has(normalizedAlias)) return values.get(normalizedAlias) ?? null;
 
-    // Fuzzy fallback: alias contained in key or key contained in alias.
     for (const [k, v] of values.entries()) {
       if (k.includes(normalizedAlias) || normalizedAlias.includes(k)) {
         return v;
@@ -170,7 +168,6 @@ function extractInputsFromMarkdown(markdown: string): ExtractedInputs {
     if (found) inputs[key] = found;
   });
 
-  // Derive escalation month from commencement date if not explicitly provided.
   if (!inputs.escalationMonth && typeof inputs.leaseCommencementDate === 'string') {
     const dt = new Date(inputs.leaseCommencementDate);
     if (!isNaN(dt.getTime())) inputs.escalationMonth = dt.getMonth() + 1;
@@ -190,15 +187,23 @@ function parseNumeric(value: string): number | null {
   return isNegative ? -number : number;
 }
 
-function coerceValue(key: InputKey, raw: string | number | Date | null | undefined): string | number | Date | null {
+function toExcelSerial(date: Date): number {
+  const utc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const epoch = Date.UTC(1899, 11, 30);
+  return (utc - epoch) / 86400000;
+}
+
+function coerceValue(key: InputKey, raw: string | number | Date | null | undefined): string | number | null {
   if (raw == null || raw === '') return null;
 
-  if (typeof raw === 'number' || raw instanceof Date) return raw;
+  if (typeof raw === 'number') return raw;
+  if (raw instanceof Date) return toExcelSerial(raw);
+
   const value = String(raw).trim();
 
   if (DATE_KEYS.includes(key)) {
     const dt = new Date(value);
-    return isNaN(dt.getTime()) ? value : dt;
+    return isNaN(dt.getTime()) ? value : toExcelSerial(dt);
   }
 
   if (PERCENT_KEYS.includes(key)) {
@@ -219,25 +224,134 @@ function coerceValue(key: InputKey, raw: string | number | Date | null | undefin
   return value;
 }
 
+function parseXml(xml: string): Document {
+  return new DOMParser().parseFromString(xml, 'application/xml');
+}
+
+function serializeXml(doc: Document): string {
+  return new XMLSerializer().serializeToString(doc);
+}
+
+function createNode(doc: Document, name: string): Element {
+  return doc.createElementNS(SPREADSHEET_NS, name);
+}
+
+function getFirstSheetPath(workbookXml: string, relsXml: string): string {
+  const workbookDoc = parseXml(workbookXml);
+  const relsDoc = parseXml(relsXml);
+
+  const sheet = workbookDoc.getElementsByTagName('sheet')[0];
+  if (!sheet) throw new Error('Template workbook has no sheets');
+
+  const relId = sheet.getAttribute('r:id') || sheet.getAttribute('id');
+  if (!relId) throw new Error('Unable to resolve first sheet relationship id');
+
+  const relationships = Array.from(relsDoc.getElementsByTagName('Relationship'));
+  const rel = relationships.find((r) => r.getAttribute('Id') === relId);
+  if (!rel) throw new Error('Unable to resolve worksheet target path');
+
+  const target = rel.getAttribute('Target');
+  if (!target) throw new Error('Worksheet target missing in relationship');
+
+  return target.startsWith('/') ? target.slice(1) : `xl/${target.replace(/^\.?\//, '')}`;
+}
+
+function getOrCreateRow(doc: Document, rowNumber: number): Element {
+  const rows = Array.from(doc.getElementsByTagName('row'));
+  const existing = rows.find((row) => Number(row.getAttribute('r')) === rowNumber);
+  if (existing) return existing;
+
+  const sheetData = doc.getElementsByTagName('sheetData')[0];
+  if (!sheetData) throw new Error('sheetData node missing in worksheet xml');
+
+  const row = createNode(doc, 'row');
+  row.setAttribute('r', String(rowNumber));
+  sheetData.appendChild(row);
+  return row;
+}
+
+function getOrCreateCell(doc: Document, row: Element, cellRef: string): Element {
+  const cells = Array.from(row.getElementsByTagName('c'));
+  const existing = cells.find((c) => c.getAttribute('r') === cellRef);
+  if (existing) return existing;
+
+  const cell = createNode(doc, 'c');
+  cell.setAttribute('r', cellRef);
+  row.appendChild(cell);
+  return cell;
+}
+
+function clearCellValueNodes(cell: Element): void {
+  const children = Array.from(cell.childNodes);
+  children.forEach((child) => {
+    if (child.nodeType !== Node.ELEMENT_NODE) return;
+    const name = (child as Element).localName;
+    if (name === 'v' || name === 'is' || name === 'f') {
+      cell.removeChild(child);
+    }
+  });
+}
+
+function setCellValue(doc: Document, cellRef: string, value: string | number): void {
+  const rowMatch = cellRef.match(/([A-Z]+)(\d+)/i);
+  if (!rowMatch) return;
+
+  const rowNumber = Number(rowMatch[2]);
+  const row = getOrCreateRow(doc, rowNumber);
+  const cell = getOrCreateCell(doc, row, cellRef.toUpperCase());
+
+  clearCellValueNodes(cell);
+
+  if (typeof value === 'number') {
+    cell.removeAttribute('t');
+    const v = createNode(doc, 'v');
+    v.textContent = String(value);
+    cell.appendChild(v);
+    return;
+  }
+
+  cell.setAttribute('t', 'inlineStr');
+  const is = createNode(doc, 'is');
+  const t = createNode(doc, 't');
+  t.textContent = value;
+  is.appendChild(t);
+  cell.appendChild(is);
+}
+
 export async function exportCashflowToExcel(markdown: string, filename: string) {
   const inputs = extractInputsFromMarkdown(markdown);
 
-  const workbook = new ExcelJS.Workbook();
-  const response = await fetch('/templates/Cash_Flow_Analysis.xlsx');
-  const arrayBuffer = await response.arrayBuffer();
-  await workbook.xlsx.load(arrayBuffer);
+  const templateResponse = await fetch('/templates/Cash_Flow_Analysis.xlsx');
+  const templateBuffer = await templateResponse.arrayBuffer();
 
-  const sheet = workbook.getWorksheet(1);
-  if (!sheet) throw new Error('No worksheet found in template');
+  const zip = await JSZip.loadAsync(templateBuffer);
+
+  const workbookFile = zip.file('xl/workbook.xml');
+  const relsFile = zip.file('xl/_rels/workbook.xml.rels');
+  if (!workbookFile || !relsFile) {
+    throw new Error('Invalid template: workbook metadata missing');
+  }
+
+  const workbookXml = await workbookFile.async('text');
+  const relsXml = await relsFile.async('text');
+  const firstSheetPath = getFirstSheetPath(workbookXml, relsXml);
+
+  const sheetFile = zip.file(firstSheetPath);
+  if (!sheetFile) throw new Error(`Invalid template: worksheet not found (${firstSheetPath})`);
+
+  const sheetXml = await sheetFile.async('text');
+  const sheetDoc = parseXml(sheetXml);
 
   for (const [key, cellRef] of Object.entries(INPUT_CELLS) as [InputKey, string][]) {
     const coerced = coerceValue(key, inputs[key]);
     if (coerced == null) continue;
-    sheet.getCell(cellRef).value = coerced as ExcelJS.CellValue;
+    setCellValue(sheetDoc, cellRef, coerced);
   }
 
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
+  zip.file(firstSheetPath, serializeXml(sheetDoc));
+
+  const updatedWorkbook = await zip.generateAsync({ type: 'arraybuffer' });
+  const blob = new Blob([updatedWorkbook], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 

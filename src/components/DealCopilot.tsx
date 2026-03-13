@@ -20,8 +20,10 @@ import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import { exportToWord } from '@/lib/exportToWord';
 import { exportMatrixToWord } from '@/lib/exportMatrixToWord';
 import { exportCashflowToExcel } from '@/lib/exportCashflowToExcel';
+import { isPitchDeck, parsePitchSlides, exportPitchToPptx } from '@/lib/exportPitchToPptx';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
+import PitchDeckViewer from '@/components/copilot/PitchDeckViewer';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;

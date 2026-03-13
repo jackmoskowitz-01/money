@@ -814,7 +814,7 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 CRITICAL INSTRUCTIONS:
 1. Use the EXACT row labels shown above in bold. Do not rename or reorder them.
-2. Building addresses go across the TOP as column headers.
+2. Use the PHYSICAL STREET ADDRESS (e.g. "4510 Buckeystown Pike, Frederick, MD") as column headers — NOT the building name or property name. Always include street number, street name, city, and state.
 3. If a building has multiple offers (e.g., 5-year and 10-year), create separate columns under the same address header.
 4. Calculate Average Annual Cost Over Term = (Base Rent × SF × Term Years, adjusted for escalations and abatement) ÷ Term Years. Show as a dollar amount.
 5. Include ALL offers from ALL attached documents — never omit or merge columns.

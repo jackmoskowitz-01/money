@@ -186,6 +186,9 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
+        {/* ═══ AI Daily Briefing ═══ */}
+        <DailyBriefing />
+
         {/* ═══ Stat Cards ═══ */}
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((stat, i) => {

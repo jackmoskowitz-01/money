@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.elevenlabs-scribe-token]
 verify_jwt = false
+
+[functions.daily-briefing]
+verify_jwt = false

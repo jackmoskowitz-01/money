@@ -127,15 +127,37 @@ const Pipeline = () => {
     setDragOverStage(stage);
   };
 
-  const handleDragLeave = () => {
-    setDragOverStage(null);
+  const handleCardDragOver = (e: React.DragEvent, stage: PipelineStage, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverStage(stage);
+    setDragOverIndex(index);
   };
 
-  const handleDrop = (e: React.DragEvent, stage: PipelineStage) => {
+  const handleDragLeave = () => {
+    setDragOverStage(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, stage: PipelineStage) => {
     e.preventDefault();
     setDragOverStage(null);
-    if (dragItem && dragItem.stage !== stage) {
-      handleStageChange(dragItem.tenantId, dragItem.buildingId, stage);
+    setDragOverIndex(null);
+    if (!dragItem) return;
+
+    if (dragItem.stage === stage && dragOverIndex !== null) {
+      // Reorder within same column
+      const stageItems = itemsByStage(stage);
+      const fromIndex = stageItems.findIndex(
+        i => i.tenantId === dragItem.tenantId && i.buildingId === dragItem.buildingId
+      );
+      if (fromIndex !== -1 && fromIndex !== dragOverIndex) {
+        await reorderInStage(stage, fromIndex, dragOverIndex);
+      }
+    } else if (dragItem.stage !== stage) {
+      // Move to different column
+      await handleStageChange(dragItem.tenantId, dragItem.buildingId, stage);
     }
     setDragItem(null);
   };
@@ -143,6 +165,7 @@ const Pipeline = () => {
   const handleDragEnd = () => {
     setDragItem(null);
     setDragOverStage(null);
+    setDragOverIndex(null);
   };
 
   // Email generation for touchpoint

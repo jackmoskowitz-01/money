@@ -125,12 +125,22 @@ const MapView = () => {
   }, [googleBuildings]);
 
   const filteredBuildings = useMemo(() => {
-    if (!searchQuery.trim()) return allBuildingsList;
+    let list = allBuildingsList;
+    
+    // When tracker is enabled, only show stale (red) buildings
+    if (trackerEnabled) {
+      const log = getVisitLog();
+      const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+      list = list.filter(b => !log[b.id] || (Date.now() - log[b.id]) > thresholdMs);
+    }
+    
+    // Then apply search
+    if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
-    return allBuildingsList.filter(b =>
+    return list.filter(b =>
       b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
     );
-  }, [searchQuery, allBuildingsList]);
+  }, [searchQuery, allBuildingsList, trackerEnabled, thresholdDays]);
 
   // Record visit + clear state when building changes
   useEffect(() => {

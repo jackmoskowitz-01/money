@@ -352,7 +352,7 @@ function buildMatrixDocument(data: MatrixData): Document {
 
   // Build the table
   const table = new Table({
-    rows: [addressRow, imageRow, offerRow, ...dataRows],
+    rows: [imageRow, addressRow, offerRow, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     layout: TableLayoutType.FIXED,
   });

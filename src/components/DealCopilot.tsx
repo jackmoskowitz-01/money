@@ -71,7 +71,7 @@ export default function DealCopilot() {
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
-  const [fileContext, setFileContext] = useState<string | null>(null);
+  const [pitchDeckContent, setPitchDeckContent] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);

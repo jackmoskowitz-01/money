@@ -13,6 +13,7 @@ import {
   PageOrientation,
   TableLayoutType,
   Header,
+  HeightRule,
 } from 'docx';
 import { saveAs } from 'file-saver';
 
@@ -39,9 +40,7 @@ const noBorder = {
 
 interface MatrixData {
   title: string;
-  /** Each group = one building address with N offers underneath */
   buildingGroups: { address: string; offerLabels: string[] }[];
-  /** Row label -> array of values (one per total column) */
   rows: { label: string; values: string[] }[];
   footnotes?: string;
 }
@@ -59,17 +58,14 @@ interface MatrixData {
 export function parseMatrixMarkdown(markdown: string): MatrixData {
   const lines = markdown.split('\n');
   
-  // Extract title
   const titleMatch = markdown.match(/^#\s+(.+)/m);
   const title = titleMatch?.[1]?.replace(/\*+/g, '').trim() || 'Summary of Proposals';
 
-  // Find the table lines
   const tableLines: string[] = [];
   let inTable = false;
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('|')) {
-      // Skip separator lines
       if (/^\|[\s-:]+\|/.test(trimmed) || /^[\s-:|]+$/.test(trimmed)) {
         inTable = true;
         continue;
@@ -77,7 +73,6 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
       inTable = true;
       tableLines.push(trimmed);
     } else if (inTable && trimmed === '') {
-      // End of table
       break;
     }
   }
@@ -89,20 +84,15 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
   const parseCells = (line: string) =>
     line.split('|').map(c => c.trim()).filter((_, i, arr) => i > 0 && i < arr.length - 1);
 
-  // Row 0: building addresses (may have empty cells where same building spans)
   const addressCells = parseCells(tableLines[0]);
-  // Row 1: offer labels (Lease Terms | Offer #1A | Offer #1B | ...)
   const offerCells = parseCells(tableLines[1]);
 
-  // Build building groups by detecting address spans
-  const totalCols = addressCells.length; // includes the label column
-  const dataCols = totalCols - 1; // exclude first label column
+  const totalCols = addressCells.length;
+  const dataCols = totalCols - 1;
   const buildingGroups: MatrixData['buildingGroups'] = [];
 
-  // Clean markdown bold from cells
   const clean = (s: string) => s.replace(/\*+/g, '').trim();
 
-  // Parse addresses — skip first cell (empty label column)
   let currentAddr = '';
   let currentOffers: string[] = [];
   for (let c = 1; c < totalCols; c++) {
@@ -123,7 +113,6 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
     buildingGroups.push({ address: currentAddr, offerLabels: currentOffers });
   }
 
-  // Parse data rows (skip first two header rows)
   const rows: MatrixData['rows'] = [];
   for (let r = 2; r < tableLines.length; r++) {
     const cells = parseCells(tableLines[r]);
@@ -131,12 +120,10 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
     const label = clean(cells[0]);
     if (!label || /^lease\s*terms$/i.test(label)) continue;
     const values = cells.slice(1).map(c => clean(c));
-    // Pad to match column count
     while (values.length < dataCols) values.push('');
     rows.push({ label, values });
   }
 
-  // Extract footnotes (anything after the table)
   const tableEnd = markdown.lastIndexOf('|');
   const afterTable = markdown.slice(tableEnd + 1).trim();
   const footnotesMatch = afterTable.match(/(?:notes?|footnotes?|analysis)[:\s]*([\s\S]+)/i);
@@ -147,15 +134,18 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
 
 /** Build the Word document matching the Cresa Summary of Proposals template */
 function buildMatrixDocument(data: MatrixData): Document {
-  const { title, buildingGroups, rows, footnotes } = data;
+  const { buildingGroups, rows, footnotes } = data;
   const totalDataCols = buildingGroups.reduce((sum, g) => sum + g.offerLabels.length, 0);
-  const totalCols = totalDataCols + 1; // +1 for label column
 
-  const labelColWidth = 2800;
-  const remainingWidth = 11500 - labelColWidth; // landscape ~14000, but leave margins
+  const labelColWidth = 3200;
+  const remainingWidth = 13000 - labelColWidth;
   const dataColWidth = Math.floor(remainingWidth / Math.max(totalDataCols, 1));
 
-  // Helper to create a cell with specific styling
+  // Row height for data rows (generous spacing)
+  const dataRowHeight = 480; // ~0.33 inches
+  const headerRowHeight = 520;
+  const imageRowHeight = 1800; // ~1.25 inches for building image placeholder
+
   const makeCell = (
     text: string,
     opts: {
@@ -168,20 +158,22 @@ function buildMatrixDocument(data: MatrixData): Document {
       columnSpan?: number;
       verticalAlign?: "center" | "top" | "bottom";
       borders?: typeof thinBorder;
+      spacingBefore?: number;
+      spacingAfter?: number;
     } = {}
   ): TableCell => {
     return new TableCell({
       children: [
         new Paragraph({
           alignment: opts.alignment || AlignmentType.CENTER,
-          spacing: { before: 60, after: 60 },
+          spacing: { before: opts.spacingBefore ?? 100, after: opts.spacingAfter ?? 100 },
           children: [
             new TextRun({
               text,
               bold: opts.bold ?? false,
               color: opts.color || '222222',
               font: TABLE_FONT,
-              size: opts.fontSize || 18,
+              size: opts.fontSize || 20,
             }),
           ],
         }),
@@ -196,12 +188,17 @@ function buildMatrixDocument(data: MatrixData): Document {
     });
   };
 
-  // === ROW 1: Building address header (dark navy, white text, merged cells) ===
+  // === ROW 1: Building address header (dark navy) ===
   const addressRowCells: TableCell[] = [
     makeCell('', {
       width: labelColWidth,
       bgColor: NAVY,
-      borders: { ...thinBorder, top: { style: BorderStyle.SINGLE, size: 2, color: NAVY }, left: { style: BorderStyle.SINGLE, size: 2, color: NAVY } },
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
+        left: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
+        right: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
+      },
     }),
   ];
 
@@ -211,10 +208,12 @@ function buildMatrixDocument(data: MatrixData): Document {
         bold: true,
         color: WHITE,
         bgColor: NAVY,
-        fontSize: 20,
+        fontSize: 22,
         columnSpan: group.offerLabels.length,
         width: dataColWidth * group.offerLabels.length,
         alignment: AlignmentType.CENTER,
+        spacingBefore: 140,
+        spacingAfter: 140,
         borders: {
           top: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
           bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
@@ -225,16 +224,67 @@ function buildMatrixDocument(data: MatrixData): Document {
     );
   }
 
-  const addressRow = new TableRow({ children: addressRowCells, tableHeader: true });
+  const addressRow = new TableRow({
+    children: addressRowCells,
+    tableHeader: true,
+    height: { value: headerRowHeight, rule: HeightRule.ATLEAST },
+  });
 
-  // === ROW 2: Offer labels (gray background) ===
+  // === ROW 2: Building image placeholder row ===
+  const imageRowCells: TableCell[] = [
+    makeCell('', {
+      width: labelColWidth,
+      bgColor: WHITE,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+      },
+    }),
+  ];
+
+  for (const group of buildingGroups) {
+    imageRowCells.push(
+      new TableCell({
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 200, after: 200 },
+            children: [
+              new TextRun({
+                text: '[Building Image]',
+                color: 'AAAAAA',
+                font: TABLE_FONT,
+                size: 18,
+                italics: true,
+              }),
+            ],
+          }),
+        ],
+        width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
+        columnSpan: group.offerLabels.length,
+        verticalAlign: "center",
+        borders: thinBorder,
+      })
+    );
+  }
+
+  const imageRow = new TableRow({
+    children: imageRowCells,
+    height: { value: imageRowHeight, rule: HeightRule.ATLEAST },
+  });
+
+  // === ROW 3: Offer labels (gray background) ===
   const offerRowCells: TableCell[] = [
     makeCell('Lease Terms', {
       bold: true,
       width: labelColWidth,
       bgColor: GRAY_HEADER,
       alignment: AlignmentType.LEFT,
-      fontSize: 18,
+      fontSize: 20,
+      spacingBefore: 120,
+      spacingAfter: 120,
     }),
   ];
 
@@ -244,13 +294,19 @@ function buildMatrixDocument(data: MatrixData): Document {
         makeCell(label, {
           bold: true,
           bgColor: GRAY_HEADER,
-          fontSize: 18,
+          fontSize: 20,
+          spacingBefore: 120,
+          spacingAfter: 120,
         })
       );
     }
   }
 
-  const offerRow = new TableRow({ children: offerRowCells, tableHeader: true });
+  const offerRow = new TableRow({
+    children: offerRowCells,
+    tableHeader: true,
+    height: { value: headerRowHeight, rule: HeightRule.ATLEAST },
+  });
 
   // === DATA ROWS ===
   const dataRows = rows.map((row) => {
@@ -260,7 +316,9 @@ function buildMatrixDocument(data: MatrixData): Document {
         color: GOLD_LABEL,
         width: labelColWidth,
         alignment: AlignmentType.LEFT,
-        fontSize: 18,
+        fontSize: 20,
+        spacingBefore: 100,
+        spacingAfter: 100,
       }),
     ];
 
@@ -268,17 +326,22 @@ function buildMatrixDocument(data: MatrixData): Document {
       cells.push(
         makeCell(row.values[c] || '', {
           alignment: AlignmentType.CENTER,
-          fontSize: 18,
+          fontSize: 20,
+          spacingBefore: 100,
+          spacingAfter: 100,
         })
       );
     }
 
-    return new TableRow({ children: cells });
+    return new TableRow({
+      children: cells,
+      height: { value: dataRowHeight, rule: HeightRule.ATLEAST },
+    });
   });
 
   // Build the table
   const table = new Table({
-    rows: [addressRow, offerRow, ...dataRows],
+    rows: [addressRow, imageRow, offerRow, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     layout: TableLayoutType.FIXED,
   });
@@ -290,7 +353,7 @@ function buildMatrixDocument(data: MatrixData): Document {
       new Paragraph({ spacing: { before: 300 } }),
       new Paragraph({
         children: [
-          new TextRun({ text: footnotes, font: TABLE_FONT, size: 16, italics: true, color: '666666' }),
+          new TextRun({ text: footnotes, font: TABLE_FONT, size: 18, italics: true, color: '666666' }),
         ],
       })
     );
@@ -303,14 +366,14 @@ function buildMatrixDocument(data: MatrixData): Document {
           page: {
             size: {
               orientation: PageOrientation.LANDSCAPE,
-              width: 15840, // 11" in twips
-              height: 12240, // 8.5"
+              width: 12240,  // 8.5" (short edge)
+              height: 15840, // 11" (long edge)
             },
             margin: {
               top: 1200,
               bottom: 720,
-              left: 1080,
-              right: 1080,
+              left: 900,
+              right: 900,
             },
           },
         },
@@ -334,7 +397,7 @@ function buildMatrixDocument(data: MatrixData): Document {
           }),
         },
         children: [
-          new Paragraph({ spacing: { after: 300 } }),
+          new Paragraph({ spacing: { after: 200 } }),
           table,
           ...footnoteParagraphs,
         ],
@@ -348,7 +411,6 @@ export async function exportMatrixToWord(markdownContent: string, filename: stri
   const data = parseMatrixMarkdown(markdownContent);
 
   if (data.buildingGroups.length === 0 || data.rows.length === 0) {
-    // Fallback to generic export if parsing fails
     const { exportToWord } = await import('./exportToWord');
     return exportToWord(markdownContent, filename);
   }

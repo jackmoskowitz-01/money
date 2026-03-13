@@ -77,6 +77,7 @@ export default function DealCopilot() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingAutoExportRef = useRef(false);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -1249,6 +1250,9 @@ For each line item, also produce a monthly breakdown:
     }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
+    // Track if this is a /comp command for auto Word export
+    const isCompCommand = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim());
+    pendingAutoExportRef.current = isCompCommand;
     // Use ref for latest messages to avoid stale closure
     const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);
@@ -1365,6 +1369,11 @@ For each line item, also produce a monthly breakdown:
       // Persist assistant message
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+        // Auto-export to Word for /comp commands
+        if (pendingAutoExportRef.current && isExportableReport(assistantSoFar)) {
+          pendingAutoExportRef.current = false;
+          setTimeout(() => handleExportWord(assistantSoFar), 500);
+        }
       }
 
       // Refresh pipeline after any response (in case tools were called)

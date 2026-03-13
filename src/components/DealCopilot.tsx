@@ -923,7 +923,8 @@ CRITICAL INSTRUCTIONS:
     const userContent = question.trim() || `Analyze ${fileLabel}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
-    const isComp = /\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent);
+    const isMatrix = /\/matrix/i.test(userContent) || (/matrix/i.test(userContent) && /deal\s*terms/i.test(userContent)) || /summary\s*of\s*proposals/i.test(userContent);
+    const isComp = !isMatrix && (/\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent));
     const fileChips = fileNames.map(n => `📎 **${n}**`).join('\n');
     const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
     const updatedMessages = [...messages, userMsg];

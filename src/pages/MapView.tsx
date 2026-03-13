@@ -333,7 +333,7 @@ const MapView = () => {
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                className="overflow-hidden flex-1 flex flex-col min-h-0"
               >
                 <div className="px-3 pb-2 space-y-2">
                   <div className="relative">

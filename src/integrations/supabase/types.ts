@@ -196,6 +196,7 @@ export type Database = {
           prospect_phone: string | null
           prospect_sqft: number | null
           sent_touchpoints: Json
+          sort_order: number
           stage: string
           tenant_id: string
           updated_at: string
@@ -213,6 +214,7 @@ export type Database = {
           prospect_phone?: string | null
           prospect_sqft?: number | null
           sent_touchpoints?: Json
+          sort_order?: number
           stage?: string
           tenant_id: string
           updated_at?: string
@@ -230,6 +232,7 @@ export type Database = {
           prospect_phone?: string | null
           prospect_sqft?: number | null
           sent_touchpoints?: Json
+          sort_order?: number
           stage?: string
           tenant_id?: string
           updated_at?: string

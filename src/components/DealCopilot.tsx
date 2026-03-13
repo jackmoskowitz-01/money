@@ -417,6 +417,10 @@ export default function DealCopilot() {
       if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
     }
 
+    // Keep file context for multi-turn follow-ups
+    if (assistantSoFar) {
+      setFileContext(`Previously analyzed file "${fileName}". Summary:\n${assistantSoFar.slice(0, 2000)}`);
+    }
     setAttachedFile(null);
     setIsLoading(false);
   };

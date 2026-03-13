@@ -210,6 +210,23 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "generate_pitch_deck",
+      description: "Generate a pitch deck/presentation for a prospect or deal. Gathers all relevant data (prospect info, building details, pipeline status, market comps) to build a comprehensive pitch. Use when user says /pitch, 'pitch deck', 'presentation', or 'generate slides'.",
+      parameters: {
+        type: "object",
+        properties: {
+          prospect_name: { type: "string", description: "Name of the prospect/tenant to pitch to" },
+          tenant_id: { type: "string", description: "Optional tenant ID for precise lookup" },
+          building_id: { type: "string", description: "Optional building ID" },
+        },
+        required: ["prospect_name"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 async function searchMarket(query: string): Promise<string> {

@@ -813,7 +813,13 @@ export default function DealCopilot() {
             )}
 
             {/* Input */}
-            <div className="border-t border-border px-3 py-3">
+            <div className="border-t border-border px-3 py-3 relative">
+              {/* Slash commands popup */}
+              <CopilotSlashCommands
+                input={input}
+                visible={showSlashCommands}
+                onSelect={handleSlashSelect}
+              />
               {/* Attached file chip */}
               {attachedFile && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
@@ -827,6 +833,19 @@ export default function DealCopilot() {
                     className="text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {/* File context indicator */}
+              {fileContext && !attachedFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-muted bg-muted/30 px-2.5 py-1">
+                  <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-[10px] text-muted-foreground flex-1 truncate">File context active — ask follow-up questions</span>
+                  <button
+                    onClick={() => setFileContext(null)}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               )}
@@ -859,9 +878,9 @@ export default function DealCopilot() {
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={e => handleInputChange(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Ask anything or give a command...'}
+                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -874,14 +893,14 @@ export default function DealCopilot() {
                 <Button
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
-                  onClick={() => sendMessage(input)}
+                  onClick={() => { setShowSlashCommands(false); sendMessage(input); }}
                   disabled={(!input.trim() && !attachedFile) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
               <p className="mt-1.5 text-[9px] text-muted-foreground/60 text-center">
-                Drop files to analyze · Search market data · Move deals · Draft outreach
+                Type <span className="font-mono text-muted-foreground/80">/</span> for commands · Drop files · Voice input · Pin responses
               </p>
             </div>
           </motion.div>

@@ -23,7 +23,7 @@ import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 
-type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string };
+type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
 const SUGGESTIONS = [
   "What's my best next move with McKinsey?",

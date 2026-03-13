@@ -222,7 +222,7 @@ export default function DealCopilot() {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
 
-  // Interrupt TTS — stop audio immediately
+  // Interrupt TTS — stop audio immediately and clear pending state
   const interruptTTS = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -230,6 +230,12 @@ export default function DealCopilot() {
       audioRef.current = null;
     }
     setIsSpeaking(false);
+    // Clear any queued transcript so old content doesn't re-send
+    pendingTranscriptRef.current = '';
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
   }, []);
 
   // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)

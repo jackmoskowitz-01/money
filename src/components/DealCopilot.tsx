@@ -1541,7 +1541,7 @@ CRITICAL INSTRUCTIONS:
                   value={input}
                   onChange={e => handleInputChange(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
+                  placeholder={attachedFiles.length > 0 ? `Ask about ${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}

@@ -513,6 +513,11 @@ export default function DealCopilot() {
     return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
   };
 
+  // Check if message is a matrix report
+  const isMatrixReport = (content: string) => {
+    return /summary\s*of\s*proposals/i.test(content) && content.includes('|') && content.includes('---');
+  };
+
   // Check if message is a substantial report (abstract, comp, commission, etc.)
   const isExportableReport = (content: string) => {
     const len = content.length;

@@ -1,15 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import {
-  MessageSquare, X, Send, Loader2, Sparkles, Trash2,
-  ChevronDown,
+  Send, Loader2, Sparkles, Trash2, ChevronDown,
+  Mic, MicOff, Copy, Check, Bell, BellOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { buildings } from '@/data/mockData';
 import { usePipeline } from '@/hooks/usePipeline';
 import { stageLabels } from '@/data/pipelineData';
 import { leaseComps } from '@/data/pipelineData';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
@@ -20,25 +24,65 @@ const SUGGESTIONS = [
   "What's my best next move with McKinsey?",
   "Draft a check-in email for Deloitte",
   "Which prospects are expiring soon?",
-  "What are average Class A rents in East End?",
+  "What are current Class A rents in East End?",
+  "Move McKinsey to Meeting Held",
+  "Create a follow-up task for Deloitte",
 ];
 
+// Page context mapping
+const PAGE_CONTEXT: Record<string, string> = {
+  '/': 'User is on the Dashboard — showing overview of pipeline, tasks, and activity.',
+  '/pipeline': 'User is on the Pipeline page — viewing the Kanban board of all deals.',
+  '/prospects': 'User is on the Prospects page — browsing prospect lists and search.',
+  '/map': 'User is on the Map View — exploring DC buildings on an interactive map.',
+  '/news': 'User is on the News/Intel page — viewing market news and company intelligence.',
+  '/tasks': 'User is on the Tasks page — managing follow-ups and to-dos.',
+  '/scoop': 'User is on the Scoop Board — collaborative broker intelligence sharing.',
+  '/activities': 'User is on the Activity Logger — tracking calls, tours, emails, meetings.',
+  '/settings': 'User is on Settings — managing profile and preferences.',
+};
+
 export default function DealCopilot() {
+  const { user } = useAuth();
+  const location = useLocation();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(true);
+  const [proactiveAlert, setProactiveAlert] = useState<string | null>(null);
+  const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const { pipeline } = usePipeline();
+  const recognitionRef = useRef<any>(null);
+  const { pipeline, refetch: refetchPipeline } = usePipeline();
 
-  // Build context string from pipeline + buildings
+  // Build context string from pipeline + buildings + page
   const buildContext = useCallback(() => {
     const parts: string[] = [];
 
+    // Current page context
+    const pageCtx = PAGE_CONTEXT[location.pathname];
+    if (pageCtx) parts.push(`### Current Page\n${pageCtx}`);
+
+    // Tenant detail page
+    const tenantMatch = location.pathname.match(/\/building\/(.+)\/tenant\/(.+)/);
+    if (tenantMatch) {
+      const [, bId, tId] = tenantMatch;
+      const building = buildings.find(b => b.id === bId);
+      const tenant = building?.tenants.find(t => t.id === tId);
+      if (tenant && building) {
+        parts.push(`### Currently Viewing Prospect\n- **${tenant.name}** at ${building.name} | ${tenant.sqft.toLocaleString()} SF | Floor ${tenant.floor} | Lease expires: ${tenant.leaseExpiration} | Contact: ${tenant.contactName} (${tenant.contactTitle}) | Industry: ${tenant.industry} | Headcount: ${tenant.headcount}`);
+      }
+    }
+
     // Pipeline summary
     if (pipeline.length > 0) {
-      parts.push('### Pipeline Deals');
+      parts.push('\n### Pipeline Deals');
+      const stageGroups: Record<string, number> = {};
       pipeline.forEach(item => {
         const building = buildings.find(b => b.id === item.buildingId);
         const tenant = building?.tenants.find(t => t.id === item.tenantId);
@@ -47,16 +91,18 @@ export default function DealCopilot() {
         const sqft = item.isManual ? item.prospectSqft : tenant?.sqft;
         const expiry = tenant?.leaseExpiration || 'N/A';
         const stage = stageLabels[item.stage];
+        stageGroups[item.stage] = (stageGroups[item.stage] || 0) + 1;
         const notes = item.notes.length > 0 ? ` | Notes: ${item.notes.slice(-2).join('; ')}` : '';
         const touchpoints = (item.sentTouchpoints || []).length;
-        parts.push(`- **${name}** at ${company} | ${sqft?.toLocaleString()} SF | Stage: ${stage} | Lease expires: ${expiry} | ${touchpoints} touchpoints sent${notes}`);
+        parts.push(`- **${name}** (tenant_id: ${item.tenantId}, building_id: ${item.buildingId}) at ${company} | ${sqft?.toLocaleString()} SF | Stage: ${stage} | Lease expires: ${expiry} | ${touchpoints} touchpoints sent${notes}`);
       });
+      parts.push(`\nPipeline summary: ${Object.entries(stageGroups).map(([s, c]) => `${stageLabels[s as keyof typeof stageLabels]}: ${c}`).join(', ')}`);
     }
 
     // Buildings summary
     parts.push('\n### Key Buildings');
     buildings.forEach(b => {
-      parts.push(`- **${b.name}** (${b.address}) | ${b.class} Class | ${b.sqft.toLocaleString()} SF | Vacancy: ${b.vacancyRate}% | Owner: ${b.owner} | ${b.tenants.length} tenants`);
+      parts.push(`- **${b.name}** (id: ${b.id}, ${b.address}) | ${b.class} Class | ${b.sqft.toLocaleString()} SF | Vacancy: ${b.vacancyRate}% | Owner: ${b.owner} | ${b.tenants.length} tenants`);
     });
 
     // Top lease comps
@@ -66,21 +112,142 @@ export default function DealCopilot() {
     });
 
     return parts.join('\n');
-  }, [pipeline]);
+  }, [pipeline, location.pathname]);
 
-  // Auto-scroll to bottom
+  // Load conversation history
+  useEffect(() => {
+    if (!user || hasLoadedHistory) return;
+    const loadHistory = async () => {
+      const { data } = await supabase
+        .from('copilot_messages')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const convId = (data[0] as any).conversation_id;
+        const { data: msgs } = await supabase
+          .from('copilot_messages')
+          .select('*')
+          .eq('conversation_id', convId)
+          .order('created_at', { ascending: true });
+
+        if (msgs && msgs.length > 0) {
+          setConversationId(convId);
+          setMessages(msgs.map((m: any) => ({ role: m.role, content: m.content })));
+        }
+      }
+      setHasLoadedHistory(true);
+    };
+    loadHistory();
+  }, [user, hasLoadedHistory]);
+
+  // Save message to DB
+  const persistMessage = useCallback(async (msg: Msg, convId: string) => {
+    if (!user) return;
+    await supabase.from('copilot_messages').insert({
+      user_id: user.id,
+      conversation_id: convId,
+      role: msg.role,
+      content: msg.content,
+    } as any);
+  }, [user]);
+
+  // Proactive alerts check
+  useEffect(() => {
+    if (!alertsEnabled || pipeline.length === 0) return;
+
+    const now = new Date();
+    const expiringThisMonth = pipeline.filter(item => {
+      const building = buildings.find(b => b.id === item.buildingId);
+      const tenant = building?.tenants.find(t => t.id === item.tenantId);
+      if (!tenant) return false;
+      const parts = tenant.leaseExpiration.split('/');
+      if (parts.length < 2) return false;
+      const expMonth = parseInt(parts[0]);
+      const expYear = parseInt(parts[1]);
+      return expYear === now.getFullYear() && expMonth === now.getMonth() + 1;
+    });
+
+    const overdueFollowUps = pipeline.flatMap(item =>
+      (item.sentTouchpoints || [])
+        .filter(tp => tp.followUpDate && tp.followUpDate < now.toISOString())
+    );
+
+    if (expiringThisMonth.length > 0 || overdueFollowUps.length > 0) {
+      const alerts: string[] = [];
+      if (expiringThisMonth.length > 0) alerts.push(`${expiringThisMonth.length} lease(s) expire this month`);
+      if (overdueFollowUps.length > 0) alerts.push(`${overdueFollowUps.length} overdue follow-up(s)`);
+      setProactiveAlert(alerts.join(' · '));
+    }
+  }, [pipeline, alertsEnabled]);
+
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // Focus input when opened
+  // Focus input
   useEffect(() => {
     if (open && inputRef.current) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [open]);
+
+  // Voice input
+  const toggleVoice = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      toast.error('Voice input not supported in this browser');
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      setIsRecording(false);
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (e: any) => {
+      const transcript = Array.from(e.results).map((r: any) => r[0].transcript).join('');
+      setInput(transcript);
+    };
+
+    recognition.onend = () => setIsRecording(false);
+    recognition.onerror = () => {
+      setIsRecording(false);
+      toast.error('Voice recognition failed');
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  };
+
+  // Copy message
+  const handleCopy = (content: string, index: number) => {
+    navigator.clipboard.writeText(content);
+    setCopiedIndex(index);
+    toast.success('Copied to clipboard');
+    setTimeout(() => setCopiedIndex(null), 2000);
+  };
+
+  // Clear conversation
+  const handleClear = async () => {
+    setMessages([]);
+    if (conversationId && user) {
+      await supabase.from('copilot_messages').delete().eq('conversation_id', conversationId).eq('user_id', user.id);
+    }
+    setConversationId(null);
+  };
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -90,6 +257,13 @@ export default function DealCopilot() {
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
+
+    // Generate or reuse conversation ID
+    const convId = conversationId || crypto.randomUUID();
+    if (!conversationId) setConversationId(convId);
+
+    // Persist user message
+    await persistMessage(userMsg, convId);
 
     let assistantSoFar = '';
 
@@ -103,6 +277,7 @@ export default function DealCopilot() {
         body: JSON.stringify({
           messages: updatedMessages,
           context: buildContext(),
+          mode: 'tools',
         }),
       });
 
@@ -111,50 +286,69 @@ export default function DealCopilot() {
         throw new Error(err.error || `Request failed (${resp.status})`);
       }
 
-      if (!resp.body) throw new Error('No response body');
+      const contentType = resp.headers.get('content-type') || '';
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      if (contentType.includes('application/json')) {
+        // Tool results returned as JSON
+        const data = await resp.json();
+        assistantSoFar = data.content || 'Action completed.';
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantSoFar }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
+        // Refresh pipeline if action was taken
+        if (data.actions?.some((a: string) => ['move_deal_stage', 'add_deal_note'].includes(a))) {
+          refetchPipeline();
+        }
+      } else {
+        // Streaming response
+        if (!resp.body) throw new Error('No response body');
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        let idx: number;
-        while ((idx = buffer.indexOf('\n')) !== -1) {
-          let line = buffer.slice(0, idx);
-          buffer = buffer.slice(idx + 1);
-          if (line.endsWith('\r')) line = line.slice(0, -1);
-          if (line.startsWith(':') || line.trim() === '') continue;
-          if (!line.startsWith('data: ')) continue;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
 
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') break;
+          let idx: number;
+          while ((idx = buffer.indexOf('\n')) !== -1) {
+            let line = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 1);
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
 
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantSoFar += content;
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'assistant') {
-                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-                }
-                return [...prev, { role: 'assistant', content: assistantSoFar }];
-              });
-            }
-          } catch {
-            // partial JSON, wait for more
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantSoFar += content;
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant') {
+                    return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                  }
+                  return [...prev, { role: 'assistant', content: assistantSoFar }];
+                });
+              }
+            } catch { /* partial */ }
           }
         }
       }
+
+      // Persist assistant message
+      if (assistantSoFar) {
+        await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+      }
+
+      // Refresh pipeline after any response (in case tools were called)
+      refetchPipeline();
     } catch (e: any) {
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');
-      // Remove user message if no response
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
       }
@@ -183,9 +377,12 @@ export default function DealCopilot() {
             <Button
               onClick={() => setOpen(true)}
               size="lg"
-              className="h-14 w-14 rounded-full shadow-lg shadow-primary/25 p-0"
+              className="h-14 w-14 rounded-full shadow-lg shadow-primary/25 p-0 relative"
             >
               <Sparkles className="h-6 w-6" />
+              {proactiveAlert && alertsEnabled && (
+                <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-destructive animate-pulse" />
+              )}
             </Button>
           </motion.div>
         )}
@@ -199,7 +396,7 @@ export default function DealCopilot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 right-6 z-50 flex flex-col w-[420px] h-[600px] max-h-[80vh] rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 overflow-hidden"
+            className="fixed bottom-6 right-6 z-50 flex flex-col w-[420px] h-[620px] max-h-[80vh] rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
@@ -209,16 +406,25 @@ export default function DealCopilot() {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-foreground">DealFlow Copilot</h3>
-                  <p className="text-[10px] text-muted-foreground">Strategy · Outreach · Market Intel</p>
+                  <p className="text-[10px] text-muted-foreground">Strategy · Actions · Market Intel</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground"
+                  onClick={() => setAlertsEnabled(!alertsEnabled)}
+                  title={alertsEnabled ? 'Disable proactive alerts' : 'Enable proactive alerts'}
+                >
+                  {alertsEnabled ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
+                </Button>
                 {messages.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => setMessages([])}
+                    onClick={handleClear}
                     title="Clear chat"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -235,6 +441,22 @@ export default function DealCopilot() {
               </div>
             </div>
 
+            {/* Proactive alert banner */}
+            {proactiveAlert && alertsEnabled && messages.length === 0 && (
+              <div className="px-4 py-2 border-b border-warning/20 bg-warning/5">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-3.5 w-3.5 text-warning shrink-0" />
+                  <p className="text-[11px] text-foreground">{proactiveAlert}</p>
+                </div>
+                <button
+                  onClick={() => sendMessage(`I have ${proactiveAlert}. What should I prioritize?`)}
+                  className="mt-1 text-[10px] text-primary hover:underline"
+                >
+                  Ask Copilot what to prioritize →
+                </button>
+              </div>
+            )}
+
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
               {messages.length === 0 ? (
@@ -245,10 +467,10 @@ export default function DealCopilot() {
                   <div>
                     <p className="text-sm font-medium text-foreground">How can I help?</p>
                     <p className="mt-1 text-xs text-muted-foreground max-w-[260px]">
-                      I know your pipeline, buildings, and market data. Ask me anything.
+                      I know your pipeline, can search live market data, execute actions, and draft outreach.
                     </p>
                   </div>
-                  <div className="w-full space-y-2 mt-2">
+                  <div className="w-full space-y-1.5 mt-2">
                     {SUGGESTIONS.map((s, i) => (
                       <button
                         key={i}
@@ -264,21 +486,33 @@ export default function DealCopilot() {
                 messages.map((msg, i) => (
                   <div
                     key={i}
-                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
                   >
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
-                        msg.role === 'user'
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-secondary/50 text-foreground rounded-bl-md'
-                      }`}
-                    >
-                      {msg.role === 'assistant' ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
-                        </div>
-                      ) : (
-                        <p>{msg.content}</p>
+                    <div className="relative">
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
+                          msg.role === 'user'
+                            ? 'bg-primary text-primary-foreground rounded-br-md'
+                            : 'bg-secondary/50 text-foreground rounded-bl-md'
+                        }`}
+                      >
+                        {msg.role === 'assistant' ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm">
+                            <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          </div>
+                        ) : (
+                          <p>{msg.content}</p>
+                        )}
+                      </div>
+                      {/* Copy button for assistant messages */}
+                      {msg.role === 'assistant' && (
+                        <button
+                          onClick={() => handleCopy(msg.content, i)}
+                          className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                        >
+                          {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                          {copiedIndex === i ? 'Copied' : 'Copy'}
+                        </button>
                       )}
                     </div>
                   </div>
@@ -287,7 +521,10 @@ export default function DealCopilot() {
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
                 <div className="flex justify-start">
                   <div className="bg-secondary/50 rounded-2xl rounded-bl-md px-4 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Thinking...</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -296,12 +533,21 @@ export default function DealCopilot() {
             {/* Input */}
             <div className="border-t border-border px-3 py-3">
               <div className="flex items-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={`h-10 w-10 rounded-xl p-0 shrink-0 ${isRecording ? 'text-destructive bg-destructive/10' : 'text-muted-foreground'}`}
+                  onClick={toggleVoice}
+                  title={isRecording ? 'Stop recording' : 'Voice input'}
+                >
+                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about deals, market data, or draft outreach..."
+                  placeholder={isRecording ? 'Listening...' : 'Ask anything or give a command...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -320,6 +566,9 @@ export default function DealCopilot() {
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="mt-1.5 text-[9px] text-muted-foreground/60 text-center">
+                Can search market data, move deals, create tasks, and draft outreach
+              </p>
             </div>
           </motion.div>
         )}

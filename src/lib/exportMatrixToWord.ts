@@ -346,15 +346,28 @@ function buildMatrixDocument(data: MatrixData): Document {
       }),
     ];
 
-    for (let c = 0; c < totalDataCols; c++) {
-      cells.push(
-        makeCell(row.values[c] || '', {
-          alignment: AlignmentType.CENTER,
-          fontSize: 20,
-          spacingBefore: 100,
-          spacingAfter: 100,
-        })
-      );
+    let colIdx = 0;
+    for (const group of buildingGroups) {
+      const subColWidth = getSubColWidth(group);
+      for (let i = 0; i < group.offerLabels.length; i++) {
+        const isLastInGroup = i === group.offerLabels.length - 1;
+        cells.push(
+          makeCell(row.values[colIdx] || '', {
+            alignment: AlignmentType.CENTER,
+            fontSize: 20,
+            width: subColWidth,
+            spacingBefore: 100,
+            spacingAfter: 100,
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              right: { style: BorderStyle.SINGLE, size: isLastInGroup ? 3 : 1, color: isLastInGroup ? NAVY : LIGHT_BORDER },
+            },
+          })
+        );
+        colIdx++;
+      }
     }
 
     return new TableRow({

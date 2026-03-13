@@ -635,8 +635,9 @@ export default function DealCopilot() {
         },
         body: JSON.stringify({
           messages: updatedMessages,
-          context: buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : ''),
+          context: voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '')),
           mode: 'tools',
+          voiceMode: voiceModeRef.current,
         }),
       });
 

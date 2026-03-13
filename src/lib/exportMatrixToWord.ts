@@ -87,20 +87,41 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
   const addressCells = parseCells(tableLines[0]);
   const offerCells = parseCells(tableLines[1]);
 
-  const totalCols = addressCells.length;
-  const dataCols = totalCols - 1;
-  const buildingGroups: MatrixData['buildingGroups'] = [];
-
   const clean = (s: string) => s.replace(/\*+/g, '').trim();
 
+  const inferredDataCols = Math.max(
+    1,
+    addressCells.length - 1,
+    offerCells.length - 1,
+    ...tableLines.slice(2).map((line) => Math.max(parseCells(line).length - 1, 0))
+  );
+
+  const rawAddresses = addressCells.slice(1).map(clean);
+  const rawOffers = offerCells.slice(1).map(clean);
+
+  const addresses: string[] = [];
+  let lastAddress = '';
+  for (let i = 0; i < inferredDataCols; i++) {
+    const candidate = rawAddresses[i] || '';
+    if (candidate) lastAddress = candidate;
+    addresses.push(candidate || lastAddress || 'Unknown Address');
+  }
+
+  const offers: string[] = [];
+  for (let i = 0; i < inferredDataCols; i++) {
+    offers.push(rawOffers[i] || `Offer #${i + 1}`);
+  }
+
+  const buildingGroups: MatrixData['buildingGroups'] = [];
   let currentAddr = '';
   let currentOffers: string[] = [];
-  for (let c = 1; c < totalCols; c++) {
-    const addr = clean(addressCells[c]);
-    const offer = clean(offerCells[c]);
-    
-    if (addr && addr !== currentAddr) {
-      if (currentAddr) {
+
+  for (let i = 0; i < inferredDataCols; i++) {
+    const addr = addresses[i];
+    const offer = offers[i];
+
+    if (!currentAddr || addr !== currentAddr) {
+      if (currentOffers.length > 0) {
         buildingGroups.push({ address: currentAddr, offerLabels: currentOffers });
       }
       currentAddr = addr;
@@ -109,7 +130,8 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
       currentOffers.push(offer);
     }
   }
-  if (currentAddr) {
+
+  if (currentOffers.length > 0) {
     buildingGroups.push({ address: currentAddr, offerLabels: currentOffers });
   }
 
@@ -117,10 +139,11 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
   for (let r = 2; r < tableLines.length; r++) {
     const cells = parseCells(tableLines[r]);
     if (cells.length === 0) continue;
+
     const label = clean(cells[0]);
     if (!label || /^lease\s*terms$/i.test(label)) continue;
-    const values = cells.slice(1).map(c => clean(c));
-    while (values.length < dataCols) values.push('');
+
+    const values = Array.from({ length: inferredDataCols }, (_, i) => clean(cells[i + 1] || ''));
     rows.push({ label, values });
   }
 

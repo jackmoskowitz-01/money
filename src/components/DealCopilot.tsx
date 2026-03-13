@@ -226,6 +226,33 @@ export default function DealCopilot() {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
 
+  // Silence timer — after user stops speaking, auto-send after a pause
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTranscriptRef = useRef('');
+
+  const normalizeSpeech = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const isLikelyEcho = (heard: string, spoken: string) => {
+    const h = normalizeSpeech(heard);
+    const s = normalizeSpeech(spoken);
+    if (!h || !s) return false;
+
+    // Direct substring match catches most speaker feedback loops
+    if (s.includes(h) || h.includes(s)) return true;
+
+    const hWords = h.split(' ').filter(w => w.length > 2);
+    const sWords = new Set(s.split(' ').filter(w => w.length > 2));
+    if (hWords.length === 0) return false;
+
+    const overlap = hWords.filter(w => sWords.has(w)).length;
+    return overlap / hWords.length >= 0.7;
+  };
+
   // Interrupt TTS — stop audio immediately and clear pending state
   const interruptTTS = useCallback(() => {
     if (audioRef.current) {
@@ -233,8 +260,9 @@ export default function DealCopilot() {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    isSpeakingRef.current = false;
+    currentSpokenTextRef.current = '';
     setIsSpeaking(false);
-    // Clear any queued transcript so old content doesn't re-send
     pendingTranscriptRef.current = '';
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
@@ -245,6 +273,8 @@ export default function DealCopilot() {
   // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)
   const speakText = useCallback(async (text: string) => {
     if (!voiceModeRef.current) return;
+    isSpeakingRef.current = true;
+    currentSpokenTextRef.current = text;
     setIsSpeaking(true);
 
     try {
@@ -266,12 +296,16 @@ export default function DealCopilot() {
 
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        isSpeakingRef.current = false;
+        currentSpokenTextRef.current = '';
         setIsSpeaking(false);
         audioRef.current = null;
       };
 
       audio.onerror = () => {
         URL.revokeObjectURL(audioUrl);
+        isSpeakingRef.current = false;
+        currentSpokenTextRef.current = '';
         setIsSpeaking(false);
         audioRef.current = null;
       };
@@ -279,14 +313,11 @@ export default function DealCopilot() {
       await audio.play();
     } catch (e) {
       console.error('TTS error:', e);
+      isSpeakingRef.current = false;
+      currentSpokenTextRef.current = '';
       setIsSpeaking(false);
     }
   }, []);
-
-  // Silence timer — after user stops speaking, auto-send after a pause
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingTranscriptRef = useRef('');
-  const processedResultsRef = useRef(0); // Track how many results we've already processed
 
   // Start continuous listening (always-on mic for voice mode)
   const startContinuousListening = useCallback(() => {

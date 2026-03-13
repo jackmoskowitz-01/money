@@ -166,7 +166,7 @@ function buildMatrixDocument(data: MatrixData): Document {
       alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
       fontSize?: number;
       columnSpan?: number;
-      verticalAlign?: (typeof VerticalAlign)[keyof typeof VerticalAlign];
+      verticalAlign?: "center" | "top" | "bottom";
       borders?: typeof thinBorder;
     } = {}
   ): TableCell => {

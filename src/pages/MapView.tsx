@@ -476,19 +476,13 @@ const MapView = () => {
                 </div>
               )}
               <div className="p-4">
-              <div className="mb-3 flex items-start justify-between">
+              <div className="mb-3">
                 <div>
-                  <h3 className="font-display text-lg font-bold">{selectedBuilding.address}</h3>
+                  <h3 className="font-display text-lg font-bold pr-6">{selectedBuilding.address}</h3>
                   {selectedBuilding.name && selectedBuilding.name !== selectedBuilding.address && (
                     <p className="text-xs text-muted-foreground">{selectedBuilding.name}</p>
                   )}
                 </div>
-                <button
-                  onClick={() => setSelectedBuilding(null)}
-                  className="rounded-md p-1 text-muted-foreground hover:bg-secondary"
-                >
-                  <X className="h-4 w-4" />
-                </button>
               </div>
 
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">

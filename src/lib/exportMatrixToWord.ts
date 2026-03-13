@@ -372,7 +372,7 @@ function buildMatrixDocument(data: MatrixData): Document {
     const cells: TableCell[] = [
       makeCell(row.label, {
         bold: true,
-        color: GOLD_LABEL,
+        color: '1F5C99',
         width: labelColWidth,
         alignment: AlignmentType.LEFT,
         fontSize: 20,

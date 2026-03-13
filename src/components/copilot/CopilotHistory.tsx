@@ -86,7 +86,7 @@ export default function CopilotHistory({ userId, currentConversationId, onLoadCo
         </Button>
       </SheetTrigger>
       <SheetContent side="right" className="w-[320px] p-0 z-[60]">
-        <SheetHeader className="px-4 py-3 border-b border-border">
+        <SheetHeader className="px-4 pr-12 py-3 border-b border-border">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-sm">Conversations</SheetTitle>
             <Button variant="ghost" size="sm" className="h-7 px-2 text-xs gap-1" onClick={handleNew}>

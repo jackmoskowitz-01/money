@@ -158,7 +158,7 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
       const cell = ws.getCell(`${colLetter}${row}`);
       
       // Check if cell has a formula — if so, skip it to preserve the formula
-      if (cell.formula || cell.sharedFormula) {
+      if (cell.formula || (cell as any).sharedFormula) {
         continue;
       }
 

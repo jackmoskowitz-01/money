@@ -37,6 +37,7 @@ You have deep knowledge of DC office submarkets, lease structures, building clas
     - Fill in the template fields with real data from the current request.
     - If no template matches the request type, use your default formatting.
     - When the user says /template or asks to save a template, confirm what was saved and remind them it will be auto-applied to future outputs.
+14. **Pitch Deck Generator**: When the user uses /pitch or asks to generate a pitch deck/presentation, use the generate_pitch_deck tool. This collects prospect, building, pipeline, and market data, then you generate a complete pitch deck. CRITICAL: Format the output with slides separated by ---SLIDE--- markers. Each slide uses markdown: # for title, text for subtitle, - for bullets, | for tables. The first slide MUST be a cover slide. Include 6-10 slides covering: Cover, Market Overview, Property Highlights, Tenant Fit Analysis, Comparable Deals, Financial Summary, Team Credentials, and Next Steps.
 
 ## Available Tools
 You can execute these actions when the user asks:
@@ -48,6 +49,7 @@ You can execute these actions when the user asks:
 - **analyze_comps**: Analyze lease comps for a deal. Use when the user asks about comps, benchmarking, or lease term comparisons. Extracts matching comps by submarket, size range, and building class.
 - **score_deal**: Score/rate a pipeline deal on multiple dimensions. Use when the user says "score", "rate", or "evaluate" a deal.
 - **compare_deals**: Compare multiple pipeline deals side-by-side. Use when the user asks to compare deals or wants to know where to focus.
+- **generate_pitch_deck**: Generate a pitch deck/presentation for a prospect or deal. Use when user says /pitch, "pitch deck", "presentation", or "generate slides". ALWAYS use this tool first to gather data, then format the response with ---SLIDE--- separators.
 
 ## Style Guidelines
 - Be direct and actionable — brokers are busy
@@ -60,6 +62,7 @@ You can execute these actions when the user asks:
 - For deal scores, use a clear scorecard format with ratings and explanations
 - For deal comparisons, use side-by-side markdown tables with a recommendation
 - For commission calculations, present a clear breakdown table with Total Lease Value, Commission %, and Total Commission
+- **For pitch decks**: ALWAYS separate slides with ---SLIDE--- markers. Use markdown formatting within each slide. First slide is always the cover.
 - **When a saved template exists for the output type, ALWAYS use that template's format instead of your default**
 
 ## Page Context
@@ -203,6 +206,23 @@ const TOOLS = [
           deal_count: { type: "number", description: "Number of top deals to compare (default 3)" },
         },
         required: [],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_pitch_deck",
+      description: "Generate a pitch deck/presentation for a prospect or deal. Gathers all relevant data (prospect info, building details, pipeline status, market comps) to build a comprehensive pitch. Use when user says /pitch, 'pitch deck', 'presentation', or 'generate slides'.",
+      parameters: {
+        type: "object",
+        properties: {
+          prospect_name: { type: "string", description: "Name of the prospect/tenant to pitch to" },
+          tenant_id: { type: "string", description: "Optional tenant ID for precise lookup" },
+          building_id: { type: "string", description: "Optional building ID" },
+        },
+        required: ["prospect_name"],
         additionalProperties: false,
       },
     },
@@ -495,6 +515,78 @@ async function compareDeals(args: any): Promise<string> {
   return result;
 }
 
+async function generatePitchDeck(args: any, context: string): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const prospectName = args.prospect_name || "Unknown Prospect";
+
+  // Find deal in pipeline
+  const { data: deals } = await supabase.from("pipeline_deals").select("*");
+  const deal = deals?.find((d: any) =>
+    d.prospect_name?.toLowerCase().includes(prospectName.toLowerCase()) ||
+    d.tenant_id?.toLowerCase().includes(prospectName.toLowerCase())
+  );
+
+  // Find activities for this prospect
+  const { data: activities } = await supabase
+    .from("activities")
+    .select("*")
+    .order("timestamp", { ascending: false })
+    .limit(20);
+
+  const prospectActivities = activities?.filter((a: any) =>
+    deal ? a.tenant_id === deal.tenant_id : false
+  ) || [];
+
+  // Get recent comps
+  // Comps are in context already, so we reference them
+
+  // Search for real-time market intel
+  let marketIntel = "";
+  try {
+    marketIntel = await searchMarket(`${prospectName} commercial real estate Washington DC office market 2024 2025`);
+  } catch { /* silent */ }
+
+  let result = `## 📊 Pitch Deck Data: ${prospectName}\n\n`;
+
+  if (deal) {
+    result += `### Prospect Details\n`;
+    result += `- **Name:** ${deal.prospect_name || deal.tenant_id}\n`;
+    result += `- **Company:** ${deal.prospect_company || "N/A"}\n`;
+    result += `- **Size:** ${deal.prospect_sqft?.toLocaleString() || "N/A"} SF\n`;
+    result += `- **Stage:** ${deal.stage.replace(/_/g, " ")}\n`;
+    result += `- **Building:** ${deal.building_id}\n`;
+    result += `- **Notes:** ${(deal.notes || []).slice(-3).join("; ") || "None"}\n`;
+    result += `- **Touchpoints:** ${(deal.sent_touchpoints || []).length}\n\n`;
+  }
+
+  if (prospectActivities.length > 0) {
+    result += `### Activity History\n`;
+    prospectActivities.slice(0, 5).forEach((a: any) => {
+      result += `- ${new Date(a.timestamp).toLocaleDateString()}: ${a.title} (${a.type})\n`;
+    });
+    result += `\n`;
+  }
+
+  if (marketIntel) {
+    result += `### Market Intelligence\n${marketIntel}\n\n`;
+  }
+
+  result += `### Instructions\nUsing the data above AND the pipeline/building/comp context, generate a professional pitch deck with 7-9 slides using ---SLIDE--- separators. Include:\n`;
+  result += `1. Cover slide with prospect name and date\n`;
+  result += `2. Market Overview (DC vacancy rates, trends, absorption)\n`;
+  result += `3. Property/Portfolio Highlights (buildings, class, amenities)\n`;
+  result += `4. Tenant Fit Analysis (why this space fits their needs)\n`;
+  result += `5. Comparable Deals (recent transactions, benchmarks)\n`;
+  result += `6. Financial Summary (rent projections, TI, escalations)\n`;
+  result += `7. Team & Credentials\n`;
+  result += `8. Recommended Next Steps\n`;
+
+  return result;
+}
+
 async function executeTool(name: string, args: any, context?: string): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -515,6 +607,9 @@ async function executeTool(name: string, args: any, context?: string): Promise<s
 
     case "compare_deals":
       return compareDeals(args);
+
+    case "generate_pitch_deck":
+      return generatePitchDeck(args, context || "");
 
     case "move_deal_stage": {
       const { error } = await supabase

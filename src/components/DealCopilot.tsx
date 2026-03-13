@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines, Download,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines, Download, Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,10 @@ import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import { exportToWord } from '@/lib/exportToWord';
 import { exportMatrixToWord } from '@/lib/exportMatrixToWord';
 import { exportCashflowToExcel } from '@/lib/exportCashflowToExcel';
+import { isPitchDeck, parsePitchSlides, exportPitchToPptx } from '@/lib/exportPitchToPptx';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
+import PitchDeckViewer from '@/components/copilot/PitchDeckViewer';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
@@ -70,6 +72,7 @@ export default function DealCopilot() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [fileContext, setFileContext] = useState<string | null>(null);
+  const [pitchDeckContent, setPitchDeckContent] = useState<string | null>(null);
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -1597,7 +1600,16 @@ For each line item, also produce a monthly breakdown:
                           >
                             {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
-                          {isCashflowReport(msg.content) ? (
+                          {isPitchDeck(msg.content) ? (
+                            <button
+                              onClick={() => setPitchDeckContent(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Open pitch deck viewer"
+                            >
+                              <Maximize2 className="h-3 w-3" />
+                              <span>Present</span>
+                            </button>
+                          ) : isCashflowReport(msg.content) ? (
                             <button
                               onClick={() => handleExportExcel(msg.content)}
                               className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
@@ -1616,6 +1628,20 @@ For each line item, also produce a monthly breakdown:
                               <span>Word</span>
                             </button>
                           ) : null}
+                          {isPitchDeck(msg.content) && (
+                            <button
+                              onClick={async () => {
+                                const slides = parsePitchSlides(msg.content);
+                                await exportPitchToPptx(slides, 'Pitch_Deck');
+                                toast.success('PowerPoint downloaded');
+                              }}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Download as PowerPoint"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>PPTX</span>
+                            </button>
+                          )}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}
@@ -1783,6 +1809,18 @@ For each line item, also produce a monthly breakdown:
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Pitch Deck Viewer */}
+      {pitchDeckContent && (
+        <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-4xl max-h-[85vh]">
+            <PitchDeckViewer
+              slides={parsePitchSlides(pitchDeckContent)}
+              onClose={() => setPitchDeckContent(null)}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

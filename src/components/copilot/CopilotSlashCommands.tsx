@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch, LayoutGrid, TrendingUp } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch, LayoutGrid, TrendingUp, Presentation } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },
@@ -13,6 +13,7 @@ const COMMANDS = [
   { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
   { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },
   { command: '/cashflow', description: 'Generate a lease cash flow analysis', icon: TrendingUp, template: 'Run a cash flow analysis on the attached lease' },
+  { command: '/pitch', description: 'Generate an AI pitch deck for a prospect', icon: Presentation, template: 'Generate a pitch deck for ' },
 ];
 
 interface Props {

@@ -336,8 +336,6 @@ export default function DealCopilot() {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    // Reset processed count for this new recognition session
-    processedResultsRef.current = 0;
 
     recognition.onresult = (e: any) => {
       // If user speaks while AI is talking, interrupt immediately

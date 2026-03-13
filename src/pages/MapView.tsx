@@ -38,6 +38,7 @@ const MapView = () => {
   const [showThresholdModal, setShowThresholdModal] = useState(false);
   const [thresholdInput, setThresholdInput] = useState(String(getThresholdDays()));
   const [visitLog, setVisitLog] = useState(getVisitLog());
+  const [trackerEnabled, setTrackerEnabled] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
@@ -105,8 +106,8 @@ const MapView = () => {
 
     const log = getVisitLog();
     blds.forEach(b => {
-      const marker = createCircleMarker(L, b, log, thresholdDays);
-      googleMarkersRef.current.push(marker);
+      const marker = createMapMarker(L, b, log, thresholdDays, trackerEnabled);
+      if (marker) googleMarkersRef.current.push(marker);
     });
   };
 
@@ -144,50 +145,67 @@ const MapView = () => {
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
 
-  // Helper to create a circle marker with stale coloring
-  const createCircleMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, mapInstance?: any) => {
-    const stale = !log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000;
-    const color = stale ? '#ef4444' : '#3b82f6';
+  // Helper to create a map marker — uses red icon when tracker is on and building is stale
+  const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean, mapInstance?: any) => {
     const targetMap = mapInstance || mapInstanceRef.current;
     if (!targetMap) return null;
-    const marker = L.circleMarker([building.lat, building.lng], {
-      radius: 7,
-      fillColor: color,
-      color: stale ? '#dc2626' : '#2563eb',
-      weight: 2,
-      opacity: 0.9,
-      fillOpacity: 0.7,
+
+    const stale = isTrackerOn && (!log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000);
+
+    const defaultIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const redIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const marker = L.marker([building.lat, building.lng], {
+      icon: stale ? redIcon : defaultIcon,
     }).addTo(targetMap);
+
+    const lastViewedText = !log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`;
     marker.bindPopup(`
       <div style="min-width:180px">
         <strong>${building.address}</strong><br/>
         ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
-        <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span><br/>
-        <span style="font-size:10px;opacity:0.6">${!log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`}</span>
+        <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span>
+        ${isTrackerOn ? `<br/><span style="font-size:10px;opacity:0.6">${lastViewedText}</span>` : ''}
       </div>
     `);
     marker.on('click', () => setSelectedBuilding(building));
     (marker as any)._buildingId = building.id;
+    (marker as any)._defaultIcon = defaultIcon;
+    (marker as any)._redIcon = redIcon;
     return marker;
   }, []);
 
-  // Refresh marker colors when visitLog or threshold changes
-  const refreshMarkerColors = useCallback(() => {
+  // Refresh marker icons when visitLog, threshold, or tracker toggle changes
+  const refreshMarkerIcons = useCallback(() => {
     const log = getVisitLog();
     [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
       const bid = marker._buildingId;
-      if (!bid) return;
-      const stale = !log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000;
-      marker.setStyle({
-        fillColor: stale ? '#ef4444' : '#3b82f6',
-        color: stale ? '#dc2626' : '#2563eb',
-      });
+      if (!bid || !marker._defaultIcon || !marker._redIcon) return;
+      const stale = trackerEnabled && (!log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000);
+      marker.setIcon(stale ? marker._redIcon : marker._defaultIcon);
     });
-  }, [thresholdDays]);
+  }, [thresholdDays, trackerEnabled]);
 
   useEffect(() => {
-    refreshMarkerColors();
-  }, [visitLog, thresholdDays, refreshMarkerColors]);
+    refreshMarkerIcons();
+  }, [visitLog, thresholdDays, trackerEnabled, refreshMarkerIcons]);
 
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{
@@ -314,7 +332,7 @@ const MapView = () => {
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createCircleMarker(L, building, log, thresholdDays, map);
+        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled, map);
         if (marker) mockMarkersRef.current.push(marker);
       });
 
@@ -409,17 +427,18 @@ const MapView = () => {
                   )}
                 </div>
 
-                {/* Territory Threshold Button */}
+                {/* Territory Tracker Button */}
                 <div className="px-3 pb-3">
                   <button
                     onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
-                    className="w-full flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 hover:bg-primary/10 transition-colors"
+                    className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${trackerEnabled ? 'border-primary/40 bg-primary/10 hover:bg-primary/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
                   >
-                    <Radar className="h-4 w-4 text-primary" />
+                    <Radar className={`h-4 w-4 ${trackerEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                     <div className="text-left flex-1">
                       <p className="text-[11px] font-bold text-foreground">Territory Tracker</p>
-                      <p className="text-[10px] text-muted-foreground">Stale after {thresholdDays} days · Red = needs attention</p>
+                      <p className="text-[10px] text-muted-foreground">{trackerEnabled ? `On · Stale after ${thresholdDays} days` : 'Off · Click to configure'}</p>
                     </div>
+                    <div className={`h-2.5 w-2.5 rounded-full ${trackerEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
                   </button>
                 </div>
               </motion.div>
@@ -697,8 +716,19 @@ const MapView = () => {
                 <Radar className="h-5 w-5 text-primary" />
                 <h3 className="text-sm font-bold text-foreground">Territory Tracker</h3>
               </div>
+              {/* Enable toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-xs text-foreground font-medium">Enable tracker</label>
+                <button
+                  onClick={() => setTrackerEnabled(prev => !prev)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${trackerEnabled ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform ${trackerEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
               <p className="text-xs text-muted-foreground mb-3">
-                Buildings you haven't viewed within this timeframe will turn <span className="text-destructive font-semibold">red</span> on the map.
+                When enabled, buildings you haven't viewed within this timeframe will show <span className="text-destructive font-semibold">red pins</span> on the map.
               </p>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                 Stale threshold (days)
@@ -710,7 +740,7 @@ const MapView = () => {
                 value={thresholdInput}
                 onChange={e => setThresholdInput(e.target.value)}
                 className="h-9 text-sm mb-4"
-                autoFocus
+                disabled={!trackerEnabled}
               />
               <div className="flex gap-2">
                 <Button
@@ -719,11 +749,12 @@ const MapView = () => {
                   className="flex-1 text-xs"
                   onClick={() => setShowThresholdModal(false)}
                 >
-                  Cancel
+                  Close
                 </Button>
                 <Button
                   size="sm"
                   className="flex-1 text-xs"
+                  disabled={!trackerEnabled}
                   onClick={() => {
                     const days = Math.max(1, Math.min(365, parseInt(thresholdInput, 10) || 14));
                     setThresholdDays(days);
@@ -734,10 +765,12 @@ const MapView = () => {
                   Apply
                 </Button>
               </div>
-              <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" /> Viewed recently</span>
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" /> Needs attention</span>
-              </div>
+              {trackerEnabled && (
+                <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-primary inline-block" /> Viewed recently</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-destructive inline-block" /> Needs attention</span>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}

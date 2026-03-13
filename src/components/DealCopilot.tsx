@@ -24,7 +24,7 @@ import { useScribe } from '@elevenlabs/react';
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-tts`;
-
+const SCRIBE_TOKEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-scribe-token`;
 type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
 const SUGGESTIONS = [

@@ -55,11 +55,11 @@ serve(async (req) => {
           text: cleanText.slice(0, 5000), // ElevenLabs limit
           model_id: "eleven_turbo_v2_5",  // Low latency model
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.3,
-            use_speaker_boost: true,
-            speed: 1.05, // Slightly faster for conversational feel
+            stability: 0.4,
+            similarity_boost: 0.7,
+            style: 0.2,
+            use_speaker_boost: false,
+            speed: 1.15, // Faster conversational pace
           },
         }),
       }

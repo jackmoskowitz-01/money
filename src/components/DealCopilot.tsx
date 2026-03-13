@@ -1497,7 +1497,7 @@ CRITICAL INSTRUCTIONS:
                 </div>
               )}
               {/* File context indicator */}
-              {fileContext && !attachedFile && (
+              {fileContext && attachedFiles.length === 0 && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-muted bg-muted/30 px-2.5 py-1">
                   <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="text-[10px] text-muted-foreground flex-1 truncate">File context active — ask follow-up questions</span>

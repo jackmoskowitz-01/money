@@ -815,10 +815,10 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 CRITICAL INSTRUCTIONS:
 1. Use the EXACT row labels shown above in bold. Do not rename or reorder them.
-2. Use the PHYSICAL STREET ADDRESS (e.g. "4510 Buckeystown Pike, Frederick, MD") as column headers — NOT the building name or property name. Always include street number, street name, city, and state.
-3. If a building has multiple offers (e.g., 5-year and 10-year), create separate columns under the same address header.
+2. Use the PHYSICAL STREET ADDRESS (e.g. "4510 Buckeystown Pike, Frederick, MD") as column headers — NOT the building name or property name. Always include street number, street name, city, and state. When a building has multiple options (A, B, etc.), repeat the SAME address across those columns so they group together.
+3. If a single lease/proposal contains multiple options (Option A vs Option B, 5-year vs 10-year, etc.), you MUST create a separate column for EACH option. Label them "Landlord Offer #1A", "Landlord Offer #1B", etc. Never combine options into a single column.
 4. Calculate Average Annual Cost Over Term = (Base Rent × SF × Term Years, adjusted for escalations and abatement) ÷ Term Years. Show as a dollar amount.
-5. Include ALL offers from ALL attached documents — never omit or merge columns.
+5. Include ALL offers and ALL options from ALL attached documents — never omit or merge columns.
 6. Keep the table compact and clean — this is a one-page summary, not a detailed analysis.
 7. After the table, optionally add a brief "Notes" section for any important caveats or conditions mentioned in the proposals.`;
 

@@ -1555,7 +1555,7 @@ CRITICAL INSTRUCTIONS:
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
                   onClick={() => { setShowSlashCommands(false); sendMessage(input); }}
-                  disabled={(!input.trim() && !attachedFile) || isLoading}
+                  disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>

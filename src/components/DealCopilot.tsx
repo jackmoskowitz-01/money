@@ -787,8 +787,9 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
   const MATRIX_TEMPLATE = `You are producing a professional "Summary of Proposals" deal terms matrix. Follow this EXACT structure and formatting. Extract every detail from the attached lease/proposal documents.
 
 ## RULES:
-- Create ONE column per offer/proposal attached. If a single building has multiple offer rounds (Landlord Offer #1A, #1B, etc.), each gets its own column.
-- If only ONE document is attached, produce a single-column matrix (just the row labels on the left and one data column).
+- Create ONE column per distinct offer option. If a single lease document contains multiple options (e.g. Option A and Option B, or a 5-year term vs a 10-year term), each option MUST get its own column. Label them clearly (e.g. "Landlord Offer #1A", "Landlord Offer #1B").
+- If a single building has multiple rounds of offers (Landlord Offer #1, #2, etc.), each round gets its own column.
+- If only ONE document is attached with ONE option, produce a single-column matrix. If it has multiple options, produce multiple columns under the same address.
 - If multiple documents are attached, produce as many columns as there are distinct offers — group columns by building address.
 - Use EXACT dollar amounts, dates, percentages, and SF numbers from the documents. Never round or approximate.
 - If a field is not stated in a document, write "Silent" or leave blank.
@@ -798,9 +799,9 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 # Summary of Proposals
 
-| | [Street Address, City, State] | [Street Address, City, State] | ... |
-|---|---|---|---|
-| **Lease Terms** | **[Offer Label #1]** | **[Offer Label #1]** | ... |
+| | [Street Address, City, State] | [Street Address, City, State] | [Street Address, City, State] | ... |
+|---|---|---|---|---|
+| **Lease Terms** | **Landlord Offer #1A** | **Landlord Offer #1B** | **Landlord Offer #1** | ... |
 | **Premises:** | [XX,XXX RSF] | [XX,XXX RSF] | ... |
 | **Term:** | [X years] | [X years] | ... |
 | **Lease Commencement Date:** | [Month Day, Year] | [Month Day, Year] | ... |
@@ -814,10 +815,10 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 
 CRITICAL INSTRUCTIONS:
 1. Use the EXACT row labels shown above in bold. Do not rename or reorder them.
-2. Use the PHYSICAL STREET ADDRESS (e.g. "4510 Buckeystown Pike, Frederick, MD") as column headers — NOT the building name or property name. Always include street number, street name, city, and state.
-3. If a building has multiple offers (e.g., 5-year and 10-year), create separate columns under the same address header.
+2. Use the PHYSICAL STREET ADDRESS (e.g. "4510 Buckeystown Pike, Frederick, MD") as column headers — NOT the building name or property name. Always include street number, street name, city, and state. When a building has multiple options (A, B, etc.), repeat the SAME address across those columns so they group together.
+3. If a single lease/proposal contains multiple options (Option A vs Option B, 5-year vs 10-year, etc.), you MUST create a separate column for EACH option. Label them "Landlord Offer #1A", "Landlord Offer #1B", etc. Never combine options into a single column.
 4. Calculate Average Annual Cost Over Term = (Base Rent × SF × Term Years, adjusted for escalations and abatement) ÷ Term Years. Show as a dollar amount.
-5. Include ALL offers from ALL attached documents — never omit or merge columns.
+5. Include ALL offers and ALL options from ALL attached documents — never omit or merge columns.
 6. Keep the table compact and clean — this is a one-page summary, not a detailed analysis.
 7. After the table, optionally add a brief "Notes" section for any important caveats or conditions mentioned in the proposals.`;
 

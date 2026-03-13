@@ -338,15 +338,7 @@ export default function DealCopilot() {
 
 
     recognition.onresult = (e: any) => {
-      // If user speaks while AI is talking, interrupt immediately
-      if (audioRef.current && !audioRef.current.paused) {
-        interruptTTS();
-        // Clear any pending transcript from before the interrupt
-        pendingTranscriptRef.current = '';
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      }
-
-      // Only process NEW results (from resultIndex onward), skip already-processed ones
+      // Only process NEW results from this event
       let newFinal = '';
       let newInterim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -357,8 +349,19 @@ export default function DealCopilot() {
         }
       }
 
-      // Show only the current utterance, not accumulated history
-      setInput(newFinal || newInterim);
+      const heard = (newFinal || newInterim).trim();
+      if (!heard) return;
+
+      // If AI is speaking, ignore echoed bot audio; interrupt only on genuinely new user speech
+      if (isSpeakingRef.current) {
+        if (isLikelyEcho(heard, currentSpokenTextRef.current)) {
+          return;
+        }
+        interruptTTS();
+      }
+
+      // Show current utterance in input
+      setInput(heard);
 
       // Track final transcript for auto-send
       if (newFinal.trim()) {
@@ -371,6 +374,14 @@ export default function DealCopilot() {
             const toSend = pendingTranscriptRef.current;
             pendingTranscriptRef.current = '';
             setInput('');
+
+            // De-dupe accidental duplicate sends from recognition edge cases
+            const now = Date.now();
+            if (toSend === lastVoiceSentRef.current && now - lastVoiceSentAtRef.current < 2500) {
+              return;
+            }
+            lastVoiceSentRef.current = toSend;
+            lastVoiceSentAtRef.current = now;
 
             // Restart recognition to clear accumulated results buffer
             try { recognition.stop(); } catch {}

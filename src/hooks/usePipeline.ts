@@ -35,6 +35,7 @@ const rowToItem = (r: DbRow): PipelineItem => ({
   prospectPhone: r.prospect_phone || undefined,
   prospectSqft: r.prospect_sqft || undefined,
   sentTouchpoints: Array.isArray(r.sent_touchpoints) ? r.sent_touchpoints : [],
+  sortOrder: r.sort_order ?? 0,
 });
 
 export function usePipeline() {

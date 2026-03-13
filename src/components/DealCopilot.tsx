@@ -716,10 +716,7 @@ export default function DealCopilot() {
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
       }
-      // Resume listening on error in voice mode
-      if (voiceModeRef.current) {
-        setTimeout(() => startVoiceListening(), 500);
-      }
+      // Mic is already running continuously in voice mode — no restart needed
     }
     setIsLoading(false);
   };

@@ -6,6 +6,7 @@ const COMMANDS = [
   { command: '/task', description: 'Create a new task', icon: ListTodo, template: 'Create a task: ' },
   { command: '/draft', description: 'Draft an outreach email', icon: Mail, template: 'Draft an outreach email for ' },
   { command: '/search', description: 'Search live market data', icon: Search, template: 'Search for ' },
+  { command: '/tour', description: 'Plan an optimized tour route', icon: MoveRight, template: 'Plan a tour for these addresses: ' },
 ];
 
 interface Props {

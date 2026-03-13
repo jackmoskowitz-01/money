@@ -223,7 +223,7 @@ function buildMatrixDocument(data: MatrixData): Document {
             ],
           }),
         ],
-        width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
+        width: { size: buildingGroupWidth, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
         verticalAlign: "center",
         borders: {

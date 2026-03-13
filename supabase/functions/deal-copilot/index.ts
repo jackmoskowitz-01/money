@@ -143,6 +143,55 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "analyze_comps",
+      description: "Analyze lease comps for a deal by finding comparable transactions by submarket, size, and building class. Use when user asks about comps, benchmarking, or 'how does this deal compare'.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_name: { type: "string", description: "Name of the tenant/prospect to analyze comps for" },
+          submarket: { type: "string", description: "Target submarket (e.g., East End, CBD, Rosslyn-Ballston)" },
+          sqft: { type: "number", description: "Approximate square footage requirement" },
+          building_class: { type: "string", enum: ["A", "B", "C"], description: "Building class filter" },
+        },
+        required: ["tenant_name"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "score_deal",
+      description: "Score/rate a pipeline deal on fit, timing, competition risk, and likelihood. Use when user says 'score', 'rate', or 'evaluate' a deal.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_id: { type: "string", description: "The tenant ID of the deal to score" },
+          building_id: { type: "string", description: "The building ID of the deal" },
+        },
+        required: ["tenant_id", "building_id"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compare_deals",
+      description: "Compare multiple pipeline deals side-by-side with metrics and AI recommendation. Use when user asks to compare deals or where to focus.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_count: { type: "number", description: "Number of top deals to compare (default 3)" },
+        },
+        required: [],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 async function searchMarket(query: string): Promise<string> {

@@ -313,8 +313,8 @@ const MapView = () => {
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Building List Panel */}
-      <div className="absolute left-4 top-4 z-[1000] w-80">
-        <Card className="border-border bg-card/95 backdrop-blur-lg">
+      <div className="absolute left-4 top-4 bottom-4 z-[1000] w-80 flex flex-col">
+        <Card className="border-border bg-card/95 backdrop-blur-lg flex flex-col max-h-full overflow-hidden">
           <button
             onClick={() => setPanelOpen(!panelOpen)}
             className="flex w-full items-center justify-between p-3"
@@ -333,7 +333,7 @@ const MapView = () => {
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                className="overflow-hidden flex-1 flex flex-col min-h-0"
               >
                 <div className="px-3 pb-2 space-y-2">
                   <div className="relative">
@@ -352,7 +352,7 @@ const MapView = () => {
                     </p>
                   )}
                 </div>
-                <div className="max-h-[55vh] space-y-2 overflow-y-auto px-3 pb-3">
+                <div className="flex-1 min-h-0 space-y-2 overflow-y-auto px-3 pb-3">
                   {filteredBuildings.map(b => (
                     <button
                       key={b.id}

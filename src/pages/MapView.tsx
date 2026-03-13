@@ -2,9 +2,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
-import TerritoryAnalysis from '@/components/TerritoryAnalysis';
 import AutoEnrichBadges from '@/components/AutoEnrichBadges';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar } from 'lucide-react';
+import { recordVisit, getVisitLog, isStale, getLastVisitLabel, getThresholdDays, setThresholdDays } from '@/lib/buildingVisitTracker';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
 import { Badge } from '@/components/ui/badge';
@@ -34,9 +34,14 @@ const MapView = () => {
   const [googleBuildings, setGoogleBuildings] = useState<Building[]>([]);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState('');
+  const [thresholdDays, setThreshold] = useState(getThresholdDays());
+  const [showThresholdModal, setShowThresholdModal] = useState(false);
+  const [thresholdInput, setThresholdInput] = useState(String(getThresholdDays()));
+  const [visitLog, setVisitLog] = useState(getVisitLog());
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
+  const mockMarkersRef = useRef<any[]>([]);
   const fetchedRef = useRef(false);
 
   const fetchGoogleBuildings = useCallback(async () => {
@@ -98,25 +103,9 @@ const MapView = () => {
     googleMarkersRef.current.forEach(m => m.remove());
     googleMarkersRef.current = [];
 
-    const icon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-    });
-
+    const log = getVisitLog();
     blds.forEach(b => {
-      const marker = L.marker([b.lat, b.lng], { icon }).addTo(mapInstanceRef.current);
-      marker.bindPopup(`
-        <div style="min-width:180px">
-          <strong>${b.address}</strong><br/>
-          ${b.name && b.name !== b.address ? `<span style="font-size:11px;opacity:0.7">${b.name}</span><br/>` : ''}
-          <span style="font-size:11px">${b.tenants.length} tenants · ${b.vacancyRate}% vacant</span>
-        </div>
-      `);
-      marker.on('click', () => setSelectedBuilding(b));
+      const marker = createCircleMarker(L, b, log, thresholdDays);
       googleMarkersRef.current.push(marker);
     });
   };
@@ -142,14 +131,61 @@ const MapView = () => {
     );
   }, [searchQuery, allBuildingsList]);
 
-  // Clear state when building changes
+  // Record visit + clear state when building changes
   useEffect(() => {
+    if (selectedBuilding) {
+      const updated = recordVisit(selectedBuilding.id);
+      setVisitLog(updated);
+    }
     setSelectedTenants(new Set());
     setOutreachReason('');
     setGeneratedEmails({});
     setGeneratingKeys(new Set());
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
+
+  // Helper to create a circle marker with stale coloring
+  const createCircleMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number) => {
+    const stale = !log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000;
+    const color = stale ? '#ef4444' : '#3b82f6';
+    const marker = L.circleMarker([building.lat, building.lng], {
+      radius: 7,
+      fillColor: color,
+      color: stale ? '#dc2626' : '#2563eb',
+      weight: 2,
+      opacity: 0.9,
+      fillOpacity: 0.7,
+    }).addTo(mapInstanceRef.current);
+    marker.bindPopup(`
+      <div style="min-width:180px">
+        <strong>${building.address}</strong><br/>
+        ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
+        <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span><br/>
+        <span style="font-size:10px;opacity:0.6">${!log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`}</span>
+      </div>
+    `);
+    marker.on('click', () => setSelectedBuilding(building));
+    (marker as any)._buildingId = building.id;
+    return marker;
+  }, []);
+
+  // Refresh marker colors when visitLog or threshold changes
+  const refreshMarkerColors = useCallback(() => {
+    const log = getVisitLog();
+    [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
+      const bid = marker._buildingId;
+      if (!bid) return;
+      const stale = !log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000;
+      marker.setStyle({
+        fillColor: stale ? '#ef4444' : '#3b82f6',
+        color: stale ? '#dc2626' : '#2563eb',
+      });
+    });
+  }, [thresholdDays]);
+
+  useEffect(() => {
+    refreshMarkerColors();
+  }, [visitLog, thresholdDays, refreshMarkerColors]);
 
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{
@@ -273,25 +309,11 @@ const MapView = () => {
         attribution: '&copy; CARTO',
       }).addTo(map);
 
-      const defaultIcon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-      });
-
+      const log = getVisitLog();
+      mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
-        marker.bindPopup(`
-          <div style="min-width:180px">
-            <strong>${building.address}</strong><br/>
-            ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
-            <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span>
-          </div>
-        `);
-        marker.on('click', () => setSelectedBuilding(building));
+        const marker = createCircleMarker(L, building, log, thresholdDays);
+        mockMarkersRef.current.push(marker);
       });
 
       mapInstanceRef.current = map;
@@ -385,12 +407,18 @@ const MapView = () => {
                   )}
                 </div>
 
-                {/* Territory Analysis */}
+                {/* Territory Threshold Button */}
                 <div className="px-3 pb-3">
-                  <TerritoryAnalysis
-                    buildings={allBuildingsList}
-                    onSelectBuilding={(b) => setSelectedBuilding(b)}
-                  />
+                  <button
+                    onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
+                    className="w-full flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 hover:bg-primary/10 transition-colors"
+                  >
+                    <Radar className="h-4 w-4 text-primary" />
+                    <div className="text-left flex-1">
+                      <p className="text-[11px] font-bold text-foreground">Territory Tracker</p>
+                      <p className="text-[10px] text-muted-foreground">Stale after {thresholdDays} days · Red = needs attention</p>
+                    </div>
+                  </button>
                 </div>
               </motion.div>
             )}
@@ -642,6 +670,73 @@ const MapView = () => {
               </div>
               </div>
             </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Territory Threshold Modal */}
+      <AnimatePresence>
+        {showThresholdModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowThresholdModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="w-80 rounded-xl border border-border bg-card p-5 shadow-xl"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Radar className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Territory Tracker</h3>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Buildings you haven't viewed within this timeframe will turn <span className="text-destructive font-semibold">red</span> on the map.
+              </p>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
+                Stale threshold (days)
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={365}
+                value={thresholdInput}
+                onChange={e => setThresholdInput(e.target.value)}
+                className="h-9 text-sm mb-4"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => setShowThresholdModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 text-xs"
+                  onClick={() => {
+                    const days = Math.max(1, Math.min(365, parseInt(thresholdInput, 10) || 14));
+                    setThresholdDays(days);
+                    setThreshold(days);
+                    setShowThresholdModal(false);
+                  }}
+                >
+                  Apply
+                </Button>
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" /> Viewed recently</span>
+                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" /> Needs attention</span>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

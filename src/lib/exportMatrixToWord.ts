@@ -272,7 +272,7 @@ function buildMatrixDocument(data: MatrixData): Document {
 
   const imageRow = new TableRow({
     children: imageRowCells,
-    height: { value: imageRowHeight, rule: HeightRule.AT_LEAST },
+    height: { value: imageRowHeight, rule: HeightRule.ATLEAST },
   });
 
   // === ROW 3: Offer labels (gray background) ===

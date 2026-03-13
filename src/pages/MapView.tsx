@@ -145,9 +145,11 @@ const MapView = () => {
   }, [selectedBuilding?.id]);
 
   // Helper to create a circle marker with stale coloring
-  const createCircleMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number) => {
+  const createCircleMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, mapInstance?: any) => {
     const stale = !log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000;
     const color = stale ? '#ef4444' : '#3b82f6';
+    const targetMap = mapInstance || mapInstanceRef.current;
+    if (!targetMap) return null;
     const marker = L.circleMarker([building.lat, building.lng], {
       radius: 7,
       fillColor: color,
@@ -155,7 +157,7 @@ const MapView = () => {
       weight: 2,
       opacity: 0.9,
       fillOpacity: 0.7,
-    }).addTo(mapInstanceRef.current);
+    }).addTo(targetMap);
     marker.bindPopup(`
       <div style="min-width:180px">
         <strong>${building.address}</strong><br/>
@@ -312,8 +314,8 @@ const MapView = () => {
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createCircleMarker(L, building, log, thresholdDays);
-        mockMarkersRef.current.push(marker);
+        const marker = createCircleMarker(L, building, log, thresholdDays, map);
+        if (marker) mockMarkersRef.current.push(marker);
       });
 
       mapInstanceRef.current = map;

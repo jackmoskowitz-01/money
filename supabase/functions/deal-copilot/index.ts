@@ -45,7 +45,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_market",
-      description: "Search for real-time CRE market data, news, company information, or trends using web search. Use this when the user asks about current market conditions, recent news, or data you don't have in context.",
+      description: "Search for real-time CRE market data, news, company information, or any organization/entity details using web search. ALWAYS use this when the user mentions a company, organization, or entity not found in the provided context. Use for current market conditions, recent news, company research, or any data you don't have.",
       parameters: {
         type: "object",
         properties: {

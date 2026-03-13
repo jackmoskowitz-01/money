@@ -1,12 +1,15 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, Star, GitCompare, MapPin } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },
   { command: '/task', description: 'Create a new task', icon: ListTodo, template: 'Create a task: ' },
   { command: '/draft', description: 'Draft an outreach email', icon: Mail, template: 'Draft an outreach email for ' },
   { command: '/search', description: 'Search live market data', icon: Search, template: 'Search for ' },
-  { command: '/tour', description: 'Plan an optimized tour route', icon: MoveRight, template: 'Plan a tour for these addresses: ' },
+  { command: '/tour', description: 'Plan an optimized tour route', icon: MapPin, template: 'Plan a tour for these addresses: ' },
+  { command: '/comp', description: 'Analyze lease comps for a deal', icon: BarChart3, template: 'Analyze comps for ' },
+  { command: '/score', description: 'Score & rate a pipeline deal', icon: Star, template: 'Score the deal with ' },
+  { command: '/compare', description: 'Compare top deals side-by-side', icon: GitCompare, template: 'Compare my top 3 deals' },
 ];
 
 interface Props {
@@ -32,7 +35,7 @@ export default function CopilotSlashCommands({ input, visible, onSelect }: Props
         transition={{ type: 'spring', damping: 25, stiffness: 400 }}
         className="absolute bottom-full left-0 right-0 mb-1 mx-3 rounded-xl border border-border bg-card shadow-xl overflow-hidden z-20"
       >
-        <div className="p-1.5">
+        <div className="p-1.5 max-h-[240px] overflow-y-auto">
           <p className="px-2.5 py-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Quick Commands</p>
           {filtered.map(cmd => (
             <button

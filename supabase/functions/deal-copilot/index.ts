@@ -608,7 +608,7 @@ serve(async (req) => {
 
         for (const tc of toolCalls) {
           const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-          const result = await executeTool(tc.function.name, args);
+          const result = await executeTool(tc.function.name, args, systemMessage);
           toolResults.push(result);
         }
 

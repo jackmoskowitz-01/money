@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.scan-company-news]
 verify_jwt = false
+
+[functions.deal-copilot]
+verify_jwt = false

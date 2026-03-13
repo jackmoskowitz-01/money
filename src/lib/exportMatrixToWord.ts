@@ -304,14 +304,23 @@ function buildMatrixDocument(data: MatrixData): Document {
   ];
 
   for (const group of buildingGroups) {
-    for (const label of group.offerLabels) {
+    const subColWidth = getSubColWidth(group);
+    for (let i = 0; i < group.offerLabels.length; i++) {
+      const isLastInGroup = i === group.offerLabels.length - 1;
       offerRowCells.push(
-        makeCell(label, {
+        makeCell(group.offerLabels[i], {
           bold: true,
           bgColor: GRAY_HEADER,
           fontSize: 20,
+          width: subColWidth,
           spacingBefore: 120,
           spacingAfter: 120,
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            right: { style: BorderStyle.SINGLE, size: isLastInGroup ? 3 : 1, color: isLastInGroup ? NAVY : LIGHT_BORDER },
+          },
         })
       );
     }

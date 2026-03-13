@@ -999,8 +999,33 @@ All of these must come from the lease document — do NOT ask the user for them:
 
 ## STEP 3: PRODUCE THE CASH FLOW OUTPUT
 
+### Format — Excel Input Fields (REQUIRED)
+First output this exact 2-column table so the Excel exporter can map values:
+
+| Field | Value |
+|---|---|
+| Lease Commencement Date | [value] |
+| Analysis Start Date | [value] |
+| Lease Term (months) | [value] |
+| Lease Expiration Date | [value] |
+| Base Rent | [value] |
+| Per Annum Escalation | [value] |
+| Escalation Month | [value] |
+| Square Feet Leased | [value] |
+| Total Months of Free Rent | [value] |
+| Operating Expense Base Year | [value] |
+| Operating Expense Base Month | [value] |
+| Operating Expense Building Base Amount | [value] |
+| Operating Expense Tenant Base Amount | [value] |
+| Operating Expense Per Annum Escalation | [value] |
+| Real Estate Tax Building Base Amount | [value] |
+| Real Estate Tax Tenant Base Amount | [value] |
+| Real Estate Tax Per Annum Escalation | [value] |
+
+Use numeric values only where applicable (no extra commentary in the value cells).
+
 ### Format — Summary Section
-First, output the extracted terms as a clean summary:
+Then output the normal user-facing report:
 
 # Cash Flow Analysis
 

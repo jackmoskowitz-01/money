@@ -159,6 +159,96 @@ function monthNameToNumber(value: string): number | null {
   return idx >= 0 ? idx + 1 : null;
 }
 
+function parseDateLoose(value: string): Date | null {
+  const dt = new Date(value.trim());
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function deriveInputsFromNarrative(markdown: string, inputs: ExtractedInputs): void {
+  const analysisStartMatch = markdown.match(/\*\*Analysis Start Date:\*\*\s*([^\n]+)/i);
+  if (!inputs.analysisStartDate && analysisStartMatch) {
+    inputs.analysisStartDate = analysisStartMatch[1].replace(/\(.*?\)/g, '').trim();
+  }
+
+  const premisesMatch = markdown.match(/\*\*Premises:\*\*\s*([\d,]+)\s*(?:RSF|SF)/i);
+  if (!inputs.squareFootage && premisesMatch) {
+    inputs.squareFootage = premisesMatch[1];
+  }
+
+  const termMatch = markdown.match(/\*\*Term:\*\*[^\n(]*\((\d+)\s*Months\)/i) || markdown.match(/\b(\d+)\s*Months\b/i);
+  if (!inputs.leaseTerm && termMatch) {
+    inputs.leaseTerm = termMatch[1];
+  }
+
+  const year1Match = markdown.match(/\|\s*\*\*?Year\s*1\*\*?\s*\|\s*[^|]*\|\s*\$?([\d,.]+)\s*\|/i);
+  const year2Match = markdown.match(/\|\s*\*\*?Year\s*2\*\*?\s*\|\s*[^|]*\|\s*\$?([\d,.]+)\s*\|/i);
+  if (!inputs.baseRent && year1Match) {
+    inputs.baseRent = year1Match[1];
+  }
+
+  if (!inputs.perAnnumEscalation) {
+    const escalationMatch = markdown.match(/(?:Per Annum|Annual)\s+Escalation[^\n:]*:\s*([\d.]+%?)/i);
+    if (escalationMatch) {
+      inputs.perAnnumEscalation = escalationMatch[1];
+    } else if (year1Match && year2Match) {
+      const y1 = parseNumeric(year1Match[1]);
+      const y2 = parseNumeric(year2Match[1]);
+      if (y1 && y2 && y1 > 0) {
+        inputs.perAnnumEscalation = ((y2 / y1) - 1).toString();
+      }
+    }
+  }
+
+  const freeRentMatch = markdown.match(/(\d+)\s*months?\s*(?:of\s*)?(?:base\s*)?rent\s*abatement/i)
+    || markdown.match(/free\s*rent[^\n]*?(\d+)\s*months?/i);
+  if (!inputs.totalMonthsFreeRent && freeRentMatch) {
+    inputs.totalMonthsFreeRent = freeRentMatch[1];
+  }
+
+  if (!inputs.leaseCommencementDate) {
+    const explicitCommencement = markdown.match(/Lease\s+Commencement\s+Date[^\n:]*:\s*([^\n]+)/i);
+    if (explicitCommencement) {
+      inputs.leaseCommencementDate = explicitCommencement[1].trim();
+    } else if (analysisStartMatch && /lease commencement/i.test(analysisStartMatch[0])) {
+      inputs.leaseCommencementDate = analysisStartMatch[1].replace(/\(.*?\)/g, '').trim();
+    } else if (inputs.analysisStartDate) {
+      inputs.leaseCommencementDate = inputs.analysisStartDate;
+    }
+  }
+
+  const commencementRaw = inputs.leaseCommencementDate;
+  const commencementDate = typeof commencementRaw === 'string'
+    ? parseDateLoose(commencementRaw)
+    : commencementRaw instanceof Date
+      ? commencementRaw
+      : null;
+
+  if (!inputs.escalationMonth && commencementDate) {
+    inputs.escalationMonth = commencementDate.getMonth() + 1;
+  }
+
+  if (!inputs.leaseExpirationDate && commencementDate && inputs.leaseTerm) {
+    const termMonths = parseNumeric(String(inputs.leaseTerm));
+    if (termMonths && termMonths > 0) {
+      const exp = new Date(commencementDate);
+      exp.setMonth(exp.getMonth() + Math.round(termMonths));
+      exp.setDate(exp.getDate() - 1);
+      inputs.leaseExpirationDate = exp;
+    }
+  }
+
+  const opexHeaderMatch = markdown.match(/OpEx\s*\(\$?([\d,.]+)\s*\/\s*SF\)/i);
+  if (opexHeaderMatch) {
+    if (!inputs.opexBuildingBaseAmount) inputs.opexBuildingBaseAmount = opexHeaderMatch[1];
+    if (!inputs.opexTenantBaseAmount) inputs.opexTenantBaseAmount = opexHeaderMatch[1];
+  }
+
+  if (commencementDate) {
+    if (!inputs.opexBaseYear) inputs.opexBaseYear = commencementDate.getFullYear();
+    if (!inputs.opexBaseMonth) inputs.opexBaseMonth = commencementDate.getMonth() + 1;
+  }
+}
+
 function extractInputsFromMarkdown(markdown: string): ExtractedInputs {
   const values = collectLabeledValues(markdown);
   const inputs: ExtractedInputs = {};
@@ -167,6 +257,8 @@ function extractInputsFromMarkdown(markdown: string): ExtractedInputs {
     const found = findByAliases(values, KEY_ALIASES[key]);
     if (found) inputs[key] = found;
   });
+
+  deriveInputsFromNarrative(markdown, inputs);
 
   if (!inputs.escalationMonth && typeof inputs.leaseCommencementDate === 'string') {
     const dt = new Date(inputs.leaseCommencementDate);

@@ -106,6 +106,29 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "plan_tour",
+      description: "Plan an optimized tour route given a list of addresses. Geocodes each address and orders them by shortest travel distance using nearest-neighbor optimization. Use when the user wants to plan property tours or site visits.",
+      parameters: {
+        type: "object",
+        properties: {
+          addresses: {
+            type: "array",
+            items: { type: "string" },
+            description: "List of addresses to visit on the tour",
+          },
+          start_address: {
+            type: "string",
+            description: "Optional starting location. If not provided, the first address is used as the start.",
+          },
+        },
+        required: ["addresses"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 async function searchMarket(query: string): Promise<string> {

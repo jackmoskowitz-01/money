@@ -17,6 +17,7 @@ type DbRow = {
   prospect_phone: string | null;
   prospect_sqft: number | null;
   sent_touchpoints: any;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };

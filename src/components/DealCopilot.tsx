@@ -1148,7 +1148,7 @@ export default function DealCopilot() {
                 <div className="text-center">
                   <FileText className="h-10 w-10 text-primary mx-auto mb-2" />
                   <p className="text-sm font-medium text-primary">Drop file here</p>
-                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, CSV, JSON</p>
+                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, CSV, JSON</p>
                 </div>
               </div>
             )}

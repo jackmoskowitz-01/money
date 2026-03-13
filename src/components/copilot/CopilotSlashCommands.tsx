@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight, BarChart3, Star, GitCompare, MapPin, Calculator, FileBox } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, Star, GitCompare, MapPin, Calculator, FileBox, FileSearch } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },

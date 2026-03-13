@@ -579,12 +579,163 @@ export default function DealCopilot() {
       (data as any[]).map((t: any) => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
   };
 
+  // Cresa-style lease abstract template structure
+  const LEASE_ABSTRACT_TEMPLATE = `You are producing a professional Lease Summary / Abstract. Follow this EXACT structure and section order. Fill in every field from the lease document. If a field is not found in the lease, write "Silent in Lease."
+
+## FORMAT:
+---
+# Lease Summary
+
+**Company Name:** [Tenant Company]
+**Building Name:** [Building/Property Name]
+**Address:** [Full Address]
+**Lease Type:** [Renewal / Expansion / New Lease]
+**Abstract Date:** [Today's Date]
+
+---
+
+### Premises
+- [X] rentable square feet
+- Method of Measurement: [if stated]
+
+### Amendments
+List each amendment with page references and bullet-point summaries. If none, state "No amendments."
+
+### Landlord
+[Landlord entity name] | [City, ST]
+
+### Term
+- Duration: [X years]
+- Commencement Date: [date]
+- Expiration Date: [date]
+- Article/Section/Page reference if available
+
+### Size
+[Rentable SF and Usable SF if stated]
+
+### Rent Schedule
+
+| Period | Rent/SF | Rent/Month | Rent/Year |
+|--------|---------|------------|-----------|
+| Year 1 | $XX.XX  | $XX,XXX.XX | $XXX,XXX.XX |
+| Year 2 | ... | ... | ... |
+[Continue for all years]
+
+### Rent Payment Address
+[Address or "Silent in Lease"]
+
+### Lease Type
+[Full Service / Net / Modified Gross / etc.]
+
+### Electricity
+[Included or separately metered, details]
+
+### Abandonment
+[Terms or "Silent in Lease"]
+
+### Additional Provisions
+[Key provisions or "Silent in Lease"]
+
+### Alterations & Additions
+[Terms or "Silent in Lease"]
+
+### Landlord Services
+[Services provided or "Silent in Lease"]
+
+### Operating Expenses & Taxes
+[Base year, cap, pass-through details or "Silent in Lease"]
+
+### Exhibits
+[List all exhibits referenced]
+
+### Improvements / Tenant Improvements
+[TI allowance, details or "Silent in Lease"]
+
+### Parking
+[Ratio, cost, reserved/unreserved or "Silent in Lease"]
+
+### Right of Refusal
+[Terms or "Silent in Lease"]
+
+### Extension Option
+[Terms, notice period, rent basis or "Silent in Lease"]
+
+### Expansion Option
+[Terms or "Silent in Lease"]
+
+### Cancellation Option
+[Terms, penalty or "Silent in Lease"]
+
+### Holdover
+[Rate, terms or "Silent in Lease"]
+
+### Insurance – Landlord
+[Requirements or "Silent in Lease"]
+
+### Insurance – Tenant
+[Requirements or "Silent in Lease"]
+
+### Late Charge
+[Percentage, grace period or "Silent in Lease"]
+
+### Maintenance – Landlord
+[Responsibilities or "Silent in Lease"]
+
+### Maintenance – Tenant
+[Responsibilities or "Silent in Lease"]
+
+### Non-Disturbance
+[Terms or "Silent in Lease"]
+
+### Permitted Uses
+[Permitted uses or "Silent in Lease"]
+
+### Relocation
+[Terms or "Silent in Lease"]
+
+### Restoration
+[Terms or "Silent in Lease"]
+
+### Right to Audit
+[Terms or "Silent in Lease"]
+
+### Right to Offset
+[Terms or "Silent in Lease"]
+
+### Self-Help
+[Terms or "Silent in Lease"]
+
+### Assignment & Subletting
+[Terms, consent requirements or "Silent in Lease"]
+
+### Signage
+[Terms or "Silent in Lease"]
+
+### Security Deposit
+[Amount, terms or "Silent in Lease"]
+
+### Building Hours and Holidays
+[Hours, holiday schedule or "Silent in Lease"]
+
+### Notice to Landlord
+[Notice address or "Silent in Lease"]
+
+### Additional Lease Comments
+[Any other notable terms]
+
+---
+*This document has been prepared based on available information and professional interpretation. Reasonable care has been taken to ensure its accuracy. We encourage every client to review the information prior to relying on it for action or decision-making.*
+---
+
+IMPORTANT: Fill in EVERY section. Extract ALL data from the lease. For rent schedules, calculate monthly and annual amounts if only per-SF rates are given. Be thorough and precise.`;
+
   const sendFileMessage = async (question: string) => {
     if (!attachedFile || isLoading) return;
 
     const fileName = attachedFile.name;
     const userContent = question.trim() || `Analyze this document: ${fileName}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
+    const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
     const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
@@ -602,6 +753,8 @@ export default function DealCopilot() {
       formData.append('file', attachedFile);
       if (isTemplateSave) {
         formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
+      } else if (isAbstract) {
+        formData.append('question', `Run a complete lease abstract on this document.\n\n${LEASE_ABSTRACT_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }

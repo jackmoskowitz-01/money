@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight, BarChart3, Star, GitCompare, MapPin, Calculator, FileBox } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, Star, GitCompare, MapPin, Calculator, FileBox, FileSearch } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },
@@ -12,6 +12,7 @@ const COMMANDS = [
   { command: '/compare', description: 'Compare top deals side-by-side', icon: GitCompare, template: 'Compare my top 3 deals' },
   { command: '/commission', description: 'Calculate broker commission from a lease', icon: Calculator, template: 'Calculate the commission on the attached lease' },
   { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
+  { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },
 ];
 
 interface Props {

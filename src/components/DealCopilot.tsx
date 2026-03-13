@@ -1595,17 +1595,7 @@ For each line item, also produce a monthly breakdown:
                           >
                             {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
-                          {isExportableReport(msg.content) && (
-                            <button
-                              onClick={() => handleExportWord(msg.content)}
-                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
-                              title="Export as Word document"
-                            >
-                              <Download className="h-3 w-3" />
-                              <span>Word</span>
-                            </button>
-                          )}
-                          {isCashflowReport(msg.content) && (
+                          {isCashflowReport(msg.content) ? (
                             <button
                               onClick={() => handleExportExcel(msg.content)}
                               className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
@@ -1614,7 +1604,16 @@ For each line item, also produce a monthly breakdown:
                               <Download className="h-3 w-3" />
                               <span>Excel</span>
                             </button>
-                          )}
+                          ) : isExportableReport(msg.content) ? (
+                            <button
+                              onClick={() => handleExportWord(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export as Word document"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>Word</span>
+                            </button>
+                          ) : null}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}

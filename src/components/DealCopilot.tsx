@@ -57,9 +57,12 @@ export default function DealCopilot() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [proactiveAlert, setProactiveAlert] = useState<string | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page

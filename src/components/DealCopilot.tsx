@@ -1001,8 +1001,8 @@ CRITICAL INSTRUCTIONS:
   };
 
   const sendMessage = async (text: string) => {
-    // If file is attached, route to file handler
-    if (attachedFile) {
+    // If files are attached, route to file handler
+    if (attachedFiles.length > 0) {
       return sendFileMessage(text);
     }
     if (!text.trim()) return;

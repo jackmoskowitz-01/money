@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X, Pin, PinOff, ExternalLink,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,7 @@ import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
+const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-tts`;
 
 type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
@@ -65,10 +66,14 @@ export default function DealCopilot() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [fileContext, setFileContext] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceModeRef = useRef(false);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page
@@ -212,8 +217,140 @@ export default function DealCopilot() {
     }
   }, [open]);
 
-  // Voice input
+  // Keep voiceModeRef in sync
+  useEffect(() => {
+    voiceModeRef.current = voiceMode;
+  }, [voiceMode]);
+
+  // Text-to-speech via ElevenLabs
+  const speakText = useCallback(async (text: string) => {
+    if (!voiceModeRef.current) return;
+    setIsSpeaking(true);
+
+    try {
+      const resp = await fetch(TTS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!resp.ok) throw new Error('TTS failed');
+
+      const audioBlob = await resp.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        audioRef.current = null;
+        // Auto-listen after speaking if voice mode still on
+        if (voiceModeRef.current) {
+          setTimeout(() => startVoiceListening(), 300);
+        }
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (e) {
+      console.error('TTS error:', e);
+      setIsSpeaking(false);
+      // Still auto-listen on TTS failure
+      if (voiceModeRef.current) {
+        setTimeout(() => startVoiceListening(), 300);
+      }
+    }
+  }, []);
+
+  // Start listening for voice input (used by voice mode loop)
+  const startVoiceListening = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+    if (!voiceModeRef.current) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = '';
+
+    recognition.onresult = (e: any) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      setInput(finalTranscript || interim);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      if (finalTranscript.trim() && voiceModeRef.current) {
+        // Auto-send the message
+        setInput('');
+        sendMessage(finalTranscript.trim());
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      setIsRecording(false);
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        toast.error('Voice recognition failed');
+      }
+      // Retry listening in voice mode unless it was intentional
+      if (voiceModeRef.current && e.error === 'no-speech') {
+        setTimeout(() => startVoiceListening(), 500);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }, []);
+
+  // Toggle voice mode on/off
+  const toggleVoiceMode = useCallback(() => {
+    if (voiceMode) {
+      // Turn off voice mode
+      setVoiceMode(false);
+      voiceModeRef.current = false;
+      recognitionRef.current?.stop();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setIsRecording(false);
+      setIsSpeaking(false);
+      toast('Voice mode off');
+    } else {
+      // Turn on voice mode
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        toast.error('Voice not supported in this browser');
+        return;
+      }
+      setVoiceMode(true);
+      voiceModeRef.current = true;
+      toast('🎙️ Voice mode on — speak naturally');
+      startVoiceListening();
+    }
+  }, [voiceMode, startVoiceListening]);
+
+  // Legacy voice input toggle (for manual mic button when not in voice mode)
   const toggleVoice = () => {
+    if (voiceMode) return; // Handled by voice mode
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Voice input not supported in this browser');
       return;
@@ -526,11 +663,20 @@ export default function DealCopilot() {
 
       // Refresh pipeline after any response (in case tools were called)
       refetchPipeline();
+
+      // Voice mode: speak the response
+      if (voiceModeRef.current && assistantSoFar) {
+        speakText(assistantSoFar);
+      }
     } catch (e: any) {
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
+      }
+      // Resume listening on error in voice mode
+      if (voiceModeRef.current) {
+        setTimeout(() => startVoiceListening(), 500);
       }
     }
     setIsLoading(false);
@@ -609,6 +755,16 @@ export default function DealCopilot() {
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
+                {/* Voice mode toggle */}
+                <Button
+                  variant={voiceMode ? "default" : "ghost"}
+                  size="sm"
+                  className={`h-7 w-7 p-0 ${voiceMode ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30' : 'text-muted-foreground'}`}
+                  onClick={toggleVoiceMode}
+                  title={voiceMode ? 'End voice conversation' : 'Start voice conversation'}
+                >
+                  <AudioLines className={`h-3.5 w-3.5 ${voiceMode ? 'animate-pulse' : ''}`} />
+                </Button>
                 {user && (
                   <CopilotHistory
                     userId={user.id}
@@ -647,6 +803,33 @@ export default function DealCopilot() {
                 </Button>
               </div>
             </div>
+
+            {/* Voice mode indicator */}
+            {voiceMode && (
+              <div className="px-4 py-2 border-b border-primary/20 bg-primary/5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <AudioLines className="h-4 w-4 text-primary" />
+                      {isRecording && (
+                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-foreground">
+                        {isSpeaking ? '🔊 Speaking...' : isRecording ? '🎙️ Listening...' : isLoading ? '🤔 Thinking...' : '🎙️ Ready'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={toggleVoiceMode}
+                    className="text-[10px] text-muted-foreground hover:text-destructive"
+                  >
+                    End
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Proactive alert banner */}
             {proactiveAlert && alertsEnabled && messages.length === 0 && (

@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.copilot-parse-file]
 verify_jwt = false
+
+[functions.copilot-tts]
+verify_jwt = false

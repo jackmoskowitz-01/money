@@ -136,10 +136,14 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
 function buildMatrixDocument(data: MatrixData): Document {
   const { buildingGroups, rows, footnotes } = data;
   const totalDataCols = buildingGroups.reduce((sum, g) => sum + g.offerLabels.length, 0);
+  const numBuildings = buildingGroups.length;
 
   const labelColWidth = 3200;
   const remainingWidth = 13000 - labelColWidth;
-  const dataColWidth = Math.floor(remainingWidth / Math.max(totalDataCols, 1));
+  // Each BUILDING GROUP gets equal width, then sub-options divide that width
+  const buildingGroupWidth = Math.floor(remainingWidth / Math.max(numBuildings, 1));
+  const getSubColWidth = (group: MatrixData['buildingGroups'][0]) =>
+    Math.floor(buildingGroupWidth / Math.max(group.offerLabels.length, 1));
 
   // Row height for data rows (generous spacing)
   const dataRowHeight = 480; // ~0.33 inches
@@ -178,7 +182,7 @@ function buildMatrixDocument(data: MatrixData): Document {
           ],
         }),
       ],
-      width: { size: opts.width || dataColWidth, type: WidthType.DXA },
+      width: { size: opts.width || buildingGroupWidth, type: WidthType.DXA },
       shading: opts.bgColor
         ? { type: ShadingType.SOLID, color: opts.bgColor, fill: opts.bgColor }
         : undefined,
@@ -219,7 +223,7 @@ function buildMatrixDocument(data: MatrixData): Document {
             ],
           }),
         ],
-        width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
+        width: { size: buildingGroupWidth, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
         verticalAlign: "center",
         borders: {
@@ -268,7 +272,7 @@ function buildMatrixDocument(data: MatrixData): Document {
             ],
           }),
         ],
-        width: { size: dataColWidth * group.offerLabels.length, type: WidthType.DXA },
+        width: { size: buildingGroupWidth, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
         verticalAlign: "center",
         borders: {
@@ -300,14 +304,23 @@ function buildMatrixDocument(data: MatrixData): Document {
   ];
 
   for (const group of buildingGroups) {
-    for (const label of group.offerLabels) {
+    const subColWidth = getSubColWidth(group);
+    for (let i = 0; i < group.offerLabels.length; i++) {
+      const isLastInGroup = i === group.offerLabels.length - 1;
       offerRowCells.push(
-        makeCell(label, {
+        makeCell(group.offerLabels[i], {
           bold: true,
           bgColor: GRAY_HEADER,
           fontSize: 20,
+          width: subColWidth,
           spacingBefore: 120,
           spacingAfter: 120,
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+            right: { style: BorderStyle.SINGLE, size: isLastInGroup ? 3 : 1, color: isLastInGroup ? NAVY : LIGHT_BORDER },
+          },
         })
       );
     }
@@ -333,15 +346,28 @@ function buildMatrixDocument(data: MatrixData): Document {
       }),
     ];
 
-    for (let c = 0; c < totalDataCols; c++) {
-      cells.push(
-        makeCell(row.values[c] || '', {
-          alignment: AlignmentType.CENTER,
-          fontSize: 20,
-          spacingBefore: 100,
-          spacingAfter: 100,
-        })
-      );
+    let colIdx = 0;
+    for (const group of buildingGroups) {
+      const subColWidth = getSubColWidth(group);
+      for (let i = 0; i < group.offerLabels.length; i++) {
+        const isLastInGroup = i === group.offerLabels.length - 1;
+        cells.push(
+          makeCell(row.values[colIdx] || '', {
+            alignment: AlignmentType.CENTER,
+            fontSize: 20,
+            width: subColWidth,
+            spacingBefore: 100,
+            spacingAfter: 100,
+            borders: {
+              top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+              right: { style: BorderStyle.SINGLE, size: isLastInGroup ? 3 : 1, color: isLastInGroup ? NAVY : LIGHT_BORDER },
+            },
+          })
+        );
+        colIdx++;
+      }
     }
 
     return new TableRow({

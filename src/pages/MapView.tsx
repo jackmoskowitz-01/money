@@ -106,8 +106,8 @@ const MapView = () => {
 
     const log = getVisitLog();
     blds.forEach(b => {
-      const marker = createCircleMarker(L, b, log, thresholdDays);
-      googleMarkersRef.current.push(marker);
+      const marker = createMapMarker(L, b, log, thresholdDays, trackerEnabled);
+      if (marker) googleMarkersRef.current.push(marker);
     });
   };
 

@@ -209,6 +209,39 @@ export type Database = {
         }
         Relationships: []
       }
+      copilot_templates: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          original_filename: string
+          parsed_structure: string
+          template_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          original_filename?: string
+          parsed_structure: string
+          template_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          original_filename?: string
+          parsed_structure?: string
+          template_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pipeline_deals: {
         Row: {
           building_id: string

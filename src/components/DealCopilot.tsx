@@ -1139,7 +1139,7 @@ export default function DealCopilot() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md"
+                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md,.xlsx,.xls"
                   onChange={handleFileSelect}
                   className="hidden"
                 />

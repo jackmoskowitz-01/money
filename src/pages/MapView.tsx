@@ -309,25 +309,11 @@ const MapView = () => {
         attribution: '&copy; CARTO',
       }).addTo(map);
 
-      const defaultIcon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-      });
-
+      const log = getVisitLog();
+      mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = L.marker([building.lat, building.lng], { icon: defaultIcon }).addTo(map);
-        marker.bindPopup(`
-          <div style="min-width:180px">
-            <strong>${building.address}</strong><br/>
-            ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
-            <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span>
-          </div>
-        `);
-        marker.on('click', () => setSelectedBuilding(building));
+        const marker = createCircleMarker(L, building, log, thresholdDays);
+        mockMarkersRef.current.push(marker);
       });
 
       mapInstanceRef.current = map;

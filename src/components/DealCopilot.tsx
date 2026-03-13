@@ -539,8 +539,24 @@ export default function DealCopilot() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      setShowSlashCommands(false);
       sendMessage(input);
     }
+    if (e.key === 'Escape') {
+      setShowSlashCommands(false);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    // Show slash commands when input starts with /
+    setShowSlashCommands(value.startsWith('/') && !value.includes(' '));
+  };
+
+  const handleSlashSelect = (template: string) => {
+    setInput(template);
+    setShowSlashCommands(false);
+    inputRef.current?.focus();
   };
 
   return (

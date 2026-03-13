@@ -552,23 +552,30 @@ export default function DealCopilot() {
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) validateAndAttachFile(file);
+    const files = Array.from(e.dataTransfer.files || []);
+    files.forEach(f => validateAndAttachFile(f));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) validateAndAttachFile(file);
+    const files = Array.from(e.target.files || []);
+    files.forEach(f => validateAndAttachFile(f));
     e.target.value = '';
   };
 
   const validateAndAttachFile = (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('File too large (max 20MB)');
+      toast.error(`${file.name} too large (max 20MB)`);
       return;
     }
-    setAttachedFile(file);
-    toast.success(`📎 ${file.name} attached`);
+    setAttachedFiles(prev => {
+      if (prev.length >= 10) {
+        toast.error('Max 10 files allowed');
+        return prev;
+      }
+      if (prev.some(f => f.name === file.name && f.size === file.size)) return prev;
+      toast.success(`📎 ${file.name} attached`);
+      return [...prev, file];
+    });
   };
 
   // Save a template from file analysis result

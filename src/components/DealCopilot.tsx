@@ -607,13 +607,16 @@ export default function DealCopilot() {
                   </div>
                   <div className="w-full space-y-1.5 mt-2">
                     {SUGGESTIONS.map((s, i) => (
-                      <button
+                      <motion.button
                         key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + i * 0.05, duration: 0.25 }}
                         onClick={() => sendMessage(s)}
-                        className="w-full text-left px-3 py-2 rounded-lg border border-border bg-secondary/30 text-xs text-foreground hover:bg-secondary/60 transition-colors"
+                        className="w-full text-left px-3 py-2 rounded-lg border border-border bg-secondary/30 text-xs text-foreground hover:bg-secondary/60 hover:scale-[1.01] active:scale-[0.99] transition-all"
                       >
                         {s}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>

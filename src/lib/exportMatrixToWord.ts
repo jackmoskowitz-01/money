@@ -136,10 +136,14 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
 function buildMatrixDocument(data: MatrixData): Document {
   const { buildingGroups, rows, footnotes } = data;
   const totalDataCols = buildingGroups.reduce((sum, g) => sum + g.offerLabels.length, 0);
+  const numBuildings = buildingGroups.length;
 
   const labelColWidth = 3200;
   const remainingWidth = 13000 - labelColWidth;
-  const dataColWidth = Math.floor(remainingWidth / Math.max(totalDataCols, 1));
+  // Each BUILDING GROUP gets equal width, then sub-options divide that width
+  const buildingGroupWidth = Math.floor(remainingWidth / Math.max(numBuildings, 1));
+  const getSubColWidth = (group: MatrixData['buildingGroups'][0]) =>
+    Math.floor(buildingGroupWidth / Math.max(group.offerLabels.length, 1));
 
   // Row height for data rows (generous spacing)
   const dataRowHeight = 480; // ~0.33 inches

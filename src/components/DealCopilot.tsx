@@ -1605,6 +1605,16 @@ For each line item, also produce a monthly breakdown:
                               <span>Word</span>
                             </button>
                           )}
+                          {isCashflowReport(msg.content) && (
+                            <button
+                              onClick={() => handleExportExcel(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export as Excel spreadsheet"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>Excel</span>
+                            </button>
+                          )}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}

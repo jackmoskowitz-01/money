@@ -30,10 +30,10 @@ type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pin
 const SUGGESTIONS = [
   "What's my best next move with McKinsey?",
   "Draft a check-in email for Deloitte",
-  "Which prospects are expiring soon?",
-  "What are current Class A rents in East End?",
-  "Move McKinsey to Meeting Held",
-  "Create a follow-up task for Deloitte",
+  "Analyze comps for McKinsey's deal",
+  "Score the deal with Deloitte",
+  "Compare my top 3 deals",
+  "Which deals need follow-up?",
 ];
 
 // Page context mapping

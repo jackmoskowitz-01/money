@@ -45,7 +45,7 @@ You can execute these actions when the user asks:
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
 - **create_task**: Create a new task linked to a prospect
-- **plan_tour**: Plan an optimized tour route from a list of addresses. ALWAYS use this tool when the user provides addresses for touring.
+- **plan_tour**: Plan an optimized tour route from a list of addresses. ALWAYS use this tool when the user provides addresses for touring. IMPORTANT: Before calling this tool, you MUST ask the user for their starting point/address if they haven't provided one.
 - **analyze_comps**: Analyze lease comps for a deal. Use when the user asks about comps, benchmarking, or lease term comparisons. Extracts matching comps by submarket, size range, and building class.
 - **score_deal**: Score/rate a pipeline deal on multiple dimensions. Use when the user says "score", "rate", or "evaluate" a deal.
 - **compare_deals**: Compare multiple pipeline deals side-by-side. Use when the user asks to compare deals or wants to know where to focus.

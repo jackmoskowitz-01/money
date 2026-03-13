@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import { exportToWord } from '@/lib/exportToWord';
+import { exportMatrixToWord } from '@/lib/exportMatrixToWord';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
@@ -512,6 +513,11 @@ export default function DealCopilot() {
     return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
   };
 
+  // Check if message is a matrix report
+  const isMatrixReport = (content: string) => {
+    return /summary\s*of\s*proposals/i.test(content) && content.includes('|') && content.includes('---');
+  };
+
   // Check if message is a substantial report (abstract, comp, commission, etc.)
   const isExportableReport = (content: string) => {
     const len = content.length;
@@ -527,7 +533,11 @@ export default function DealCopilot() {
     const h1Match = content.match(/^#\s+(.+)/m);
     const filename = h1Match?.[1]?.slice(0, 50) || 'Copilot_Report';
     try {
-      await exportToWord(content, filename);
+      if (isMatrixReport(content)) {
+        await exportMatrixToWord(content, filename);
+      } else {
+        await exportToWord(content, filename);
+      }
       toast.success('Word document downloaded');
     } catch (e) {
       console.error('Word export error:', e);

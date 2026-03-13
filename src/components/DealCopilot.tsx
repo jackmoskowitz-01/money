@@ -1250,6 +1250,9 @@ For each line item, also produce a monthly breakdown:
     }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
+    // Track if this is a /comp command for auto Word export
+    const isCompCommand = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim());
+    pendingAutoExportRef.current = isCompCommand;
     // Use ref for latest messages to avoid stale closure
     const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);

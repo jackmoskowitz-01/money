@@ -79,6 +79,9 @@ export default function DealCopilot() {
   const currentSpokenTextRef = useRef('');
   const lastVoiceSentRef = useRef('');
   const lastVoiceSentAtRef = useRef(0);
+  const ttsQueueRef = useRef<string[]>([]);
+  const ttsPlayingRef = useRef(false);
+  const scribeConnectedRef = useRef(false);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page

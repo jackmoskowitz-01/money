@@ -258,10 +258,48 @@ export default function DealCopilot() {
   // Clear conversation
   const handleClear = async () => {
     setMessages([]);
+    setFileContext(null);
     if (conversationId && user) {
       await supabase.from('copilot_messages').delete().eq('conversation_id', conversationId).eq('user_id', user.id);
     }
     setConversationId(null);
+  };
+
+  // Load a conversation from history
+  const handleLoadConversation = (convId: string, msgs: { role: string; content: string }[]) => {
+    setConversationId(convId);
+    setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+    setFileContext(null);
+  };
+
+  // New conversation
+  const handleNewConversation = () => {
+    setMessages([]);
+    setConversationId(null);
+    setFileContext(null);
+  };
+
+  // Toggle pin on a message
+  const togglePin = (index: number) => {
+    setMessages(prev => prev.map((m, i) =>
+      i === index ? { ...m, pinned: !m.pinned } : m
+    ));
+    toast.success(messages[index]?.pinned ? 'Unpinned' : 'Pinned');
+  };
+
+  // Check if message contains email draft
+  const hasEmailDraft = (content: string) => {
+    return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
+  };
+
+  // Export email draft
+  const handleExportEmail = (content: string) => {
+    // Extract subject and body from markdown
+    const lines = content.split('\n');
+    const subjectLine = lines.find(l => l.toLowerCase().startsWith('subject:') || l.toLowerCase().includes('**subject:'));
+    const subject = subjectLine?.replace(/\*?\*?subject:\*?\*?\s*/i, '').trim() || '';
+    navigator.clipboard.writeText(content);
+    toast.success('Email draft copied — paste into your email composer');
   };
 
   // File handling

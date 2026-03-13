@@ -82,7 +82,15 @@ export default function DealCopilot() {
   const ttsQueueRef = useRef<string[]>([]);
   const ttsPlayingRef = useRef(false);
   const scribeConnectedRef = useRef(false);
+  const messagesRef = useRef<Msg[]>([]);
+  const isLoadingRef = useRef(false);
+  const conversationIdRef = useRef<string | null>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
+
+  // Keep refs in sync with state
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  useEffect(() => { conversationIdRef.current = conversationId; }, [conversationId]);
 
   // Build context string from pipeline + buildings + page
   const buildContext = useCallback(() => {
@@ -628,17 +636,24 @@ export default function DealCopilot() {
     if (attachedFile) {
       return sendFileMessage(text);
     }
-    if (!text.trim() || isLoading) return;
+    if (!text.trim()) return;
+    // In voice mode, queue if already loading; in text mode, block
+    if (isLoadingRef.current) {
+      if (!voiceModeRef.current) return;
+      // Voice mode: skip duplicate sends while loading
+      return;
+    }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
-    const updatedMessages = [...messages, userMsg];
+    // Use ref for latest messages to avoid stale closure
+    const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     // Generate or reuse conversation ID
-    const convId = conversationId || crypto.randomUUID();
-    if (!conversationId) setConversationId(convId);
+    const convId = conversationIdRef.current || crypto.randomUUID();
+    if (!conversationIdRef.current) setConversationId(convId);
 
     // Persist user message
     await persistMessage(userMsg, convId);

@@ -609,6 +609,14 @@ export default function DealCopilot() {
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
+                {user && (
+                  <CopilotHistory
+                    userId={user.id}
+                    currentConversationId={conversationId}
+                    onLoadConversation={handleLoadConversation}
+                    onNewConversation={handleNewConversation}
+                  />
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

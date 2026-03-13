@@ -103,25 +103,9 @@ const MapView = () => {
     googleMarkersRef.current.forEach(m => m.remove());
     googleMarkersRef.current = [];
 
-    const icon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-    });
-
+    const log = getVisitLog();
     blds.forEach(b => {
-      const marker = L.marker([b.lat, b.lng], { icon }).addTo(mapInstanceRef.current);
-      marker.bindPopup(`
-        <div style="min-width:180px">
-          <strong>${b.address}</strong><br/>
-          ${b.name && b.name !== b.address ? `<span style="font-size:11px;opacity:0.7">${b.name}</span><br/>` : ''}
-          <span style="font-size:11px">${b.tenants.length} tenants · ${b.vacancyRate}% vacant</span>
-        </div>
-      `);
-      marker.on('click', () => setSelectedBuilding(b));
+      const marker = createCircleMarker(L, b, log, thresholdDays);
       googleMarkersRef.current.push(marker);
     });
   };

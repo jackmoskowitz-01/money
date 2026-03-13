@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
+import TerritoryAnalysis from '@/components/TerritoryAnalysis';
+import AutoEnrichBadges from '@/components/AutoEnrichBadges';
 import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles } from 'lucide-react';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
@@ -382,6 +384,14 @@ const MapView = () => {
                     <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
                   )}
                 </div>
+
+                {/* Territory Analysis */}
+                <div className="px-3 pb-3">
+                  <TerritoryAnalysis
+                    buildings={allBuildingsList}
+                    onSelectBuilding={(b) => setSelectedBuilding(b)}
+                  />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -461,6 +471,9 @@ const MapView = () => {
               <div className="mb-4">
                 <StackingPlan building={selectedBuilding} />
               </div>
+
+              {/* Auto-Enrich */}
+              <AutoEnrichBadges tenants={selectedBuilding.tenants} buildingName={selectedBuilding.name} />
 
               {/* Outreach Section */}
               <div className="mb-4 rounded-md border border-border bg-secondary/20 p-3">

@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.daily-briefing]
 verify_jwt = false
+
+[functions.territory-analysis]
+verify_jwt = false

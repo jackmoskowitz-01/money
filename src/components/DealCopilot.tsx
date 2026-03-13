@@ -64,7 +64,7 @@ export default function DealCopilot() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [proactiveAlert, setProactiveAlert] = useState<string | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [fileContext, setFileContext] = useState<string | null>(null);

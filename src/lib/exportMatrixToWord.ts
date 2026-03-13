@@ -305,7 +305,7 @@ function buildMatrixDocument(data: MatrixData): Document {
   const offerRow = new TableRow({
     children: offerRowCells,
     tableHeader: true,
-    height: { value: headerRowHeight, rule: HeightRule.AT_LEAST },
+    height: { value: headerRowHeight, rule: HeightRule.ATLEAST },
   });
 
   // === DATA ROWS ===

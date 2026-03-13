@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
+  Paperclip, FileText, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +18,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
+const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string };
 
 const SUGGESTIONS = [
   "What's my best next move with McKinsey?",

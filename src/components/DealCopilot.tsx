@@ -226,6 +226,7 @@ export default function DealCopilot() {
   }, [open]);
 
   // Keep voiceModeRef in sync
+  // Keep voiceModeRef in sync
   useEffect(() => {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
@@ -235,29 +236,21 @@ export default function DealCopilot() {
   const pendingTranscriptRef = useRef('');
 
   const normalizeSpeech = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    value.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 
   const isLikelyEcho = (heard: string, spoken: string) => {
     const h = normalizeSpeech(heard);
     const s = normalizeSpeech(spoken);
     if (!h || !s) return false;
-
-    // Direct substring match catches most speaker feedback loops
     if (s.includes(h) || h.includes(s)) return true;
-
     const hWords = h.split(' ').filter(w => w.length > 2);
     const sWords = new Set(s.split(' ').filter(w => w.length > 2));
     if (hWords.length === 0) return false;
-
     const overlap = hWords.filter(w => sWords.has(w)).length;
     return overlap / hWords.length >= 0.7;
   };
 
-  // Interrupt TTS — stop audio immediately and clear pending state
+  // Interrupt TTS — stop audio immediately
   const interruptTTS = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -267,6 +260,8 @@ export default function DealCopilot() {
     isSpeakingRef.current = false;
     currentSpokenTextRef.current = '';
     setIsSpeaking(false);
+    ttsQueueRef.current = [];
+    ttsPlayingRef.current = false;
     pendingTranscriptRef.current = '';
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
@@ -274,13 +269,9 @@ export default function DealCopilot() {
     }
   }, []);
 
-  // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)
-  const speakText = useCallback(async (text: string) => {
+  // Play a single TTS chunk
+  const playTTSChunk = useCallback(async (text: string): Promise<void> => {
     if (!voiceModeRef.current) return;
-    isSpeakingRef.current = true;
-    currentSpokenTextRef.current = text;
-    setIsSpeaking(true);
-
     try {
       const resp = await fetch(TTS_URL, {
         method: 'POST',
@@ -290,166 +281,133 @@ export default function DealCopilot() {
         },
         body: JSON.stringify({ text }),
       });
-
       if (!resp.ok) throw new Error('TTS failed');
-
       const audioBlob = await resp.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
       audioRef.current = audio;
-
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        isSpeakingRef.current = false;
-        currentSpokenTextRef.current = '';
-        setIsSpeaking(false);
-        audioRef.current = null;
-      };
-
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        isSpeakingRef.current = false;
-        currentSpokenTextRef.current = '';
-        setIsSpeaking(false);
-        audioRef.current = null;
-      };
-
-      await audio.play();
+      return new Promise<void>((resolve) => {
+        audio.onended = () => { URL.revokeObjectURL(audioUrl); audioRef.current = null; resolve(); };
+        audio.onerror = () => { URL.revokeObjectURL(audioUrl); audioRef.current = null; resolve(); };
+        audio.play().catch(() => resolve());
+      });
     } catch (e) {
-      console.error('TTS error:', e);
-      isSpeakingRef.current = false;
-      currentSpokenTextRef.current = '';
-      setIsSpeaking(false);
+      console.error('TTS chunk error:', e);
     }
   }, []);
 
-  // Start continuous listening (always-on mic for voice mode)
-  const startContinuousListening = useCallback(() => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
-    if (!voiceModeRef.current) return;
-
-    // Stop any existing recognition first
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop(); } catch {}
-      recognitionRef.current = null;
+  // Process TTS queue sequentially
+  const processTTSQueue = useCallback(async () => {
+    if (ttsPlayingRef.current) return;
+    ttsPlayingRef.current = true;
+    isSpeakingRef.current = true;
+    setIsSpeaking(true);
+    while (ttsQueueRef.current.length > 0 && voiceModeRef.current) {
+      const chunk = ttsQueueRef.current.shift()!;
+      currentSpokenTextRef.current = chunk;
+      await playTTSChunk(chunk);
     }
+    isSpeakingRef.current = false;
+    currentSpokenTextRef.current = '';
+    setIsSpeaking(false);
+    ttsPlayingRef.current = false;
+  }, [playTTSChunk]);
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
+  // Queue text for chunked TTS
+  const enqueueTTSChunk = useCallback((text: string) => {
+    if (!voiceModeRef.current || !text.trim()) return;
+    ttsQueueRef.current.push(text.trim());
+    processTTSQueue();
+  }, [processTTSQueue]);
 
+  // Speak full text by splitting into sentence chunks
+  const speakText = useCallback(async (text: string) => {
+    if (!voiceModeRef.current) return;
+    const chunks = text.split(/(?<=\.)\s+|(?<=\?)\s+|(?<=!)\s+|\n\n+/).filter(c => c.trim().length > 10);
+    if (chunks.length === 0) {
+      enqueueTTSChunk(text);
+    } else {
+      chunks.forEach(c => enqueueTTSChunk(c));
+    }
+  }, [enqueueTTSChunk]);
 
-    recognition.onresult = (e: any) => {
-      // Only process NEW results from this event
-      let newFinal = '';
-      let newInterim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) {
-          newFinal += e.results[i][0].transcript;
-        } else {
-          newInterim += e.results[i][0].transcript;
-        }
-      }
+  // ElevenLabs Scribe — realtime STT via useScribe hook
+  const scribe = useScribe({
+    modelId: 'scribe_v2_realtime',
+    commitStrategy: 'vad',
+    onCommittedTranscript: (data) => {
+      if (!voiceModeRef.current) return;
+      const text = data.text?.trim();
+      if (!text) return;
 
-      const heard = (newFinal || newInterim).trim();
-      if (!heard) return;
+      // Echo filter
+      if (isSpeakingRef.current && isLikelyEcho(text, currentSpokenTextRef.current)) return;
+      if (isSpeakingRef.current) interruptTTS();
 
-      // If AI is speaking, ignore echoed bot audio; interrupt only on genuinely new user speech
-      if (isSpeakingRef.current) {
-        if (isLikelyEcho(heard, currentSpokenTextRef.current)) {
-          return;
-        }
-        interruptTTS();
-      }
+      // De-dupe
+      const now = Date.now();
+      if (text === lastVoiceSentRef.current && now - lastVoiceSentAtRef.current < 2500) return;
+      lastVoiceSentRef.current = text;
+      lastVoiceSentAtRef.current = now;
 
-      // Show current utterance in input
-      setInput(heard);
+      setInput('');
+      sendMessage(text);
+    },
+    onPartialTranscript: (data) => {
+      if (!voiceModeRef.current) return;
+      const text = data.text?.trim();
+      if (!text) return;
+      if (isSpeakingRef.current && isLikelyEcho(text, currentSpokenTextRef.current)) return;
+      if (isSpeakingRef.current) interruptTTS();
+      setInput(text);
+    },
+  });
 
-      // Track final transcript for auto-send
-      if (newFinal.trim()) {
-        pendingTranscriptRef.current = newFinal.trim();
-
-        // Reset silence timer — send after 1.2s of silence
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = setTimeout(() => {
-          if (pendingTranscriptRef.current && voiceModeRef.current) {
-            const toSend = pendingTranscriptRef.current;
-            pendingTranscriptRef.current = '';
-            setInput('');
-
-            // De-dupe accidental duplicate sends from recognition edge cases
-            const now = Date.now();
-            if (toSend === lastVoiceSentRef.current && now - lastVoiceSentAtRef.current < 2500) {
-              return;
-            }
-            lastVoiceSentRef.current = toSend;
-            lastVoiceSentAtRef.current = now;
-
-            // Restart recognition to clear accumulated results buffer
-            try { recognition.stop(); } catch {}
-
-            sendMessage(toSend);
-          }
-        }, 1200);
-      }
-    };
-
-    recognition.onend = () => {
-      // Auto-restart if voice mode is still on (browser may stop it)
-      if (voiceModeRef.current) {
-        setTimeout(() => {
-          if (voiceModeRef.current) {
-            startContinuousListening();
-          }
-        }, 200);
-      } else {
-        setIsRecording(false);
-      }
-    };
-
-    recognition.onerror = (e: any) => {
-      if (e.error === 'no-speech' || e.error === 'aborted') return;
-      console.error('Speech recognition error:', e.error);
-      if (voiceModeRef.current) {
-        setTimeout(() => startContinuousListening(), 1000);
-      }
-    };
-
-    recognitionRef.current = recognition;
-    try {
-      recognition.start();
-      setIsRecording(true);
-    } catch {}
-  }, [interruptTTS]);
-
-  // Toggle voice mode on/off
-  const toggleVoiceMode = useCallback(() => {
+  // Toggle voice mode on/off — uses ElevenLabs Scribe
+  const toggleVoiceMode = useCallback(async () => {
     if (voiceMode) {
       // Turn off
       setVoiceMode(false);
       voiceModeRef.current = false;
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       pendingTranscriptRef.current = '';
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
       interruptTTS();
       setIsRecording(false);
       setInput('');
+      if (scribeConnectedRef.current) {
+        try { scribe.disconnect(); } catch {}
+        scribeConnectedRef.current = false;
+      }
       toast('Voice mode off');
     } else {
       // Turn on
-      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        toast.error('Voice not supported in this browser');
-        return;
-      }
       setVoiceMode(true);
       voiceModeRef.current = true;
-      toast('🎙️ Voice mode on — always listening. Just talk to interrupt.');
-      startContinuousListening();
+      try {
+        const tokenResp = await fetch(SCRIBE_TOKEN_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        });
+        if (!tokenResp.ok) throw new Error('Failed to get voice token');
+        const { token } = await tokenResp.json();
+        await scribe.connect({
+          token,
+          microphone: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+        scribeConnectedRef.current = true;
+        setIsRecording(true);
+        toast('🎙️ Voice mode on — just talk naturally. Interrupt anytime.');
+      } catch (e: any) {
+        console.error('Voice mode start error:', e);
+        setVoiceMode(false);
+        voiceModeRef.current = false;
+        toast.error('Failed to start voice mode. Check your microphone.');
+      }
     }
-  }, [voiceMode, startContinuousListening, interruptTTS]);
+  }, [voiceMode, scribe, interruptTTS]);
 
   // Legacy voice input toggle (for manual mic button when not in voice mode)
   const toggleVoice = () => {

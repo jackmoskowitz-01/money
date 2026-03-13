@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +16,14 @@ import { leaseComps } from '@/data/pipelineData';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
+import CopilotHistory from '@/components/copilot/CopilotHistory';
+import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 
-type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string };
+type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
 const SUGGESTIONS = [
   "What's my best next move with McKinsey?",
@@ -47,6 +50,7 @@ const PAGE_CONTEXT: Record<string, string> = {
 export default function DealCopilot() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -59,6 +63,8 @@ export default function DealCopilot() {
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+  const [fileContext, setFileContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -252,10 +258,48 @@ export default function DealCopilot() {
   // Clear conversation
   const handleClear = async () => {
     setMessages([]);
+    setFileContext(null);
     if (conversationId && user) {
       await supabase.from('copilot_messages').delete().eq('conversation_id', conversationId).eq('user_id', user.id);
     }
     setConversationId(null);
+  };
+
+  // Load a conversation from history
+  const handleLoadConversation = (convId: string, msgs: { role: string; content: string }[]) => {
+    setConversationId(convId);
+    setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
+    setFileContext(null);
+  };
+
+  // New conversation
+  const handleNewConversation = () => {
+    setMessages([]);
+    setConversationId(null);
+    setFileContext(null);
+  };
+
+  // Toggle pin on a message
+  const togglePin = (index: number) => {
+    setMessages(prev => prev.map((m, i) =>
+      i === index ? { ...m, pinned: !m.pinned } : m
+    ));
+    toast.success(messages[index]?.pinned ? 'Unpinned' : 'Pinned');
+  };
+
+  // Check if message contains email draft
+  const hasEmailDraft = (content: string) => {
+    return content.toLowerCase().includes('subject:') && content.toLowerCase().includes('dear ');
+  };
+
+  // Export email draft
+  const handleExportEmail = (content: string) => {
+    // Extract subject and body from markdown
+    const lines = content.split('\n');
+    const subjectLine = lines.find(l => l.toLowerCase().startsWith('subject:') || l.toLowerCase().includes('**subject:'));
+    const subject = subjectLine?.replace(/\*?\*?subject:\*?\*?\s*/i, '').trim() || '';
+    navigator.clipboard.writeText(content);
+    toast.success('Email draft copied — paste into your email composer');
   };
 
   // File handling
@@ -373,6 +417,10 @@ export default function DealCopilot() {
       if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
     }
 
+    // Keep file context for multi-turn follow-ups
+    if (assistantSoFar) {
+      setFileContext(`Previously analyzed file "${fileName}". Summary:\n${assistantSoFar.slice(0, 2000)}`);
+    }
     setAttachedFile(null);
     setIsLoading(false);
   };
@@ -408,7 +456,7 @@ export default function DealCopilot() {
         },
         body: JSON.stringify({
           messages: updatedMessages,
-          context: buildContext(),
+          context: buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : ''),
           mode: 'tools',
         }),
       });
@@ -491,8 +539,24 @@ export default function DealCopilot() {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      setShowSlashCommands(false);
       sendMessage(input);
     }
+    if (e.key === 'Escape') {
+      setShowSlashCommands(false);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    // Show slash commands when input starts with /
+    setShowSlashCommands(value.startsWith('/') && !value.includes(' '));
+  };
+
+  const handleSlashSelect = (template: string) => {
+    setInput(template);
+    setShowSlashCommands(false);
+    inputRef.current?.focus();
   };
 
   return (
@@ -545,6 +609,14 @@ export default function DealCopilot() {
                 </div>
               </div>
               <div className="flex items-center gap-0.5">
+                {user && (
+                  <CopilotHistory
+                    userId={user.id}
+                    currentConversationId={conversationId}
+                    onLoadConversation={handleLoadConversation}
+                    onNewConversation={handleNewConversation}
+                  />
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -593,7 +665,20 @@ export default function DealCopilot() {
             )}
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scroll-smooth">
+              {/* Pinned messages bar */}
+              {messages.some(m => m.pinned) && (
+                <div className="space-y-1.5 mb-2">
+                  <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                    <Pin className="h-3 w-3" /> Pinned
+                  </p>
+                  {messages.filter(m => m.pinned).map((m, pi) => (
+                    <div key={pi} className="text-[11px] text-foreground bg-primary/5 border border-primary/10 rounded-lg px-2.5 py-1.5 line-clamp-2">
+                      {m.content.slice(0, 120)}…
+                    </div>
+                  ))}
+                </div>
+              )}
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-center gap-4">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
@@ -649,15 +734,33 @@ export default function DealCopilot() {
                           <p>{msg.content}</p>
                         )}
                       </div>
-                      {/* Copy button for assistant messages */}
+                      {/* Message actions for assistant */}
                       {msg.role === 'assistant' && !isLoading && (
-                        <button
-                          onClick={() => handleCopy(msg.content, i)}
-                          className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                        >
-                          {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                          {copiedIndex === i ? 'Copied' : 'Copy'}
-                        </button>
+                        <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                          <button
+                            onClick={() => togglePin(i)}
+                            className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            title={msg.pinned ? 'Unpin' : 'Pin'}
+                          >
+                            {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                          </button>
+                          {hasEmailDraft(msg.content) && (
+                            <button
+                              onClick={() => handleExportEmail(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export email draft"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleCopy(msg.content, i)}
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                          >
+                            {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copiedIndex === i ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </motion.div>
@@ -688,6 +791,14 @@ export default function DealCopilot() {
                   </div>
                 </motion.div>
               )}
+              {/* Follow-up suggestions after last assistant message */}
+              {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
+                <CopilotFollowUps
+                  lastMessage={messages[messages.length - 1].content}
+                  onSelect={(text) => sendMessage(text)}
+                  isLoading={isLoading}
+                />
+              )}
             </div>
 
             {/* Drag overlay */}
@@ -702,7 +813,13 @@ export default function DealCopilot() {
             )}
 
             {/* Input */}
-            <div className="border-t border-border px-3 py-3">
+            <div className="border-t border-border px-3 py-3 relative">
+              {/* Slash commands popup */}
+              <CopilotSlashCommands
+                input={input}
+                visible={showSlashCommands}
+                onSelect={handleSlashSelect}
+              />
               {/* Attached file chip */}
               {attachedFile && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
@@ -716,6 +833,19 @@ export default function DealCopilot() {
                     className="text-muted-foreground hover:text-destructive shrink-0"
                   >
                     <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+              {/* File context indicator */}
+              {fileContext && !attachedFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-muted bg-muted/30 px-2.5 py-1">
+                  <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-[10px] text-muted-foreground flex-1 truncate">File context active — ask follow-up questions</span>
+                  <button
+                    onClick={() => setFileContext(null)}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
               )}
@@ -748,9 +878,9 @@ export default function DealCopilot() {
                 <textarea
                   ref={inputRef}
                   value={input}
-                  onChange={e => setInput(e.target.value)}
+                  onChange={e => handleInputChange(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Ask anything or give a command...'}
+                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -763,14 +893,14 @@ export default function DealCopilot() {
                 <Button
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
-                  onClick={() => sendMessage(input)}
+                  onClick={() => { setShowSlashCommands(false); sendMessage(input); }}
                   disabled={(!input.trim() && !attachedFile) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
               <p className="mt-1.5 text-[9px] text-muted-foreground/60 text-center">
-                Drop files to analyze · Search market data · Move deals · Draft outreach
+                Type <span className="font-mono text-muted-foreground/80">/</span> for commands · Drop files · Voice input · Pin responses
               </p>
             </div>
           </motion.div>

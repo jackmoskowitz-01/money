@@ -46,6 +46,7 @@ export function usePipeline() {
     const { data, error } = await supabase
       .from('pipeline_deals')
       .select('*')
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (error) {

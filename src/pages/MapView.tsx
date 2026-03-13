@@ -352,7 +352,7 @@ const MapView = () => {
                     </p>
                   )}
                 </div>
-                <div className="max-h-[55vh] space-y-2 overflow-y-auto px-3 pb-3">
+                <div className="flex-1 min-h-0 space-y-2 overflow-y-auto px-3 pb-3">
                   {filteredBuildings.map(b => (
                     <button
                       key={b.id}

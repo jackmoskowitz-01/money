@@ -1092,6 +1092,8 @@ For each line item, also produce a monthly breakdown:
         formData.append('question', `Create a Summary of Proposals deal terms matrix from these documents. Number of files attached: ${attachedFiles.length}.\n\n${MATRIX_TEMPLATE}`);
       } else if (isComp) {
         formData.append('question', `Run a complete Comparison of Options analysis on these documents.\n\n${COMP_COMPARISON_TEMPLATE}`);
+      } else if (isCashflow) {
+        formData.append('question', `Run a complete Cash Flow Analysis on this lease document.\n\n${CASHFLOW_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }

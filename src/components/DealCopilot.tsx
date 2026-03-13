@@ -731,9 +731,13 @@ export default function DealCopilot() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
+        // Load templates for context
+        const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
+        const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx);
+
         body: JSON.stringify({
           messages: updatedMessages,
-          context: voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '')),
+          context: fullContext,
           mode: 'tools',
           voiceMode: voiceModeRef.current,
         }),

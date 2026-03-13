@@ -515,6 +515,78 @@ async function compareDeals(args: any): Promise<string> {
   return result;
 }
 
+async function generatePitchDeck(args: any, context: string): Promise<string> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  const prospectName = args.prospect_name || "Unknown Prospect";
+
+  // Find deal in pipeline
+  const { data: deals } = await supabase.from("pipeline_deals").select("*");
+  const deal = deals?.find((d: any) =>
+    d.prospect_name?.toLowerCase().includes(prospectName.toLowerCase()) ||
+    d.tenant_id?.toLowerCase().includes(prospectName.toLowerCase())
+  );
+
+  // Find activities for this prospect
+  const { data: activities } = await supabase
+    .from("activities")
+    .select("*")
+    .order("timestamp", { ascending: false })
+    .limit(20);
+
+  const prospectActivities = activities?.filter((a: any) =>
+    deal ? a.tenant_id === deal.tenant_id : false
+  ) || [];
+
+  // Get recent comps
+  // Comps are in context already, so we reference them
+
+  // Search for real-time market intel
+  let marketIntel = "";
+  try {
+    marketIntel = await searchMarket(`${prospectName} commercial real estate Washington DC office market 2024 2025`);
+  } catch { /* silent */ }
+
+  let result = `## 📊 Pitch Deck Data: ${prospectName}\n\n`;
+
+  if (deal) {
+    result += `### Prospect Details\n`;
+    result += `- **Name:** ${deal.prospect_name || deal.tenant_id}\n`;
+    result += `- **Company:** ${deal.prospect_company || "N/A"}\n`;
+    result += `- **Size:** ${deal.prospect_sqft?.toLocaleString() || "N/A"} SF\n`;
+    result += `- **Stage:** ${deal.stage.replace(/_/g, " ")}\n`;
+    result += `- **Building:** ${deal.building_id}\n`;
+    result += `- **Notes:** ${(deal.notes || []).slice(-3).join("; ") || "None"}\n`;
+    result += `- **Touchpoints:** ${(deal.sent_touchpoints || []).length}\n\n`;
+  }
+
+  if (prospectActivities.length > 0) {
+    result += `### Activity History\n`;
+    prospectActivities.slice(0, 5).forEach((a: any) => {
+      result += `- ${new Date(a.timestamp).toLocaleDateString()}: ${a.title} (${a.type})\n`;
+    });
+    result += `\n`;
+  }
+
+  if (marketIntel) {
+    result += `### Market Intelligence\n${marketIntel}\n\n`;
+  }
+
+  result += `### Instructions\nUsing the data above AND the pipeline/building/comp context, generate a professional pitch deck with 7-9 slides using ---SLIDE--- separators. Include:\n`;
+  result += `1. Cover slide with prospect name and date\n`;
+  result += `2. Market Overview (DC vacancy rates, trends, absorption)\n`;
+  result += `3. Property/Portfolio Highlights (buildings, class, amenities)\n`;
+  result += `4. Tenant Fit Analysis (why this space fits their needs)\n`;
+  result += `5. Comparable Deals (recent transactions, benchmarks)\n`;
+  result += `6. Financial Summary (rent projections, TI, escalations)\n`;
+  result += `7. Team & Credentials\n`;
+  result += `8. Recommended Next Steps\n`;
+
+  return result;
+}
+
 async function executeTool(name: string, args: any, context?: string): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -535,6 +607,9 @@ async function executeTool(name: string, args: any, context?: string): Promise<s
 
     case "compare_deals":
       return compareDeals(args);
+
+    case "generate_pitch_deck":
+      return generatePitchDeck(args, context || "");
 
     case "move_deal_stage": {
       const { error } = await supabase

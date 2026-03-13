@@ -522,7 +522,7 @@ export default function DealCopilot() {
   };
 
   // File handling
-  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
   const handleFileDrop = (e: React.DragEvent) => {

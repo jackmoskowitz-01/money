@@ -734,15 +734,33 @@ export default function DealCopilot() {
                           <p>{msg.content}</p>
                         )}
                       </div>
-                      {/* Copy button for assistant messages */}
+                      {/* Message actions for assistant */}
                       {msg.role === 'assistant' && !isLoading && (
-                        <button
-                          onClick={() => handleCopy(msg.content, i)}
-                          className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                        >
-                          {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                          {copiedIndex === i ? 'Copied' : 'Copy'}
-                        </button>
+                        <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                          <button
+                            onClick={() => togglePin(i)}
+                            className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                            title={msg.pinned ? 'Unpin' : 'Pin'}
+                          >
+                            {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+                          </button>
+                          {hasEmailDraft(msg.content) && (
+                            <button
+                              onClick={() => handleExportEmail(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export email draft"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleCopy(msg.content, i)}
+                            className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                          >
+                            {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copiedIndex === i ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
                       )}
                     </div>
                   </motion.div>

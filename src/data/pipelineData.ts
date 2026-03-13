@@ -26,6 +26,7 @@ export type PipelineItem = {
   prospectSqft?: number;
   touchpoints?: Touchpoint[];
   sentTouchpoints?: Touchpoint[]; // touchpoints that have been sent
+  sortOrder?: number;
 };
 
 export const touchpointLabels: Record<Touchpoint['type'], string> = {

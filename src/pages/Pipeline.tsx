@@ -34,7 +34,7 @@ const touchpointIcons: Record<Touchpoint['type'], typeof Mail> = {
 };
 
 const Pipeline = () => {
-  const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal } = usePipeline();
+  const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal, reorderInStage } = usePipeline();
   const [noteInput, setNoteInput] = useState('');
   const [noteTarget, setNoteTarget] = useState<{ tenantId: string; buildingId: string } | null>(null);
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);
@@ -46,6 +46,7 @@ const Pipeline = () => {
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<PipelineItem | null>(null);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Email generation state
   const [emailTouchpoint, setEmailTouchpoint] = useState<Touchpoint | null>(null);
@@ -126,15 +127,37 @@ const Pipeline = () => {
     setDragOverStage(stage);
   };
 
-  const handleDragLeave = () => {
-    setDragOverStage(null);
+  const handleCardDragOver = (e: React.DragEvent, stage: PipelineStage, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverStage(stage);
+    setDragOverIndex(index);
   };
 
-  const handleDrop = (e: React.DragEvent, stage: PipelineStage) => {
+  const handleDragLeave = () => {
+    setDragOverStage(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, stage: PipelineStage) => {
     e.preventDefault();
     setDragOverStage(null);
-    if (dragItem && dragItem.stage !== stage) {
-      handleStageChange(dragItem.tenantId, dragItem.buildingId, stage);
+    setDragOverIndex(null);
+    if (!dragItem) return;
+
+    if (dragItem.stage === stage && dragOverIndex !== null) {
+      // Reorder within same column
+      const stageItems = itemsByStage(stage);
+      const fromIndex = stageItems.findIndex(
+        i => i.tenantId === dragItem.tenantId && i.buildingId === dragItem.buildingId
+      );
+      if (fromIndex !== -1 && fromIndex !== dragOverIndex) {
+        await reorderInStage(stage, fromIndex, dragOverIndex);
+      }
+    } else if (dragItem.stage !== stage) {
+      // Move to different column
+      await handleStageChange(dragItem.tenantId, dragItem.buildingId, stage);
     }
     setDragItem(null);
   };
@@ -142,6 +165,7 @@ const Pipeline = () => {
   const handleDragEnd = () => {
     setDragItem(null);
     setDragOverStage(null);
+    setDragOverIndex(null);
   };
 
   // Email generation for touchpoint
@@ -252,7 +276,8 @@ const Pipeline = () => {
     }
   };
 
-  const itemsByStage = (stage: PipelineStage) => pipeline.filter(p => p.stage === stage);
+  const itemsByStage = (stage: PipelineStage) =>
+    pipeline.filter(p => p.stage === stage).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   const touchpoints = selectedItem ? generateTouchpoints(selectedItem) : [];
   const sentTouchpointIds = new Set((selectedItem?.sentTouchpoints || []).map(t => t.id));
@@ -422,7 +447,7 @@ const Pipeline = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {itemsByStage(stage).map(item => {
+                    {itemsByStage(stage).map((item, idx) => {
                       if (!item.isManual) {
                         const { tenant, building } = getTenantInfo(item.tenantId, item.buildingId);
                         if (!tenant || !building) return null;
@@ -431,14 +456,16 @@ const Pipeline = () => {
                       const isSelected = selectedItem?.tenantId === item.tenantId && selectedItem?.buildingId === item.buildingId;
                       const isDragging = dragItem?.tenantId === item.tenantId && dragItem?.buildingId === item.buildingId;
                       const sentCount = (item.sentTouchpoints || []).length;
+                      const isDropTarget = dragOverStage === stage && dragOverIndex === idx && dragItem && !(dragItem.tenantId === item.tenantId && dragItem.buildingId === item.buildingId);
 
                       return (
                         <Card
                           key={`${item.tenantId}-${item.buildingId}`}
                           draggable
                           onDragStart={e => handleDragStart(e, item)}
+                          onDragOver={e => handleCardDragOver(e, stage, idx)}
                           onDragEnd={handleDragEnd}
-                          className={`cursor-grab active:cursor-grabbing border-border bg-card p-3 transition-all hover:border-primary/30 ${isSelected ? 'border-primary ring-1 ring-primary/20' : ''} ${isDragging ? 'opacity-50 scale-95' : ''}`}
+                          className={`cursor-grab active:cursor-grabbing border-border bg-card p-3 transition-all hover:border-primary/30 ${isSelected ? 'border-primary ring-1 ring-primary/20' : ''} ${isDragging ? 'opacity-50 scale-95' : ''} ${isDropTarget ? 'border-t-2 border-t-primary' : ''}`}
                           onClick={() => setSelectedItem(isSelected ? null : item)}
                         >
                           <div className="mb-2 flex items-start justify-between">

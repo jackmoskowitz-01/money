@@ -17,6 +17,7 @@ type DbRow = {
   prospect_phone: string | null;
   prospect_sqft: number | null;
   sent_touchpoints: any;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -34,6 +35,7 @@ const rowToItem = (r: DbRow): PipelineItem => ({
   prospectPhone: r.prospect_phone || undefined,
   prospectSqft: r.prospect_sqft || undefined,
   sentTouchpoints: Array.isArray(r.sent_touchpoints) ? r.sent_touchpoints : [],
+  sortOrder: r.sort_order ?? 0,
 });
 
 export function usePipeline() {
@@ -44,6 +46,7 @@ export function usePipeline() {
     const { data, error } = await supabase
       .from('pipeline_deals')
       .select('*')
+      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -208,5 +211,36 @@ export function usePipeline() {
     }
   }, []);
 
-  return { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal, refetch: fetchPipeline };
+  const reorderInStage = useCallback(async (stage: PipelineStage, fromIndex: number, toIndex: number) => {
+    const stageItems = pipeline
+      .filter(p => p.stage === stage)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= stageItems.length || toIndex >= stageItems.length) return;
+
+    const reordered = [...stageItems];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    // Optimistic update
+    const updatedPipeline = pipeline.map(p => {
+      if (p.stage !== stage) return p;
+      const idx = reordered.findIndex(r => r.tenantId === p.tenantId && r.buildingId === p.buildingId);
+      return idx >= 0 ? { ...p, sortOrder: idx } : p;
+    });
+    setPipeline(updatedPipeline);
+
+    // Persist all sort orders for this stage
+    await Promise.all(
+      reordered.map((item, idx) =>
+        supabase
+          .from('pipeline_deals')
+          .update({ sort_order: idx })
+          .eq('tenant_id', item.tenantId)
+          .eq('building_id', item.buildingId)
+      )
+    );
+  }, [pipeline]);
+
+  return { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal, reorderInStage, refetch: fetchPipeline };
 }

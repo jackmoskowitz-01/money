@@ -1600,7 +1600,16 @@ For each line item, also produce a monthly breakdown:
                           >
                             {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
                           </button>
-                          {isCashflowReport(msg.content) ? (
+                          {isPitchDeck(msg.content) ? (
+                            <button
+                              onClick={() => setPitchDeckContent(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Open pitch deck viewer"
+                            >
+                              <Maximize2 className="h-3 w-3" />
+                              <span>Present</span>
+                            </button>
+                          ) : isCashflowReport(msg.content) ? (
                             <button
                               onClick={() => handleExportExcel(msg.content)}
                               className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
@@ -1619,6 +1628,20 @@ For each line item, also produce a monthly breakdown:
                               <span>Word</span>
                             </button>
                           ) : null}
+                          {isPitchDeck(msg.content) && (
+                            <button
+                              onClick={async () => {
+                                const slides = parsePitchSlides(msg.content);
+                                await exportPitchToPptx(slides, 'Pitch_Deck');
+                                toast.success('PowerPoint downloaded');
+                              }}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Download as PowerPoint"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>PPTX</span>
+                            </button>
+                          )}
                           {hasEmailDraft(msg.content) && (
                             <button
                               onClick={() => handleExportEmail(msg.content)}

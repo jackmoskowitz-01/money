@@ -217,8 +217,140 @@ export default function DealCopilot() {
     }
   }, [open]);
 
-  // Voice input
+  // Keep voiceModeRef in sync
+  useEffect(() => {
+    voiceModeRef.current = voiceMode;
+  }, [voiceMode]);
+
+  // Text-to-speech via ElevenLabs
+  const speakText = useCallback(async (text: string) => {
+    if (!voiceModeRef.current) return;
+    setIsSpeaking(true);
+
+    try {
+      const resp = await fetch(TTS_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ text }),
+      });
+
+      if (!resp.ok) throw new Error('TTS failed');
+
+      const audioBlob = await resp.blob();
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        audioRef.current = null;
+        // Auto-listen after speaking if voice mode still on
+        if (voiceModeRef.current) {
+          setTimeout(() => startVoiceListening(), 300);
+        }
+      };
+
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        setIsSpeaking(false);
+        audioRef.current = null;
+      };
+
+      await audio.play();
+    } catch (e) {
+      console.error('TTS error:', e);
+      setIsSpeaking(false);
+      // Still auto-listen on TTS failure
+      if (voiceModeRef.current) {
+        setTimeout(() => startVoiceListening(), 300);
+      }
+    }
+  }, []);
+
+  // Start listening for voice input (used by voice mode loop)
+  const startVoiceListening = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+    if (!voiceModeRef.current) return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    let finalTranscript = '';
+
+    recognition.onresult = (e: any) => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          finalTranscript += e.results[i][0].transcript;
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      setInput(finalTranscript || interim);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+      if (finalTranscript.trim() && voiceModeRef.current) {
+        // Auto-send the message
+        setInput('');
+        sendMessage(finalTranscript.trim());
+      }
+    };
+
+    recognition.onerror = (e: any) => {
+      setIsRecording(false);
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        toast.error('Voice recognition failed');
+      }
+      // Retry listening in voice mode unless it was intentional
+      if (voiceModeRef.current && e.error === 'no-speech') {
+        setTimeout(() => startVoiceListening(), 500);
+      }
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  }, []);
+
+  // Toggle voice mode on/off
+  const toggleVoiceMode = useCallback(() => {
+    if (voiceMode) {
+      // Turn off voice mode
+      setVoiceMode(false);
+      voiceModeRef.current = false;
+      recognitionRef.current?.stop();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+      setIsRecording(false);
+      setIsSpeaking(false);
+      toast('Voice mode off');
+    } else {
+      // Turn on voice mode
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        toast.error('Voice not supported in this browser');
+        return;
+      }
+      setVoiceMode(true);
+      voiceModeRef.current = true;
+      toast('🎙️ Voice mode on — speak naturally');
+      startVoiceListening();
+    }
+  }, [voiceMode, startVoiceListening]);
+
+  // Legacy voice input toggle (for manual mic button when not in voice mode)
   const toggleVoice = () => {
+    if (voiceMode) return; // Handled by voice mode
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       toast.error('Voice input not supported in this browser');
       return;

@@ -661,9 +661,52 @@ export default function DealCopilot() {
               )}
             </div>
 
+            {/* Drag overlay */}
+            {isDraggingOver && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-2xl backdrop-blur-sm">
+                <div className="text-center">
+                  <FileText className="h-10 w-10 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium text-primary">Drop file here</p>
+                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, CSV, JSON</p>
+                </div>
+              </div>
+            )}
+
             {/* Input */}
             <div className="border-t border-border px-3 py-3">
+              {/* Attached file chip */}
+              {attachedFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs text-foreground truncate flex-1">{attachedFile.name}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {(attachedFile.size / 1024).toFixed(0)}KB
+                  </span>
+                  <button
+                    onClick={() => setAttachedFile(null)}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 w-10 rounded-xl p-0 shrink-0 text-muted-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach file"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -678,7 +721,7 @@ export default function DealCopilot() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={isRecording ? 'Listening...' : 'Ask anything or give a command...'}
+                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Ask anything or give a command...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -692,13 +735,13 @@ export default function DealCopilot() {
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
                   onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && !attachedFile) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
               <p className="mt-1.5 text-[9px] text-muted-foreground/60 text-center">
-                Can search market data, move deals, create tasks, and draft outreach
+                Drop files to analyze · Search market data · Move deals · Draft outreach
               </p>
             </div>
           </motion.div>

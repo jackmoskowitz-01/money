@@ -427,17 +427,18 @@ const MapView = () => {
                   )}
                 </div>
 
-                {/* Territory Threshold Button */}
+                {/* Territory Tracker Button */}
                 <div className="px-3 pb-3">
                   <button
                     onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
-                    className="w-full flex items-center gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5 hover:bg-primary/10 transition-colors"
+                    className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${trackerEnabled ? 'border-primary/40 bg-primary/10 hover:bg-primary/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
                   >
-                    <Radar className="h-4 w-4 text-primary" />
+                    <Radar className={`h-4 w-4 ${trackerEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
                     <div className="text-left flex-1">
                       <p className="text-[11px] font-bold text-foreground">Territory Tracker</p>
-                      <p className="text-[10px] text-muted-foreground">Stale after {thresholdDays} days · Red = needs attention</p>
+                      <p className="text-[10px] text-muted-foreground">{trackerEnabled ? `On · Stale after ${thresholdDays} days` : 'Off · Click to configure'}</p>
                     </div>
+                    <div className={`h-2.5 w-2.5 rounded-full ${trackerEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
                   </button>
                 </div>
               </motion.div>

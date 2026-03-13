@@ -66,7 +66,8 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('|')) {
-      if (/^\|[\s-:]+\|/.test(trimmed) || /^[\s-:|]+$/.test(trimmed)) {
+      const isSeparatorRow = /^\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(trimmed);
+      if (isSeparatorRow) {
         inTable = true;
         continue;
       }
@@ -215,11 +216,11 @@ function buildMatrixDocument(data: MatrixData): Document {
     });
   };
 
-  // === ROW 1: Tall navy header with address at bottom (matches Cresa template) ===
-  const headerRowCells: TableCell[] = [
-    new TableCell({
-      children: [new Paragraph({ children: [] })],
-      width: { size: labelColWidth, type: WidthType.DXA },
+  // === ROW 1: Photo space row (one block per building group) ===
+  const imageRowCells: TableCell[] = [
+    makeCell('', {
+      width: labelColWidth,
+      bgColor: WHITE,
       borders: {
         top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
         bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
@@ -230,41 +231,71 @@ function buildMatrixDocument(data: MatrixData): Document {
   ];
 
   for (const group of buildingGroups) {
-    // Split address into street + city/state lines
-    const addressParts = group.address.split(',').map(p => p.trim());
-    const streetLine = addressParts[0] || group.address;
-    const cityStateLine = addressParts.slice(1).join(', ');
+    imageRowCells.push(
+      makeCell('', {
+        width: buildingGroupWidth,
+        columnSpan: group.offerLabels.length,
+        bgColor: GRAY_HEADER,
+        verticalAlign: 'center',
+        borders: {
+          top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        },
+      })
+    );
+  }
 
-    headerRowCells.push(
+  const imageRow = new TableRow({
+    children: imageRowCells,
+    height: { value: imageRowHeight, rule: HeightRule.ATLEAST },
+  });
+
+  // === ROW 2: Address row directly below photo space ===
+  const addressRowCells: TableCell[] = [
+    makeCell('', {
+      width: labelColWidth,
+      bgColor: WHITE,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+      },
+    }),
+  ];
+
+  for (const group of buildingGroups) {
+    const [streetLine, ...rest] = group.address.split(',').map((part) => part.trim());
+    const cityStateLine = rest.join(', ');
+
+    addressRowCells.push(
       new TableCell({
         children: [
-          // Spacer paragraph to push address to bottom
-          new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
-          // Street address
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 0, after: 20 },
+            spacing: { before: 60, after: 20 },
             children: [
               new TextRun({
-                text: streetLine,
+                text: streetLine || group.address,
                 bold: true,
-                color: WHITE,
+                color: '1F5C99',
                 font: TABLE_FONT,
                 size: 20,
               }),
             ],
           }),
-          // City, State
           ...(cityStateLine
             ? [
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { before: 0, after: 80 },
+                  spacing: { before: 0, after: 60 },
                   children: [
                     new TextRun({
                       text: cityStateLine,
                       bold: true,
-                      color: WHITE,
+                      color: '1F5C99',
                       font: TABLE_FONT,
                       size: 20,
                     }),
@@ -275,29 +306,30 @@ function buildMatrixDocument(data: MatrixData): Document {
         ],
         width: { size: buildingGroupWidth, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
-        verticalAlign: "bottom",
-        shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
+        verticalAlign: 'center',
+        shading: { type: ShadingType.SOLID, color: WHITE, fill: WHITE },
         borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
-          bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
-          left: { style: BorderStyle.SINGLE, size: 2, color: WHITE },
-          right: { style: BorderStyle.SINGLE, size: 2, color: WHITE },
+          top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
         },
       })
     );
   }
 
-  const headerRow = new TableRow({
-    children: headerRowCells,
-    height: { value: 1400, rule: HeightRule.ATLEAST },
+  const addressRow = new TableRow({
+    children: addressRowCells,
+    height: { value: 480, rule: HeightRule.ATLEAST },
   });
 
   // === ROW 3: Offer labels (gray background) ===
   const offerRowCells: TableCell[] = [
     makeCell('Lease Terms', {
       bold: true,
+      color: WHITE,
       width: labelColWidth,
-      bgColor: GRAY_HEADER,
+      bgColor: NAVY,
       alignment: AlignmentType.LEFT,
       fontSize: 20,
       spacingBefore: 120,
@@ -312,7 +344,8 @@ function buildMatrixDocument(data: MatrixData): Document {
       offerRowCells.push(
         makeCell(group.offerLabels[i], {
           bold: true,
-          bgColor: GRAY_HEADER,
+          color: WHITE,
+          bgColor: NAVY,
           fontSize: 20,
           width: subColWidth,
           spacingBefore: 120,
@@ -339,7 +372,7 @@ function buildMatrixDocument(data: MatrixData): Document {
     const cells: TableCell[] = [
       makeCell(row.label, {
         bold: true,
-        color: GOLD_LABEL,
+        color: '1F5C99',
         width: labelColWidth,
         alignment: AlignmentType.LEFT,
         fontSize: 20,
@@ -380,7 +413,7 @@ function buildMatrixDocument(data: MatrixData): Document {
 
   // Build the table
   const table = new Table({
-    rows: [headerRow, offerRow, ...dataRows],
+    rows: [imageRow, addressRow, offerRow, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     layout: TableLayoutType.FIXED,
   });

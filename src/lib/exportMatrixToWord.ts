@@ -335,7 +335,7 @@ function buildMatrixDocument(data: MatrixData): Document {
 
     return new TableRow({
       children: cells,
-      height: { value: dataRowHeight, rule: HeightRule.AT_LEAST },
+      height: { value: dataRowHeight, rule: HeightRule.ATLEAST },
     });
   });
 

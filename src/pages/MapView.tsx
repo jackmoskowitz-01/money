@@ -716,8 +716,19 @@ const MapView = () => {
                 <Radar className="h-5 w-5 text-primary" />
                 <h3 className="text-sm font-bold text-foreground">Territory Tracker</h3>
               </div>
+              {/* Enable toggle */}
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-xs text-foreground font-medium">Enable tracker</label>
+                <button
+                  onClick={() => setTrackerEnabled(prev => !prev)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${trackerEnabled ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-background shadow transition-transform ${trackerEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+
               <p className="text-xs text-muted-foreground mb-3">
-                Buildings you haven't viewed within this timeframe will turn <span className="text-destructive font-semibold">red</span> on the map.
+                When enabled, buildings you haven't viewed within this timeframe will show <span className="text-destructive font-semibold">red pins</span> on the map.
               </p>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5 block">
                 Stale threshold (days)
@@ -729,7 +740,7 @@ const MapView = () => {
                 value={thresholdInput}
                 onChange={e => setThresholdInput(e.target.value)}
                 className="h-9 text-sm mb-4"
-                autoFocus
+                disabled={!trackerEnabled}
               />
               <div className="flex gap-2">
                 <Button
@@ -738,11 +749,12 @@ const MapView = () => {
                   className="flex-1 text-xs"
                   onClick={() => setShowThresholdModal(false)}
                 >
-                  Cancel
+                  Close
                 </Button>
                 <Button
                   size="sm"
                   className="flex-1 text-xs"
+                  disabled={!trackerEnabled}
                   onClick={() => {
                     const days = Math.max(1, Math.min(365, parseInt(thresholdInput, 10) || 14));
                     setThresholdDays(days);
@@ -753,10 +765,12 @@ const MapView = () => {
                   Apply
                 </Button>
               </div>
-              <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" /> Viewed recently</span>
-                <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-red-500 inline-block" /> Needs attention</span>
-              </div>
+              {trackerEnabled && (
+                <div className="mt-3 flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-primary inline-block" /> Viewed recently</span>
+                  <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full bg-destructive inline-block" /> Needs attention</span>
+                </div>
+              )
             </motion.div>
           </motion.div>
         )}

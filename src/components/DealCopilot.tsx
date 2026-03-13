@@ -636,17 +636,24 @@ export default function DealCopilot() {
     if (attachedFile) {
       return sendFileMessage(text);
     }
-    if (!text.trim() || isLoading) return;
+    if (!text.trim()) return;
+    // In voice mode, queue if already loading; in text mode, block
+    if (isLoadingRef.current) {
+      if (!voiceModeRef.current) return;
+      // Voice mode: skip duplicate sends while loading
+      return;
+    }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
-    const updatedMessages = [...messages, userMsg];
+    // Use ref for latest messages to avoid stale closure
+    const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     // Generate or reuse conversation ID
-    const convId = conversationId || crypto.randomUUID();
-    if (!conversationId) setConversationId(convId);
+    const convId = conversationIdRef.current || crypto.randomUUID();
+    if (!conversationIdRef.current) setConversationId(convId);
 
     // Persist user message
     await persistMessage(userMsg, convId);

@@ -791,6 +791,14 @@ export default function DealCopilot() {
                   </div>
                 </motion.div>
               )}
+              {/* Follow-up suggestions after last assistant message */}
+              {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === 'assistant' && (
+                <CopilotFollowUps
+                  lastMessage={messages[messages.length - 1].content}
+                  onSelect={(text) => sendMessage(text)}
+                  isLoading={isLoading}
+                />
+              )}
             </div>
 
             {/* Drag overlay */}

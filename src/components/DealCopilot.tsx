@@ -521,7 +521,9 @@ export default function DealCopilot() {
 
   // Check if message is a cashflow report
   const isCashflowReport = (content: string) => {
-    return /cash\s*flow\s*analysis/i.test(content) && content.includes('|') && (/compilation/i.test(content) || /total\s*(monthly|annual|aggregate)\s*cost/i.test(content));
+    const lc = content.toLowerCase();
+    return (lc.includes('cash flow') || lc.includes('cashflow')) &&
+      (lc.includes('base rent') || lc.includes('compilation') || lc.includes('total monthly cost') || lc.includes('total annual cost') || lc.includes('escalation'));
   };
 
   // Check if message is a substantial report (abstract, comp, commission, etc.)

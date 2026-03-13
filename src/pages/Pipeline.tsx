@@ -34,7 +34,7 @@ const touchpointIcons: Record<Touchpoint['type'], typeof Mail> = {
 };
 
 const Pipeline = () => {
-  const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal } = usePipeline();
+  const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal, reorderInStage } = usePipeline();
   const [noteInput, setNoteInput] = useState('');
   const [noteTarget, setNoteTarget] = useState<{ tenantId: string; buildingId: string } | null>(null);
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);

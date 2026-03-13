@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,9 @@ import { leaseComps } from '@/data/pipelineData';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
+import CopilotHistory from '@/components/copilot/CopilotHistory';
+import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;

@@ -222,7 +222,17 @@ export default function DealCopilot() {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
 
-  // Text-to-speech via ElevenLabs
+  // Interrupt TTS — stop audio immediately
+  const interruptTTS = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    setIsSpeaking(false);
+  }, []);
+
+  // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)
   const speakText = useCallback(async (text: string) => {
     if (!voiceModeRef.current) return;
     setIsSpeaking(true);
@@ -248,10 +258,6 @@ export default function DealCopilot() {
         URL.revokeObjectURL(audioUrl);
         setIsSpeaking(false);
         audioRef.current = null;
-        // Auto-listen after speaking if voice mode still on
-        if (voiceModeRef.current) {
-          setTimeout(() => startVoiceListening(), 300);
-        }
       };
 
       audio.onerror = () => {
@@ -264,89 +270,125 @@ export default function DealCopilot() {
     } catch (e) {
       console.error('TTS error:', e);
       setIsSpeaking(false);
-      // Still auto-listen on TTS failure
-      if (voiceModeRef.current) {
-        setTimeout(() => startVoiceListening(), 300);
-      }
     }
   }, []);
 
-  // Start listening for voice input (used by voice mode loop)
-  const startVoiceListening = useCallback(() => {
+  // Silence timer — after user stops speaking, auto-send after a pause
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTranscriptRef = useRef('');
+
+  // Start continuous listening (always-on mic for voice mode)
+  const startContinuousListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
     if (!voiceModeRef.current) return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    let finalTranscript = '';
-
     recognition.onresult = (e: any) => {
-      let interim = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      // If user speaks while AI is talking, interrupt immediately
+      if (audioRef.current && !audioRef.current.paused) {
+        interruptTTS();
+      }
+
+      let finalText = '';
+      let interimText = '';
+      for (let i = 0; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          finalTranscript += e.results[i][0].transcript;
+          finalText += e.results[i][0].transcript;
         } else {
-          interim += e.results[i][0].transcript;
+          interimText += e.results[i][0].transcript;
         }
       }
-      setInput(finalTranscript || interim);
+
+      const display = finalText || interimText;
+      setInput(display);
+
+      // Track final transcript for auto-send
+      if (finalText.trim()) {
+        pendingTranscriptRef.current = finalText.trim();
+
+        // Reset silence timer — send after 1.5s of silence
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = setTimeout(() => {
+          if (pendingTranscriptRef.current && voiceModeRef.current) {
+            const toSend = pendingTranscriptRef.current;
+            pendingTranscriptRef.current = '';
+            setInput('');
+            sendMessage(toSend);
+          }
+        }, 1500);
+      }
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
-      if (finalTranscript.trim() && voiceModeRef.current) {
-        // Auto-send the message
-        setInput('');
-        sendMessage(finalTranscript.trim());
+      // Auto-restart if voice mode is still on (browser may stop it)
+      if (voiceModeRef.current) {
+        setTimeout(() => {
+          if (voiceModeRef.current) {
+            try {
+              recognition.start();
+            } catch {
+              // Already started or other error, retry with new instance
+              startContinuousListening();
+            }
+          }
+        }, 200);
+      } else {
+        setIsRecording(false);
       }
     };
 
     recognition.onerror = (e: any) => {
-      setIsRecording(false);
-      if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        toast.error('Voice recognition failed');
+      if (e.error === 'no-speech' || e.error === 'aborted') {
+        // Normal — just let onend restart it
+        return;
       }
-      // Retry listening in voice mode unless it was intentional
-      if (voiceModeRef.current && e.error === 'no-speech') {
-        setTimeout(() => startVoiceListening(), 500);
+      console.error('Speech recognition error:', e.error);
+      // Retry after a brief pause
+      if (voiceModeRef.current) {
+        setTimeout(() => startContinuousListening(), 1000);
       }
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsRecording(true);
-  }, []);
+    try {
+      recognition.start();
+      setIsRecording(true);
+    } catch {
+      // May already be running
+    }
+  }, [interruptTTS]);
 
   // Toggle voice mode on/off
   const toggleVoiceMode = useCallback(() => {
     if (voiceMode) {
-      // Turn off voice mode
+      // Turn off
       setVoiceMode(false);
       voiceModeRef.current = false;
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      pendingTranscriptRef.current = '';
       recognitionRef.current?.stop();
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
+      recognitionRef.current = null;
+      interruptTTS();
       setIsRecording(false);
-      setIsSpeaking(false);
+      setInput('');
       toast('Voice mode off');
     } else {
-      // Turn on voice mode
+      // Turn on
       if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
         toast.error('Voice not supported in this browser');
         return;
       }
       setVoiceMode(true);
       voiceModeRef.current = true;
-      toast('🎙️ Voice mode on — speak naturally');
-      startVoiceListening();
+      toast('🎙️ Voice mode on — always listening. Just talk to interrupt.');
+      startContinuousListening();
     }
-  }, [voiceMode, startVoiceListening]);
+  }, [voiceMode, startContinuousListening, interruptTTS]);
 
   // Legacy voice input toggle (for manual mic button when not in voice mode)
   const toggleVoice = () => {
@@ -674,10 +716,7 @@ export default function DealCopilot() {
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
       }
-      // Resume listening on error in voice mode
-      if (voiceModeRef.current) {
-        setTimeout(() => startVoiceListening(), 500);
-      }
+      // Mic is already running continuously in voice mode — no restart needed
     }
     setIsLoading(false);
   };

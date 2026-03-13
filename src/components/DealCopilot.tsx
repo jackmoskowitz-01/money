@@ -22,6 +22,7 @@ import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
+const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-tts`;
 
 type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 

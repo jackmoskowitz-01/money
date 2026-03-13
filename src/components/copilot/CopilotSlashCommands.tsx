@@ -8,8 +8,6 @@ const COMMANDS = [
   { command: '/search', description: 'Search live market data', icon: Search, template: 'Search for ' },
   { command: '/tour', description: 'Plan an optimized tour route', icon: MapPin, template: 'Plan a tour for these addresses: ' },
   { command: '/comp', description: 'Compare lease offers side-by-side', icon: BarChart3, template: 'Compare these lease offers: ' },
-  { command: '/score', description: 'Score & rate a pipeline deal', icon: Star, template: 'Score the deal with ' },
-  { command: '/compare', description: 'Compare top deals side-by-side', icon: GitCompare, template: 'Compare my top 3 deals' },
   { command: '/commission', description: 'Calculate broker commission from a lease', icon: Calculator, template: 'Calculate the commission on the attached lease' },
   { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
   { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },

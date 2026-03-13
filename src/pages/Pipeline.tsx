@@ -276,7 +276,8 @@ const Pipeline = () => {
     }
   };
 
-  const itemsByStage = (stage: PipelineStage) => pipeline.filter(p => p.stage === stage);
+  const itemsByStage = (stage: PipelineStage) =>
+    pipeline.filter(p => p.stage === stage).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
   const touchpoints = selectedItem ? generateTouchpoints(selectedItem) : [];
   const sentTouchpointIds = new Set((selectedItem?.sentTouchpoints || []).map(t => t.id));

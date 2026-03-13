@@ -522,7 +522,7 @@ export default function DealCopilot() {
   };
 
   // File handling
-  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
   const handleFileDrop = (e: React.DragEvent) => {
@@ -547,11 +547,44 @@ export default function DealCopilot() {
     toast.success(`📎 ${file.name} attached`);
   };
 
+  // Save a template from file analysis result
+  const saveTemplate = async (name: string, structure: string, filename: string, templateType: string = 'general') => {
+    if (!user) return;
+    const { error } = await supabase.from('copilot_templates').insert({
+      user_id: user.id,
+      name,
+      template_type: templateType,
+      parsed_structure: structure,
+      original_filename: filename,
+    } as any);
+    if (error) {
+      toast.error('Failed to save template');
+      console.error('Template save error:', error);
+    } else {
+      toast.success(`📋 Template "${name}" saved! It will be used automatically for future requests.`);
+    }
+  };
+
+  // Load user templates for context
+  const loadTemplates = async (): Promise<string> => {
+    if (!user) return '';
+    const { data } = await supabase
+      .from('copilot_templates')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (!data || data.length === 0) return '';
+    return '\n\n### User Output Templates\nThe user has saved these templates. When generating output that matches a template type, ALWAYS follow the template\'s structure and formatting exactly.\n' +
+      (data as any[]).map((t: any) => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
+  };
+
   const sendFileMessage = async (question: string) => {
     if (!attachedFile || isLoading) return;
 
     const fileName = attachedFile.name;
     const userContent = question.trim() || `Analyze this document: ${fileName}`;
+    const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
@@ -567,7 +600,11 @@ export default function DealCopilot() {
     try {
       const formData = new FormData();
       formData.append('file', attachedFile);
-      formData.append('question', userContent);
+      if (isTemplateSave) {
+        formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
+      } else {
+        formData.append('question', userContent);
+      }
       formData.append('context', buildContext());
 
       const resp = await fetch(FILE_PARSE_URL, {
@@ -630,6 +667,20 @@ export default function DealCopilot() {
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
       }
+
+      // Auto-save template if this was a template save request
+      if (isTemplateSave && assistantSoFar) {
+        const nameMatch = userContent.match(/template\s+(?:called|named)\s+["']?([^"'\n]+)["']?/i);
+        const templateName = nameMatch?.[1]?.trim() || fileName.replace(/\.[^.]+$/, '');
+        // Detect type from filename or content
+        let templateType = 'general';
+        if (/commission/i.test(userContent) || /commission/i.test(fileName)) templateType = 'commission';
+        else if (/abstract|loi|lease/i.test(userContent) || /abstract|loi|lease/i.test(fileName)) templateType = 'deal_abstract';
+        else if (/comp|comparison/i.test(userContent) || /comp/i.test(fileName)) templateType = 'comp_report';
+        else if (/proposal/i.test(userContent) || /proposal/i.test(fileName)) templateType = 'proposal';
+        
+        await saveTemplate(templateName, assistantSoFar, fileName, templateType);
+      }
     } catch (e: any) {
       console.error('File analysis error:', e);
       toast.error(e.message || 'Failed to analyze file');
@@ -674,6 +725,10 @@ export default function DealCopilot() {
     let assistantSoFar = '';
 
     try {
+      // Load templates for context
+      const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx);
+
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
         headers: {
@@ -682,7 +737,7 @@ export default function DealCopilot() {
         },
         body: JSON.stringify({
           messages: updatedMessages,
-          context: voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '')),
+          context: fullContext,
           mode: 'tools',
           voiceMode: voiceModeRef.current,
         }),
@@ -1093,7 +1148,7 @@ export default function DealCopilot() {
                 <div className="text-center">
                   <FileText className="h-10 w-10 text-primary mx-auto mb-2" />
                   <p className="text-sm font-medium text-primary">Drop file here</p>
-                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, CSV, JSON</p>
+                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, XLSX, TXT, CSV, JSON</p>
                 </div>
               </div>
             )}
@@ -1139,7 +1194,7 @@ export default function DealCopilot() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md"
+                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md,.xlsx,.xls"
                   onChange={handleFileSelect}
                   className="hidden"
                 />

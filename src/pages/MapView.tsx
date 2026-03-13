@@ -147,14 +147,61 @@ const MapView = () => {
     );
   }, [searchQuery, allBuildingsList]);
 
-  // Clear state when building changes
+  // Record visit + clear state when building changes
   useEffect(() => {
+    if (selectedBuilding) {
+      const updated = recordVisit(selectedBuilding.id);
+      setVisitLog(updated);
+    }
     setSelectedTenants(new Set());
     setOutreachReason('');
     setGeneratedEmails({});
     setGeneratingKeys(new Set());
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
+
+  // Helper to create a circle marker with stale coloring
+  const createCircleMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number) => {
+    const stale = !log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000;
+    const color = stale ? '#ef4444' : '#3b82f6';
+    const marker = L.circleMarker([building.lat, building.lng], {
+      radius: 7,
+      fillColor: color,
+      color: stale ? '#dc2626' : '#2563eb',
+      weight: 2,
+      opacity: 0.9,
+      fillOpacity: 0.7,
+    }).addTo(mapInstanceRef.current);
+    marker.bindPopup(`
+      <div style="min-width:180px">
+        <strong>${building.address}</strong><br/>
+        ${building.name && building.name !== building.address ? `<span style="font-size:11px;opacity:0.7">${building.name}</span><br/>` : ''}
+        <span style="font-size:11px">${building.tenants.length} tenants · ${building.vacancyRate}% vacant</span><br/>
+        <span style="font-size:10px;opacity:0.6">${!log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`}</span>
+      </div>
+    `);
+    marker.on('click', () => setSelectedBuilding(building));
+    (marker as any)._buildingId = building.id;
+    return marker;
+  }, []);
+
+  // Refresh marker colors when visitLog or threshold changes
+  const refreshMarkerColors = useCallback(() => {
+    const log = getVisitLog();
+    [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
+      const bid = marker._buildingId;
+      if (!bid) return;
+      const stale = !log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000;
+      marker.setStyle({
+        fillColor: stale ? '#ef4444' : '#3b82f6',
+        color: stale ? '#dc2626' : '#2563eb',
+      });
+    });
+  }, [thresholdDays]);
+
+  useEffect(() => {
+    refreshMarkerColors();
+  }, [visitLog, thresholdDays, refreshMarkerColors]);
 
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{

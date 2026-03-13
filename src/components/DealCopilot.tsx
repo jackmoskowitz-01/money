@@ -5,7 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines,
+  Paperclip, FileText, X, Pin, PinOff, ExternalLink, AudioLines, Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

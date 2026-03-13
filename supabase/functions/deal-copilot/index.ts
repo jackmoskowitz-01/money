@@ -17,12 +17,13 @@ You have deep knowledge of DC office submarkets, lease structures, building clas
 2. **Quick Data Lookup**: Answer questions about prospects, buildings, or market data using provided context.
 3. **Outreach Drafting**: Draft concise, professional broker emails. Position as a market advisor, not salesy.
 4. **Market Intelligence**: Answer DC metro CRE market questions. When you need real-time data, use the search_market tool.
-5. **Pipeline Actions**: Execute actions like moving deal stages, adding notes, creating tasks when the user asks.
-6. **Tour Planning**: Optimize property tour routes. When given addresses, use the plan_tour tool to geocode and order them for the most efficient route.
+5. **Company Research**: When a user asks about ANY company or organization not found in the provided context, ALWAYS use the search_market tool to look them up. Never say you don't have information — search for it first.
+6. **Pipeline Actions**: Execute actions like moving deal stages, adding notes, creating tasks when the user asks.
+7. **Tour Planning**: Optimize property tour routes. When given addresses, use the plan_tour tool to geocode and order them for the most efficient route.
 
 ## Available Tools
 You can execute these actions when the user asks:
-- **search_market**: Search for real-time market data, news, or trends
+- **search_market**: Search for real-time market data, news, company information, or any entity/organization not in the provided context. ALWAYS use this when the user asks about a company you don't recognize.
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
 - **create_task**: Create a new task linked to a prospect
@@ -44,7 +45,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_market",
-      description: "Search for real-time CRE market data, news, company information, or trends using web search. Use this when the user asks about current market conditions, recent news, or data you don't have in context.",
+      description: "Search for real-time CRE market data, news, company information, or any organization/entity details using web search. ALWAYS use this when the user mentions a company, organization, or entity not found in the provided context. Use for current market conditions, recent news, company research, or any data you don't have.",
       parameters: {
         type: "object",
         properties: {

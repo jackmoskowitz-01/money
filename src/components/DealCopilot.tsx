@@ -334,7 +334,7 @@ export default function DealCopilot() {
   // ElevenLabs Scribe — realtime STT via useScribe hook
   const scribe = useScribe({
     modelId: 'scribe_v2_realtime',
-    commitStrategy: 'vad',
+    commitStrategy: CommitStrategy.VAD,
     onCommittedTranscript: (data) => {
       if (!voiceModeRef.current) return;
       const text = data.text?.trim();

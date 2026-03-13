@@ -683,6 +683,8 @@ export default function DealCopilot() {
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
+        // Track sentence buffer for chunked TTS during streaming
+        let ttsBuffer = '';
 
         while (true) {
           const { done, value } = await reader.read();
@@ -712,9 +714,28 @@ export default function DealCopilot() {
                   }
                   return [...prev, { role: 'assistant', content: assistantSoFar }];
                 });
+
+                // Chunked TTS: queue sentences as they complete during streaming
+                if (voiceModeRef.current) {
+                  ttsBuffer += content;
+                  // Split on sentence boundaries
+                  const sentenceMatch = ttsBuffer.match(/^(.*?[.!?])\s+(.*)$/s);
+                  if (sentenceMatch) {
+                    const completeSentence = sentenceMatch[1].trim();
+                    ttsBuffer = sentenceMatch[2];
+                    if (completeSentence.length > 10) {
+                      enqueueTTSChunk(completeSentence);
+                    }
+                  }
+                }
               }
             } catch { /* partial */ }
           }
+        }
+
+        // Flush remaining TTS buffer
+        if (voiceModeRef.current && ttsBuffer.trim().length > 5) {
+          enqueueTTSChunk(ttsBuffer.trim());
         }
       }
 
@@ -725,11 +746,6 @@ export default function DealCopilot() {
 
       // Refresh pipeline after any response (in case tools were called)
       refetchPipeline();
-
-      // Voice mode: speak the response
-      if (voiceModeRef.current && assistantSoFar) {
-        speakText(assistantSoFar);
-      }
     } catch (e: any) {
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');

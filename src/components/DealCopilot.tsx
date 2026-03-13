@@ -74,6 +74,10 @@ export default function DealCopilot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceModeRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const currentSpokenTextRef = useRef('');
+  const lastVoiceSentRef = useRef('');
+  const lastVoiceSentAtRef = useRef(0);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page

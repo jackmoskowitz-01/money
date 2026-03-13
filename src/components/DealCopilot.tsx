@@ -925,6 +925,137 @@ CRITICAL INSTRUCTIONS:
 7. For comparable term analysis, use the SHORTEST lease term among all options as the comparison period.
 8. Label each column header clearly: building address on top, offer round/label below.`;
 
+  // Cash Flow Analysis template
+  const CASHFLOW_TEMPLATE = `You are producing a professional Lease Cash Flow Analysis. The user will attach a lease document and provide an Analysis Start Date. Extract ALL lease terms from the document and produce a complete monthly and annual cash flow.
+
+IMPORTANT: The Escalation Month is ALWAYS the same month as the Lease Commencement Date.
+
+## STEP 1: ASK FOR ANALYSIS START DATE
+If the user has NOT provided an analysis start date, your FIRST response must be:
+"I've reviewed the lease. Before I generate the cash flow, when should the **Analysis Start Date** be? (This is typically the date of the last rent escalation or the commencement date.)"
+
+Do NOT generate the cash flow until you have the analysis start date from the user.
+
+## STEP 2: EXTRACT THESE FIELDS FROM THE LEASE
+All of these must come from the lease document — do NOT ask the user for them:
+
+### Lease Terms
+- **Company Name:** [Tenant name from lease]
+- **Type of Analysis / Transaction:** [New Lease / Renewal / Expansion / etc.]
+- **Lease Commencement Date:** [from lease]
+- **Analysis Start Date:** [from user input]
+- **Lease Term (months):** [from lease]
+- **Lease Expiration Date:** [from lease]
+- **Base Rent:** [$XX.XX/SF from lease]
+- **Per Annum Escalation:** [X.XX% from lease]
+- **Escalation Month:** [SAME month as commencement date — e.g. if commencement is March 1, escalation month is March]
+- **Square Feet Leased:** [from lease]
+
+### Rental Abatement
+- **Total Months of Free Rent:** [from lease, 0 if none]
+- **Escalation Inclusion:** [Inclusive / Exclusive — from lease]
+- **Abatement Applied to OE & RETs:** [Yes / No]
+
+### Operating & Real Estate Tax Expense Terms
+- **Lease Type:** [FSG / NNN / Modified Gross / etc.]
+- **Abate Year 1 Expenses:** [Yes / No]
+- **Operating Expense Base Year:** [year from lease]
+- **Operating Expense Building Base Amount:** [$XX.XX/SF]
+- **Operating Expense Tenant Base Amount:** [$XX.XX/SF]
+- **Operating Expense Per Annum Escalation:** [X.XX%]
+- **Real Estate Tax Building Base Amount:** [$XX.XX/SF]
+- **Real Estate Tax Tenant Base Amount:** [$XX.XX/SF]
+- **Real Estate Tax Per Annum Escalation:** [X.XX%]
+
+### Concessions and Other Expenses
+- **Tenant Improvement Allowance:** [$XX.XX/SF or $0.00]
+- **Project/Buildout Cost:** [$XX.XX/SF or $0.00]
+- **Moving Costs:** [$XX.XX/SF or $0.00]
+- **Other Concessions:** [name and $/SF if any]
+
+## STEP 3: PRODUCE THE CASH FLOW OUTPUT
+
+### Format — Summary Section
+First, output the extracted terms as a clean summary:
+
+# Cash Flow Analysis
+
+**Company Name:** [value]
+**Type of Analysis:** [value]
+
+---
+
+**Compilation Start Date:** [Analysis Start Date]
+**Compilation Term (months):** [Lease Term]
+**Compilation Expiration Date:** [Lease Expiration]
+
+---
+
+### Format — Annual Summary Table
+
+| | Individual Total | Year 1 | Year 2 | Year 3 | ... |
+|---|---|---|---|---|---|
+| **Start Date** | | [date] | [date] | ... |
+| **End Date** | | [date] | [date] | ... |
+| | | | | |
+| **Base Rent** | $XXX,XXX | $XXX,XXX | $XXX,XXX | ... |
+| *Dates* | | [mm/dd/yy - mm/dd/yy] | ... |
+| **Free Rent** | ($XX,XXX) | ($XX,XXX) | ... |
+| *Dates* | | [months applied] | ... |
+| **Operating Expense Increase** | $XX,XXX | $XX,XXX | ... |
+| *Dates* | | | ... |
+| **Real Estate Tax Increase** | $XX,XXX | $XX,XXX | ... |
+| *Dates* | | | ... |
+| **Tenant Improvements** | ($XX,XXX) | ($XX,XXX) | ... |
+| *Dates* | | | ... |
+| **Project Cost** | $XX,XXX | $XX,XXX | ... |
+| *Dates* | | | ... |
+| | | | | |
+| **TOTAL MONTHLY COST** | | $XX,XXX | $XX,XXX | ... |
+| **TOTAL ANNUAL COST** | | $XXX,XXX | $XXX,XXX | ... |
+| **TOTAL AGGREGATE COST** | | $XXX,XXX | $XXX,XXX | ... |
+
+---
+
+### Totals
+- **Total Compilation Value:** $X,XXX,XXX
+- **Average Annual Cost:** $XXX,XXX
+- **NPV @ 5%:** $X,XXX,XXX
+
+### Format — Monthly Detail Table
+
+For each line item, also produce a monthly breakdown:
+
+#### Monthly Cash Flow Detail
+
+| Month | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | ... |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Year** | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 1 | Yr 2 | ... |
+| **Period Start** | [date] | [date] | ... |
+| **Period End** | [date] | [date] | ... |
+| **Base Rent** | $XX,XXX | $XX,XXX | ... |
+| **Free Rent** | ($XX,XXX) | $0 | ... |
+| **Total Rent** | $XX,XXX | $XX,XXX | ... |
+| **Opex Increase** | $X,XXX | $X,XXX | ... |
+| **RE Tax Increase** | $X,XXX | $X,XXX | ... |
+| **Total Expense** | $X,XXX | $X,XXX | ... |
+| **Concessions** | ($X,XXX) | $0 | ... |
+| **Total Net Expense** | $X,XXX | $X,XXX | ... |
+| **Total Monthly Cost** | $XX,XXX | $XX,XXX | ... |
+
+## CRITICAL CALCULATION INSTRUCTIONS:
+1. **Base Rent Calculation:** Monthly Base Rent = (Base Rent $/SF × Square Feet) / 12. Apply escalation percentage on the escalation month anniversary each year.
+2. **Escalation Month:** ALWAYS use the same month as the lease commencement date. If lease starts March 1, escalations happen every March.
+3. **Free Rent:** Apply free rent months starting from commencement. Show as negative values. If "Escalation Inclusion" is "Inclusive," the rent rate still escalates during free rent periods (the abated amount reflects the escalated rate).
+4. **Operating Expenses:** Calculate year-over-year increase = (Building Base Amount - Tenant Base Amount) × SF, then escalate annually.
+5. **Real Estate Taxes:** Same calculation pattern as operating expenses.
+6. **Concessions/TI:** Show as one-time costs in the month they occur (typically month 1 for TI allowance as a credit, buildout as a cost).
+7. **NPV:** Use 5% discount rate unless specified otherwise.
+8. **Total Aggregate Cost:** Running cumulative total across all years.
+9. Show ALL months for the full lease term — do not truncate or summarize.
+10. Use exact dollar amounts — never round to nearest thousand unless the source does.
+11. If a field is not found in the lease, use $0.00 and note "Silent in Lease" in the summary.`;
+
 
   const sendFileMessage = async (question: string) => {
     if (attachedFiles.length === 0 || isLoading) return;
@@ -934,8 +1065,9 @@ CRITICAL INSTRUCTIONS:
     const userContent = question.trim() || `Analyze ${fileLabel}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
+    const isCashflow = /\/cashflow/i.test(userContent) || (/cash\s*flow/i.test(userContent) && /analy/i.test(userContent));
     const isMatrix = /\/matrix/i.test(userContent) || (/matrix/i.test(userContent) && /deal\s*terms/i.test(userContent)) || /summary\s*of\s*proposals/i.test(userContent);
-    const isComp = !isMatrix && (/\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent));
+    const isComp = !isMatrix && !isCashflow && (/\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent));
     const fileChips = fileNames.map(n => `📎 **${n}**`).join('\n');
     const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
     const updatedMessages = [...messages, userMsg];
@@ -960,6 +1092,8 @@ CRITICAL INSTRUCTIONS:
         formData.append('question', `Create a Summary of Proposals deal terms matrix from these documents. Number of files attached: ${attachedFiles.length}.\n\n${MATRIX_TEMPLATE}`);
       } else if (isComp) {
         formData.append('question', `Run a complete Comparison of Options analysis on these documents.\n\n${COMP_COMPARISON_TEMPLATE}`);
+      } else if (isCashflow) {
+        formData.append('question', `Run a complete Cash Flow Analysis on this lease document.\n\n${CASHFLOW_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }

@@ -344,7 +344,8 @@ function buildMatrixDocument(data: MatrixData): Document {
       offerRowCells.push(
         makeCell(group.offerLabels[i], {
           bold: true,
-          bgColor: GRAY_HEADER,
+          color: WHITE,
+          bgColor: NAVY,
           fontSize: 20,
           width: subColWidth,
           spacingBefore: 120,

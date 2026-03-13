@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
   Mic, MicOff, Copy, Check, Bell, BellOff,
+  Paperclip, FileText, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,8 +18,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
+const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 
-type Msg = { role: 'user' | 'assistant'; content: string };
+type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string };
 
 const SUGGESTIONS = [
   "What's my best next move with McKinsey?",
@@ -55,9 +57,12 @@ export default function DealCopilot() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [proactiveAlert, setProactiveAlert] = useState<string | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page
@@ -249,7 +254,130 @@ export default function DealCopilot() {
     setConversationId(null);
   };
 
+  // File handling
+  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) validateAndAttachFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndAttachFile(file);
+    e.target.value = '';
+  };
+
+  const validateAndAttachFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File too large (max 20MB)');
+      return;
+    }
+    setAttachedFile(file);
+    toast.success(`📎 ${file.name} attached`);
+  };
+
+  const sendFileMessage = async (question: string) => {
+    if (!attachedFile || isLoading) return;
+
+    const fileName = attachedFile.name;
+    const userContent = question.trim() || `Analyze this document: ${fileName}`;
+    const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInput('');
+    setIsLoading(true);
+
+    const convId = conversationId || crypto.randomUUID();
+    if (!conversationId) setConversationId(convId);
+    await persistMessage({ role: 'user', content: userContent }, convId);
+
+    let assistantSoFar = '';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', attachedFile);
+      formData.append('question', userContent);
+      formData.append('context', buildContext());
+
+      const resp = await fetch(FILE_PARSE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || `File analysis failed (${resp.status})`);
+      }
+
+      const contentType = resp.headers.get('content-type') || '';
+      if (contentType.includes('text/event-stream') && resp.body) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let idx: number;
+          while ((idx = buffer.indexOf('\n')) !== -1) {
+            let line = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 1);
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantSoFar += content;
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant') {
+                    return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                  }
+                  return [...prev, { role: 'assistant', content: assistantSoFar }];
+                });
+              }
+            } catch { /* partial */ }
+          }
+        }
+      } else {
+        const data = await resp.json();
+        assistantSoFar = data.content || data.error || 'No response';
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantSoFar }]);
+      }
+
+      if (assistantSoFar) {
+        await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+      }
+    } catch (e: any) {
+      console.error('File analysis error:', e);
+      toast.error(e.message || 'Failed to analyze file');
+      if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
+    }
+
+    setAttachedFile(null);
+    setIsLoading(false);
+  };
+
   const sendMessage = async (text: string) => {
+    // If file is attached, route to file handler
+    if (attachedFile) {
+      return sendFileMessage(text);
+    }
     if (!text.trim() || isLoading) return;
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
@@ -397,6 +525,9 @@ export default function DealCopilot() {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-6 right-6 z-50 flex flex-col w-[420px] h-[620px] max-h-[80vh] rounded-2xl border border-border bg-card shadow-2xl shadow-black/20 overflow-hidden"
+            onDragOver={e => { e.preventDefault(); setIsDraggingOver(true); }}
+            onDragLeave={e => { e.preventDefault(); setIsDraggingOver(false); }}
+            onDrop={handleFileDrop}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
@@ -530,9 +661,52 @@ export default function DealCopilot() {
               )}
             </div>
 
+            {/* Drag overlay */}
+            {isDraggingOver && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary/10 border-2 border-dashed border-primary rounded-2xl backdrop-blur-sm">
+                <div className="text-center">
+                  <FileText className="h-10 w-10 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium text-primary">Drop file here</p>
+                  <p className="text-[10px] text-muted-foreground">PDF, DOCX, TXT, CSV, JSON</p>
+                </div>
+              </div>
+            )}
+
             {/* Input */}
             <div className="border-t border-border px-3 py-3">
+              {/* Attached file chip */}
+              {attachedFile && (
+                <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-xs text-foreground truncate flex-1">{attachedFile.name}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">
+                    {(attachedFile.size / 1024).toFixed(0)}KB
+                  </span>
+                  <button
+                    onClick={() => setAttachedFile(null)}
+                    className="text-muted-foreground hover:text-destructive shrink-0"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.csv,.json,.doc,.docx,.md"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 w-10 rounded-xl p-0 shrink-0 text-muted-foreground"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Attach file"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -547,7 +721,7 @@ export default function DealCopilot() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={isRecording ? 'Listening...' : 'Ask anything or give a command...'}
+                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Ask anything or give a command...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -561,13 +735,13 @@ export default function DealCopilot() {
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
                   onClick={() => sendMessage(input)}
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && !attachedFile) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
               <p className="mt-1.5 text-[9px] text-muted-foreground/60 text-center">
-                Can search market data, move deals, create tasks, and draft outreach
+                Drop files to analyze · Search market data · Move deals · Draft outreach
               </p>
             </div>
           </motion.div>

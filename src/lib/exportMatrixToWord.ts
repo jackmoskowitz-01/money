@@ -182,7 +182,7 @@ function buildMatrixDocument(data: MatrixData): Document {
           ],
         }),
       ],
-      width: { size: opts.width || dataColWidth, type: WidthType.DXA },
+      width: { size: opts.width || buildingGroupWidth, type: WidthType.DXA },
       shading: opts.bgColor
         ? { type: ShadingType.SOLID, color: opts.bgColor, fill: opts.bgColor }
         : undefined,

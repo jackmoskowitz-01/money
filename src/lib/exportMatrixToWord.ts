@@ -215,102 +215,81 @@ function buildMatrixDocument(data: MatrixData): Document {
     });
   };
 
-  // === ROW 1: Building image placeholder row (one image per building, spanning its offer columns) ===
-  const imageRowCells: TableCell[] = [
-    makeCell('', {
-      width: labelColWidth,
+  // === ROW 1: Tall navy header with address at bottom (matches Cresa template) ===
+  const headerRowCells: TableCell[] = [
+    new TableCell({
+      children: [new Paragraph({ children: [] })],
+      width: { size: labelColWidth, type: WidthType.DXA },
       borders: {
-        top: { style: BorderStyle.NONE, size: 0, color: WHITE },
-        bottom: { style: BorderStyle.NONE, size: 0, color: WHITE },
-        left: { style: BorderStyle.NONE, size: 0, color: WHITE },
+        top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+        left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
         right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
       },
     }),
   ];
 
   for (const group of buildingGroups) {
-    imageRowCells.push(
+    // Split address into street + city/state lines
+    const addressParts = group.address.split(',').map(p => p.trim());
+    const streetLine = addressParts[0] || group.address;
+    const cityStateLine = addressParts.slice(1).join(', ');
+
+    headerRowCells.push(
       new TableCell({
         children: [
+          // Spacer paragraph to push address to bottom
+          new Paragraph({ spacing: { before: 600, after: 0 }, children: [] }),
+          // Street address
           new Paragraph({
             alignment: AlignmentType.CENTER,
-            spacing: { before: 200, after: 100 },
+            spacing: { before: 0, after: 20 },
             children: [
               new TextRun({
-                text: '[Building Photo]',
-                color: 'AAAAAA',
-                font: TABLE_FONT,
-                size: 18,
-                italics: true,
-              }),
-            ],
-          }),
-        ],
-        width: { size: buildingGroupWidth, type: WidthType.DXA },
-        columnSpan: group.offerLabels.length,
-        verticalAlign: "center",
-        borders: {
-          top: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-          bottom: { style: BorderStyle.NONE, size: 0, color: WHITE },
-          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-        },
-      })
-    );
-  }
-
-  const imageRow = new TableRow({
-    children: imageRowCells,
-    height: { value: imageRowHeight, rule: HeightRule.ATLEAST },
-  });
-
-  // === ROW 2: Building address row (address text below each photo) ===
-  const addressRowCells: TableCell[] = [
-    makeCell('', {
-      width: labelColWidth,
-      borders: {
-        top: { style: BorderStyle.NONE, size: 0, color: WHITE },
-        bottom: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
-        left: { style: BorderStyle.NONE, size: 0, color: WHITE },
-        right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-      },
-    }),
-  ];
-
-  for (const group of buildingGroups) {
-    addressRowCells.push(
-      new TableCell({
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { before: 80, after: 80 },
-            children: [
-              new TextRun({
-                text: group.address,
+                text: streetLine,
                 bold: true,
-                color: NAVY,
+                color: WHITE,
                 font: TABLE_FONT,
                 size: 20,
               }),
             ],
           }),
+          // City, State
+          ...(cityStateLine
+            ? [
+                new Paragraph({
+                  alignment: AlignmentType.CENTER,
+                  spacing: { before: 0, after: 80 },
+                  children: [
+                    new TextRun({
+                      text: cityStateLine,
+                      bold: true,
+                      color: WHITE,
+                      font: TABLE_FONT,
+                      size: 20,
+                    }),
+                  ],
+                }),
+              ]
+            : []),
         ],
         width: { size: buildingGroupWidth, type: WidthType.DXA },
         columnSpan: group.offerLabels.length,
-        verticalAlign: "center",
+        verticalAlign: "bottom",
+        shading: { type: ShadingType.SOLID, color: NAVY, fill: NAVY },
         borders: {
-          top: { style: BorderStyle.NONE, size: 0, color: WHITE },
-          bottom: { style: BorderStyle.SINGLE, size: 2, color: NAVY },
-          left: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
-          right: { style: BorderStyle.SINGLE, size: 1, color: LIGHT_BORDER },
+          top: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
+          bottom: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
+          left: { style: BorderStyle.SINGLE, size: 2, color: WHITE },
+          right: { style: BorderStyle.SINGLE, size: 2, color: WHITE },
         },
       })
     );
   }
 
-  const addressRow = new TableRow({
-    children: addressRowCells,
-    height: { value: 420, rule: HeightRule.ATLEAST },
+  const headerRow = new TableRow({
+    children: headerRowCells,
+    height: { value: 1400, rule: HeightRule.ATLEAST },
   });
 
   // === ROW 3: Offer labels (gray background) ===
@@ -401,7 +380,7 @@ function buildMatrixDocument(data: MatrixData): Document {
 
   // Build the table
   const table = new Table({
-    rows: [imageRow, addressRow, offerRow, ...dataRows],
+    rows: [headerRow, offerRow, ...dataRows],
     width: { size: 100, type: WidthType.PERCENTAGE },
     layout: TableLayoutType.FIXED,
   });

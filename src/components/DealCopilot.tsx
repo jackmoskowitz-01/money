@@ -751,7 +751,21 @@ List each amendment with page references and bullet-point summaries. If none, st
 *This document has been prepared based on available information and professional interpretation. Reasonable care has been taken to ensure its accuracy. We encourage every client to review the information prior to relying on it for action or decision-making.*
 ---
 
-IMPORTANT: Fill in EVERY section. Extract ALL data from the lease. For rent schedules, calculate monthly and annual amounts if only per-SF rates are given. Be thorough and precise.`;
+CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
+1. Fill in EVERY section above. Do NOT skip or summarize — provide the FULL detail from the lease for each field.
+2. For rent schedules: list EVERY year of the term with Rent/SF, Rent/Month, and Rent/Year. Calculate monthly and annual amounts if only per-SF rates are given. Show escalation percentages.
+3. For each section, include the Article #, Section #, and Page # references from the lease when available.
+4. Quote exact dollar amounts, dates, percentages, and square footage numbers — never round or approximate.
+5. For options (extension, expansion, cancellation, ROFO/ROFR): include ALL details — notice periods, pricing mechanisms, number of options, option term lengths, and any conditions.
+6. For insurance: list exact coverage types and minimum amounts required.
+7. For operating expenses: include base year, cap rates, exclusions, gross-up provisions, and audit rights.
+8. For TI/improvements: include exact allowance per SF, total amount, construction timeline, and any landlord contribution details.
+9. For assignment/subletting: include consent requirements, recapture rights, profit sharing, and any pre-approved transfers.
+10. List ALL exhibits and addenda referenced in the lease with brief descriptions.
+11. Include any guarantor information, renewal rights, co-tenancy clauses, exclusive use provisions, or other non-standard terms under "Additional Lease Comments."
+12. If a clause is complex, use sub-bullets to break it down — never collapse detail into a single line.
+13. DO NOT write "See lease for details" — extract and state the actual details.`;
+
 
   const sendFileMessage = async (question: string) => {
     if (!attachedFile || isLoading) return;

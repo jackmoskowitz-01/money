@@ -189,7 +189,7 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
       const cell = ws.getCell(`${colLetter}${totalRow}`);
       
       // Preserve formulas (SUM formulas in total row)
-      if (cell.formula || cell.sharedFormula) continue;
+      if (cell.formula || (cell as any).sharedFormula) continue;
 
       const val = totalItem.values[c];
       const num = parseDollar(val);

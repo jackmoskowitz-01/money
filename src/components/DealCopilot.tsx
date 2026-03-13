@@ -66,10 +66,14 @@ export default function DealCopilot() {
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [fileContext, setFileContext] = useState<string | null>(null);
+  const [voiceMode, setVoiceMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const voiceModeRef = useRef(false);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page

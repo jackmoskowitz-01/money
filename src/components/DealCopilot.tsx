@@ -64,7 +64,7 @@ export default function DealCopilot() {
   const [alertsEnabled, setAlertsEnabled] = useState(true);
   const [proactiveAlert, setProactiveAlert] = useState<string | null>(null);
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [showSlashCommands, setShowSlashCommands] = useState(false);
   const [fileContext, setFileContext] = useState<string | null>(null);
@@ -552,23 +552,30 @@ export default function DealCopilot() {
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) validateAndAttachFile(file);
+    const files = Array.from(e.dataTransfer.files || []);
+    files.forEach(f => validateAndAttachFile(f));
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) validateAndAttachFile(file);
+    const files = Array.from(e.target.files || []);
+    files.forEach(f => validateAndAttachFile(f));
     e.target.value = '';
   };
 
   const validateAndAttachFile = (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
-      toast.error('File too large (max 20MB)');
+      toast.error(`${file.name} too large (max 20MB)`);
       return;
     }
-    setAttachedFile(file);
-    toast.success(`📎 ${file.name} attached`);
+    setAttachedFiles(prev => {
+      if (prev.length >= 10) {
+        toast.error('Max 10 files allowed');
+        return prev;
+      }
+      if (prev.some(f => f.name === file.name && f.size === file.size)) return prev;
+      toast.success(`📎 ${file.name} attached`);
+      return [...prev, file];
+    });
   };
 
   // Save a template from file analysis result
@@ -871,14 +878,16 @@ CRITICAL INSTRUCTIONS:
 
 
   const sendFileMessage = async (question: string) => {
-    if (!attachedFile || isLoading) return;
+    if (attachedFiles.length === 0 || isLoading) return;
 
-    const fileName = attachedFile.name;
-    const userContent = question.trim() || `Analyze this document: ${fileName}`;
+    const fileNames = attachedFiles.map(f => f.name);
+    const fileLabel = fileNames.length === 1 ? fileNames[0] : `${fileNames.length} files`;
+    const userContent = question.trim() || `Analyze ${fileLabel}`;
     const isTemplateSave = userContent.toLowerCase().includes('save') && userContent.toLowerCase().includes('template');
     const isAbstract = /abstract/i.test(userContent) || /\/abstract/i.test(userContent);
     const isComp = /\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent);
-    const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
+    const fileChips = fileNames.map(n => `📎 **${n}**`).join('\n');
+    const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
@@ -892,13 +901,13 @@ CRITICAL INSTRUCTIONS:
 
     try {
       const formData = new FormData();
-      formData.append('file', attachedFile);
+      attachedFiles.forEach(f => formData.append('file', f));
       if (isTemplateSave) {
         formData.append('question', `Extract the EXACT structure, layout, formatting, and field labels from this template document. Preserve all headers, sections, field names, column names, and formatting patterns. Output a clear structural blueprint that can be replicated. Include:\n1. Document title/header format\n2. All section headers in order\n3. Field labels and their expected value types\n4. Table structures with column names\n5. Any footer/signature blocks\n\nDo NOT fill in values — just show the template skeleton.`);
       } else if (isAbstract) {
         formData.append('question', `Run a complete lease abstract on this document.\n\n${LEASE_ABSTRACT_TEMPLATE}`);
       } else if (isComp) {
-        formData.append('question', `Run a complete Comparison of Options analysis on this document.\n\n${COMP_COMPARISON_TEMPLATE}`);
+        formData.append('question', `Run a complete Comparison of Options analysis on these documents.\n\n${COMP_COMPARISON_TEMPLATE}`);
       } else {
         formData.append('question', userContent);
       }
@@ -968,15 +977,14 @@ CRITICAL INSTRUCTIONS:
       // Auto-save template if this was a template save request
       if (isTemplateSave && assistantSoFar) {
         const nameMatch = userContent.match(/template\s+(?:called|named)\s+["']?([^"'\n]+)["']?/i);
-        const templateName = nameMatch?.[1]?.trim() || fileName.replace(/\.[^.]+$/, '');
-        // Detect type from filename or content
+        const templateName = nameMatch?.[1]?.trim() || fileNames[0].replace(/\.[^.]+$/, '');
         let templateType = 'general';
-        if (/commission/i.test(userContent) || /commission/i.test(fileName)) templateType = 'commission';
-        else if (/abstract|loi|lease/i.test(userContent) || /abstract|loi|lease/i.test(fileName)) templateType = 'deal_abstract';
-        else if (/comp|comparison/i.test(userContent) || /comp/i.test(fileName)) templateType = 'comp_report';
-        else if (/proposal/i.test(userContent) || /proposal/i.test(fileName)) templateType = 'proposal';
+        if (/commission/i.test(userContent) || /commission/i.test(fileNames[0])) templateType = 'commission';
+        else if (/abstract|loi|lease/i.test(userContent) || /abstract|loi|lease/i.test(fileNames[0])) templateType = 'deal_abstract';
+        else if (/comp|comparison/i.test(userContent) || /comp/i.test(fileNames[0])) templateType = 'comp_report';
+        else if (/proposal/i.test(userContent) || /proposal/i.test(fileNames[0])) templateType = 'proposal';
         
-        await saveTemplate(templateName, assistantSoFar, fileName, templateType);
+        await saveTemplate(templateName, assistantSoFar, fileNames[0], templateType);
       }
     } catch (e: any) {
       console.error('File analysis error:', e);
@@ -986,15 +994,15 @@ CRITICAL INSTRUCTIONS:
 
     // Keep file context for multi-turn follow-ups
     if (assistantSoFar) {
-      setFileContext(`Previously analyzed file "${fileName}". Summary:\n${assistantSoFar.slice(0, 2000)}`);
+      setFileContext(`Previously analyzed files: ${fileNames.join(', ')}. Summary:\n${assistantSoFar.slice(0, 2000)}`);
     }
-    setAttachedFile(null);
+    setAttachedFiles([]);
     setIsLoading(false);
   };
 
   const sendMessage = async (text: string) => {
-    // If file is attached, route to file handler
-    if (attachedFile) {
+    // If files are attached, route to file handler
+    if (attachedFiles.length > 0) {
       return sendFileMessage(text);
     }
     if (!text.trim()) return;
@@ -1468,24 +1476,28 @@ CRITICAL INSTRUCTIONS:
                 visible={showSlashCommands}
                 onSelect={handleSlashSelect}
               />
-              {/* Attached file chip */}
-              {attachedFile && (
-                <div className="mb-2 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5">
-                  <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className="text-xs text-foreground truncate flex-1">{attachedFile.name}</span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
-                    {(attachedFile.size / 1024).toFixed(0)}KB
-                  </span>
-                  <button
-                    onClick={() => setAttachedFile(null)}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+              {/* Attached file chips */}
+              {attachedFiles.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {attachedFiles.map((file, idx) => (
+                    <div key={`${file.name}-${idx}`} className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2 py-1">
+                      <FileText className="h-3 w-3 text-primary shrink-0" />
+                      <span className="text-[11px] text-foreground truncate max-w-[120px]">{file.name}</span>
+                      <span className="text-[9px] text-muted-foreground shrink-0">
+                        {(file.size / 1024).toFixed(0)}KB
+                      </span>
+                      <button
+                        onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+                        className="text-muted-foreground hover:text-destructive shrink-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
               {/* File context indicator */}
-              {fileContext && !attachedFile && (
+              {fileContext && attachedFiles.length === 0 && (
                 <div className="mb-2 flex items-center gap-2 rounded-lg border border-muted bg-muted/30 px-2.5 py-1">
                   <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="text-[10px] text-muted-foreground flex-1 truncate">File context active — ask follow-up questions</span>
@@ -1502,6 +1514,7 @@ CRITICAL INSTRUCTIONS:
                   ref={fileInputRef}
                   type="file"
                   accept=".pdf,.txt,.csv,.json,.doc,.docx,.md,.xlsx,.xls"
+                  multiple
                   onChange={handleFileSelect}
                   className="hidden"
                 />
@@ -1528,7 +1541,7 @@ CRITICAL INSTRUCTIONS:
                   value={input}
                   onChange={e => handleInputChange(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder={attachedFile ? `Ask about ${attachedFile.name}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
+                  placeholder={attachedFiles.length > 0 ? `Ask about ${attachedFiles.length} file${attachedFiles.length > 1 ? 's' : ''}...` : isRecording ? 'Listening...' : 'Type / for commands...'}
                   rows={1}
                   className="flex-1 resize-none rounded-xl border border-border bg-secondary/30 px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 max-h-[100px]"
                   style={{ minHeight: '40px' }}
@@ -1542,7 +1555,7 @@ CRITICAL INSTRUCTIONS:
                   size="sm"
                   className="h-10 w-10 rounded-xl p-0 shrink-0"
                   onClick={() => { setShowSlashCommands(false); sendMessage(input); }}
-                  disabled={(!input.trim() && !attachedFile) || isLoading}
+                  disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
                 >
                   <Send className="h-4 w-4" />
                 </Button>

@@ -447,7 +447,7 @@ const Pipeline = () => {
                   </div>
 
                   <div className="space-y-2">
-                    {itemsByStage(stage).map(item => {
+                    {itemsByStage(stage).map((item, idx) => {
                       if (!item.isManual) {
                         const { tenant, building } = getTenantInfo(item.tenantId, item.buildingId);
                         if (!tenant || !building) return null;
@@ -456,14 +456,16 @@ const Pipeline = () => {
                       const isSelected = selectedItem?.tenantId === item.tenantId && selectedItem?.buildingId === item.buildingId;
                       const isDragging = dragItem?.tenantId === item.tenantId && dragItem?.buildingId === item.buildingId;
                       const sentCount = (item.sentTouchpoints || []).length;
+                      const isDropTarget = dragOverStage === stage && dragOverIndex === idx && dragItem && !(dragItem.tenantId === item.tenantId && dragItem.buildingId === item.buildingId);
 
                       return (
                         <Card
                           key={`${item.tenantId}-${item.buildingId}`}
                           draggable
                           onDragStart={e => handleDragStart(e, item)}
+                          onDragOver={e => handleCardDragOver(e, stage, idx)}
                           onDragEnd={handleDragEnd}
-                          className={`cursor-grab active:cursor-grabbing border-border bg-card p-3 transition-all hover:border-primary/30 ${isSelected ? 'border-primary ring-1 ring-primary/20' : ''} ${isDragging ? 'opacity-50 scale-95' : ''}`}
+                          className={`cursor-grab active:cursor-grabbing border-border bg-card p-3 transition-all hover:border-primary/30 ${isSelected ? 'border-primary ring-1 ring-primary/20' : ''} ${isDragging ? 'opacity-50 scale-95' : ''} ${isDropTarget ? 'border-t-2 border-t-primary' : ''}`}
                           onClick={() => setSelectedItem(isSelected ? null : item)}
                         >
                           <div className="mb-2 flex items-start justify-between">

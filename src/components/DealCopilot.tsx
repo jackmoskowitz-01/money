@@ -523,8 +523,15 @@ export default function DealCopilot() {
     return /summary\s*of\s*proposals/i.test(content) && content.includes('|') && content.includes('---');
   };
 
+  // Check if message is a comp / financial analysis report (should export as Word, not Excel)
+  const isCompReport = (content: string) => {
+    const lc = content.toLowerCase();
+    return (lc.includes('financial analysis') || lc.includes('comp analysis') || lc.includes('lease comparison') || lc.includes('total term value') || lc.includes('cumulative rent') || /npv\s*(at|@)/i.test(content)) && content.includes('|');
+  };
+
   // Check if message is a cashflow report
   const isCashflowReport = (content: string) => {
+    if (isCompReport(content)) return false; // Comp reports export as Word
     const lc = content.toLowerCase();
     return (lc.includes('cash flow') || lc.includes('cashflow')) &&
       (lc.includes('base rent') || lc.includes('compilation') || lc.includes('total monthly cost') || lc.includes('total annual cost') || lc.includes('escalation'));

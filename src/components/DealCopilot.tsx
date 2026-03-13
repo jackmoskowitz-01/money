@@ -519,6 +519,11 @@ export default function DealCopilot() {
     return /summary\s*of\s*proposals/i.test(content) && content.includes('|') && content.includes('---');
   };
 
+  // Check if message is a cashflow report
+  const isCashflowReport = (content: string) => {
+    return /cash\s*flow\s*analysis/i.test(content) && content.includes('|') && (/compilation/i.test(content) || /total\s*(monthly|annual|aggregate)\s*cost/i.test(content));
+  };
+
   // Check if message is a substantial report (abstract, comp, commission, etc.)
   const isExportableReport = (content: string) => {
     const len = content.length;

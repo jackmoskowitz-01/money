@@ -188,12 +188,16 @@ export default function DealCopilot() {
     }
   }, [pipeline, alertsEnabled]);
 
-  // Auto-scroll
-  useEffect(() => {
+  // Auto-scroll smoothly
+  const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   // Focus input
   useEffect(() => {
@@ -603,20 +607,26 @@ export default function DealCopilot() {
                   </div>
                   <div className="w-full space-y-1.5 mt-2">
                     {SUGGESTIONS.map((s, i) => (
-                      <button
+                      <motion.button
                         key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 + i * 0.05, duration: 0.25 }}
                         onClick={() => sendMessage(s)}
-                        className="w-full text-left px-3 py-2 rounded-lg border border-border bg-secondary/30 text-xs text-foreground hover:bg-secondary/60 transition-colors"
+                        className="w-full text-left px-3 py-2 rounded-lg border border-border bg-secondary/30 text-xs text-foreground hover:bg-secondary/60 hover:scale-[1.01] active:scale-[0.99] transition-all"
                       >
                         {s}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>
               ) : (
                 messages.map((msg, i) => (
-                  <div
+                  <motion.div
                     key={i}
+                    initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ type: 'spring', damping: 20, stiffness: 300, duration: 0.25 }}
                     className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
                   >
                     <div className="relative">
@@ -630,13 +640,17 @@ export default function DealCopilot() {
                         {msg.role === 'assistant' ? (
                           <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm">
                             <ReactMarkdown>{msg.content}</ReactMarkdown>
+                            {/* Blinking cursor while streaming */}
+                            {isLoading && i === messages.length - 1 && (
+                              <span className="inline-block w-[2px] h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom" />
+                            )}
                           </div>
                         ) : (
                           <p>{msg.content}</p>
                         )}
                       </div>
                       {/* Copy button for assistant messages */}
-                      {msg.role === 'assistant' && (
+                      {msg.role === 'assistant' && !isLoading && (
                         <button
                           onClick={() => handleCopy(msg.content, i)}
                           className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
@@ -646,18 +660,33 @@ export default function DealCopilot() {
                         </button>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ))
               )}
               {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                <div className="flex justify-start">
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-start"
+                >
                   <div className="bg-secondary/50 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                      <span className="text-xs text-muted-foreground">Thinking...</span>
+                    <div className="flex items-center gap-1.5">
+                      {[0, 1, 2].map(dot => (
+                        <motion.span
+                          key={dot}
+                          className="h-2 w-2 rounded-full bg-muted-foreground/50"
+                          animate={{ y: [0, -6, 0] }}
+                          transition={{
+                            duration: 0.6,
+                            repeat: Infinity,
+                            delay: dot * 0.15,
+                            ease: 'easeInOut',
+                          }}
+                        />
+                      ))}
                     </div>
                   </div>
-                </div>
+                </motion.div>
               )}
             </div>
 

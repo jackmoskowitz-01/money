@@ -38,6 +38,7 @@ const MapView = () => {
   const [showThresholdModal, setShowThresholdModal] = useState(false);
   const [thresholdInput, setThresholdInput] = useState(String(getThresholdDays()));
   const [visitLog, setVisitLog] = useState(getVisitLog());
+  const [trackerEnabled, setTrackerEnabled] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);

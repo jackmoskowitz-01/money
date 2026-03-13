@@ -74,6 +74,10 @@ export default function DealCopilot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const voiceModeRef = useRef(false);
+  const isSpeakingRef = useRef(false);
+  const currentSpokenTextRef = useRef('');
+  const lastVoiceSentRef = useRef('');
+  const lastVoiceSentAtRef = useRef(0);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
   // Build context string from pipeline + buildings + page
@@ -222,6 +226,33 @@ export default function DealCopilot() {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
 
+  // Silence timer — after user stops speaking, auto-send after a pause
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTranscriptRef = useRef('');
+
+  const normalizeSpeech = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const isLikelyEcho = (heard: string, spoken: string) => {
+    const h = normalizeSpeech(heard);
+    const s = normalizeSpeech(spoken);
+    if (!h || !s) return false;
+
+    // Direct substring match catches most speaker feedback loops
+    if (s.includes(h) || h.includes(s)) return true;
+
+    const hWords = h.split(' ').filter(w => w.length > 2);
+    const sWords = new Set(s.split(' ').filter(w => w.length > 2));
+    if (hWords.length === 0) return false;
+
+    const overlap = hWords.filter(w => sWords.has(w)).length;
+    return overlap / hWords.length >= 0.7;
+  };
+
   // Interrupt TTS — stop audio immediately and clear pending state
   const interruptTTS = useCallback(() => {
     if (audioRef.current) {
@@ -229,8 +260,9 @@ export default function DealCopilot() {
       audioRef.current.currentTime = 0;
       audioRef.current = null;
     }
+    isSpeakingRef.current = false;
+    currentSpokenTextRef.current = '';
     setIsSpeaking(false);
-    // Clear any queued transcript so old content doesn't re-send
     pendingTranscriptRef.current = '';
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
@@ -241,6 +273,8 @@ export default function DealCopilot() {
   // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)
   const speakText = useCallback(async (text: string) => {
     if (!voiceModeRef.current) return;
+    isSpeakingRef.current = true;
+    currentSpokenTextRef.current = text;
     setIsSpeaking(true);
 
     try {
@@ -262,12 +296,16 @@ export default function DealCopilot() {
 
       audio.onended = () => {
         URL.revokeObjectURL(audioUrl);
+        isSpeakingRef.current = false;
+        currentSpokenTextRef.current = '';
         setIsSpeaking(false);
         audioRef.current = null;
       };
 
       audio.onerror = () => {
         URL.revokeObjectURL(audioUrl);
+        isSpeakingRef.current = false;
+        currentSpokenTextRef.current = '';
         setIsSpeaking(false);
         audioRef.current = null;
       };
@@ -275,14 +313,11 @@ export default function DealCopilot() {
       await audio.play();
     } catch (e) {
       console.error('TTS error:', e);
+      isSpeakingRef.current = false;
+      currentSpokenTextRef.current = '';
       setIsSpeaking(false);
     }
   }, []);
-
-  // Silence timer — after user stops speaking, auto-send after a pause
-  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingTranscriptRef = useRef('');
-  const processedResultsRef = useRef(0); // Track how many results we've already processed
 
   // Start continuous listening (always-on mic for voice mode)
   const startContinuousListening = useCallback(() => {
@@ -301,19 +336,9 @@ export default function DealCopilot() {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
-    // Reset processed count for this new recognition session
-    processedResultsRef.current = 0;
 
     recognition.onresult = (e: any) => {
-      // If user speaks while AI is talking, interrupt immediately
-      if (audioRef.current && !audioRef.current.paused) {
-        interruptTTS();
-        // Clear any pending transcript from before the interrupt
-        pendingTranscriptRef.current = '';
-        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      }
-
-      // Only process NEW results (from resultIndex onward), skip already-processed ones
+      // Only process NEW results from this event
       let newFinal = '';
       let newInterim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -324,8 +349,19 @@ export default function DealCopilot() {
         }
       }
 
-      // Show only the current utterance, not accumulated history
-      setInput(newFinal || newInterim);
+      const heard = (newFinal || newInterim).trim();
+      if (!heard) return;
+
+      // If AI is speaking, ignore echoed bot audio; interrupt only on genuinely new user speech
+      if (isSpeakingRef.current) {
+        if (isLikelyEcho(heard, currentSpokenTextRef.current)) {
+          return;
+        }
+        interruptTTS();
+      }
+
+      // Show current utterance in input
+      setInput(heard);
 
       // Track final transcript for auto-send
       if (newFinal.trim()) {
@@ -338,6 +374,14 @@ export default function DealCopilot() {
             const toSend = pendingTranscriptRef.current;
             pendingTranscriptRef.current = '';
             setInput('');
+
+            // De-dupe accidental duplicate sends from recognition edge cases
+            const now = Date.now();
+            if (toSend === lastVoiceSentRef.current && now - lastVoiceSentAtRef.current < 2500) {
+              return;
+            }
+            lastVoiceSentRef.current = toSend;
+            lastVoiceSentAtRef.current = now;
 
             // Restart recognition to clear accumulated results buffer
             try { recognition.stop(); } catch {}

@@ -384,6 +384,14 @@ const MapView = () => {
                     <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
                   )}
                 </div>
+
+                {/* Territory Analysis */}
+                <div className="px-3 pb-3">
+                  <TerritoryAnalysis
+                    buildings={allBuildingsList}
+                    onSelectBuilding={(b) => setSelectedBuilding(b)}
+                  />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

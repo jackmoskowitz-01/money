@@ -222,7 +222,7 @@ export default function DealCopilot() {
     voiceModeRef.current = voiceMode;
   }, [voiceMode]);
 
-  // Interrupt TTS — stop audio immediately
+  // Interrupt TTS — stop audio immediately and clear pending state
   const interruptTTS = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -230,6 +230,12 @@ export default function DealCopilot() {
       audioRef.current = null;
     }
     setIsSpeaking(false);
+    // Clear any queued transcript so old content doesn't re-send
+    pendingTranscriptRef.current = '';
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
   }, []);
 
   // Text-to-speech via ElevenLabs (does NOT restart listening — it's already running)
@@ -276,11 +282,18 @@ export default function DealCopilot() {
   // Silence timer — after user stops speaking, auto-send after a pause
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTranscriptRef = useRef('');
+  const processedResultsRef = useRef(0); // Track how many results we've already processed
 
   // Start continuous listening (always-on mic for voice mode)
   const startContinuousListening = useCallback(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
     if (!voiceModeRef.current) return;
+
+    // Stop any existing recognition first
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch {}
+      recognitionRef.current = null;
+    }
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -288,39 +301,50 @@ export default function DealCopilot() {
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
+    // Reset processed count for this new recognition session
+    processedResultsRef.current = 0;
+
     recognition.onresult = (e: any) => {
       // If user speaks while AI is talking, interrupt immediately
       if (audioRef.current && !audioRef.current.paused) {
         interruptTTS();
+        // Clear any pending transcript from before the interrupt
+        pendingTranscriptRef.current = '';
+        if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       }
 
-      let finalText = '';
-      let interimText = '';
-      for (let i = 0; i < e.results.length; i++) {
+      // Only process NEW results (from resultIndex onward), skip already-processed ones
+      let newFinal = '';
+      let newInterim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
-          finalText += e.results[i][0].transcript;
+          newFinal += e.results[i][0].transcript;
         } else {
-          interimText += e.results[i][0].transcript;
+          newInterim += e.results[i][0].transcript;
         }
       }
 
-      const display = finalText || interimText;
-      setInput(display);
+      // Show only the current utterance, not accumulated history
+      setInput(newFinal || newInterim);
 
       // Track final transcript for auto-send
-      if (finalText.trim()) {
-        pendingTranscriptRef.current = finalText.trim();
+      if (newFinal.trim()) {
+        pendingTranscriptRef.current = newFinal.trim();
 
-        // Reset silence timer — send after 1.5s of silence
+        // Reset silence timer — send after 1.2s of silence
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           if (pendingTranscriptRef.current && voiceModeRef.current) {
             const toSend = pendingTranscriptRef.current;
             pendingTranscriptRef.current = '';
             setInput('');
+
+            // Restart recognition to clear accumulated results buffer
+            try { recognition.stop(); } catch {}
+
             sendMessage(toSend);
           }
-        }, 1500);
+        }, 1200);
       }
     };
 
@@ -329,12 +353,7 @@ export default function DealCopilot() {
       if (voiceModeRef.current) {
         setTimeout(() => {
           if (voiceModeRef.current) {
-            try {
-              recognition.start();
-            } catch {
-              // Already started or other error, retry with new instance
-              startContinuousListening();
-            }
+            startContinuousListening();
           }
         }, 200);
       } else {
@@ -343,12 +362,8 @@ export default function DealCopilot() {
     };
 
     recognition.onerror = (e: any) => {
-      if (e.error === 'no-speech' || e.error === 'aborted') {
-        // Normal — just let onend restart it
-        return;
-      }
+      if (e.error === 'no-speech' || e.error === 'aborted') return;
       console.error('Speech recognition error:', e.error);
-      // Retry after a brief pause
       if (voiceModeRef.current) {
         setTimeout(() => startContinuousListening(), 1000);
       }
@@ -358,9 +373,7 @@ export default function DealCopilot() {
     try {
       recognition.start();
       setIsRecording(true);
-    } catch {
-      // May already be running
-    }
+    } catch {}
   }, [interruptTTS]);
 
   // Toggle voice mode on/off

@@ -254,7 +254,130 @@ export default function DealCopilot() {
     setConversationId(null);
   };
 
+  // File handling
+  const ALLOWED_TYPES = ['application/pdf', 'text/plain', 'text/csv', 'application/json', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'];
+  const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) validateAndAttachFile(file);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) validateAndAttachFile(file);
+    e.target.value = '';
+  };
+
+  const validateAndAttachFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error('File too large (max 20MB)');
+      return;
+    }
+    setAttachedFile(file);
+    toast.success(`📎 ${file.name} attached`);
+  };
+
+  const sendFileMessage = async (question: string) => {
+    if (!attachedFile || isLoading) return;
+
+    const fileName = attachedFile.name;
+    const userContent = question.trim() || `Analyze this document: ${fileName}`;
+    const userMsg: Msg = { role: 'user', content: `📎 **${fileName}**\n${userContent}`, fileName };
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
+    setInput('');
+    setIsLoading(true);
+
+    const convId = conversationId || crypto.randomUUID();
+    if (!conversationId) setConversationId(convId);
+    await persistMessage({ role: 'user', content: userContent }, convId);
+
+    let assistantSoFar = '';
+
+    try {
+      const formData = new FormData();
+      formData.append('file', attachedFile);
+      formData.append('question', userContent);
+      formData.append('context', buildContext());
+
+      const resp = await fetch(FILE_PARSE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || `File analysis failed (${resp.status})`);
+      }
+
+      const contentType = resp.headers.get('content-type') || '';
+      if (contentType.includes('text/event-stream') && resp.body) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let idx: number;
+          while ((idx = buffer.indexOf('\n')) !== -1) {
+            let line = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 1);
+            if (line.endsWith('\r')) line = line.slice(0, -1);
+            if (line.startsWith(':') || line.trim() === '') continue;
+            if (!line.startsWith('data: ')) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === '[DONE]') break;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const content = parsed.choices?.[0]?.delta?.content;
+              if (content) {
+                assistantSoFar += content;
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'assistant') {
+                    return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                  }
+                  return [...prev, { role: 'assistant', content: assistantSoFar }];
+                });
+              }
+            } catch { /* partial */ }
+          }
+        }
+      } else {
+        const data = await resp.json();
+        assistantSoFar = data.content || data.error || 'No response';
+        setMessages(prev => [...prev, { role: 'assistant', content: assistantSoFar }]);
+      }
+
+      if (assistantSoFar) {
+        await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+      }
+    } catch (e: any) {
+      console.error('File analysis error:', e);
+      toast.error(e.message || 'Failed to analyze file');
+      if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
+    }
+
+    setAttachedFile(null);
+    setIsLoading(false);
+  };
+
   const sendMessage = async (text: string) => {
+    // If file is attached, route to file handler
+    if (attachedFile) {
+      return sendFileMessage(text);
+    }
     if (!text.trim() || isLoading) return;
 
     const userMsg: Msg = { role: 'user', content: text.trim() };

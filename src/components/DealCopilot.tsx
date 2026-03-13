@@ -50,6 +50,7 @@ const PAGE_CONTEXT: Record<string, string> = {
 export default function DealCopilot() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
@@ -62,6 +63,8 @@ export default function DealCopilot() {
   const [hasLoadedHistory, setHasLoadedHistory] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+  const [fileContext, setFileContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);

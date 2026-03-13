@@ -773,6 +773,44 @@ CRITICAL INSTRUCTIONS — MAXIMUM DETAIL:
 12. If a clause is complex, use sub-bullets to break it down — never collapse detail into a single line.
 13. DO NOT write "See lease for details" — extract and state the actual details.`;
 
+  // Deal Terms Matrix template (Summary of Proposals)
+  const MATRIX_TEMPLATE = `You are producing a professional "Summary of Proposals" deal terms matrix. Follow this EXACT structure and formatting. Extract every detail from the attached lease/proposal documents.
+
+## RULES:
+- Create ONE column per offer/proposal attached. If a single building has multiple offer rounds (Landlord Offer #1A, #1B, etc.), each gets its own column.
+- If only ONE document is attached, produce a single-column matrix (just the row labels on the left and one data column).
+- If multiple documents are attached, produce as many columns as there are distinct offers — group columns by building address.
+- Use EXACT dollar amounts, dates, percentages, and SF numbers from the documents. Never round or approximate.
+- If a field is not stated in a document, write "Silent" or leave blank.
+- The output MUST be a clean markdown table that exports perfectly to Word.
+
+## FORMAT:
+
+# Summary of Proposals
+
+| | [Building 1 Address] | [Building 2 Address] | ... |
+|---|---|---|---|
+| **Lease Terms** | **[Offer Label #1]** | **[Offer Label #1]** | ... |
+| **Premises:** | [XX,XXX RSF] | [XX,XXX RSF] | ... |
+| **Term:** | [X years] | [X years] | ... |
+| **Lease Commencement Date:** | [Month Day, Year] | [Month Day, Year] | ... |
+| **Rental Abatement:** | [X months / None] | [X months / None] | ... |
+| **Base Rental Rate:** | [$XX.XX/NNN or FS] | [$XX.XX/NNN or FS] | ... |
+| **Average Annual Cost Over Term:** | [$XXX,XXX] | [$XXX,XXX] | ... |
+| **Escalation:** | [X.XX%] | [X.XX%] | ... |
+| **Operating Expenses & Real Estate Taxes:** | [$XX.XX PSF or included] | [$XX.XX PSF or included] | ... |
+| **Tenant Improvement Allowance:** | [$XX.XX/PSF] | [$XX.XX/PSF] | ... |
+| **Termination Option:** | [Terms / None] | [Terms / None] | ... |
+
+CRITICAL INSTRUCTIONS:
+1. Use the EXACT row labels shown above in bold. Do not rename or reorder them.
+2. Building addresses go across the TOP as column headers.
+3. If a building has multiple offers (e.g., 5-year and 10-year), create separate columns under the same address header.
+4. Calculate Average Annual Cost Over Term = (Base Rent × SF × Term Years, adjusted for escalations and abatement) ÷ Term Years. Show as a dollar amount.
+5. Include ALL offers from ALL attached documents — never omit or merge columns.
+6. Keep the table compact and clean — this is a one-page summary, not a detailed analysis.
+7. After the table, optionally add a brief "Notes" section for any important caveats or conditions mentioned in the proposals.`;
+
   // Cresa-style Comparison of Options template
   const COMP_COMPARISON_TEMPLATE = `You are producing a professional "Comparison of Options" analysis. Follow this EXACT structure. Extract every detail from the attached lease offer documents.
 

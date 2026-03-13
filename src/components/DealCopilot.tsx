@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import { exportToWord } from '@/lib/exportToWord';
 import { exportMatrixToWord } from '@/lib/exportMatrixToWord';
+import { exportCashflowToExcel } from '@/lib/exportCashflowToExcel';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
@@ -518,6 +519,11 @@ export default function DealCopilot() {
     return /summary\s*of\s*proposals/i.test(content) && content.includes('|') && content.includes('---');
   };
 
+  // Check if message is a cashflow report
+  const isCashflowReport = (content: string) => {
+    return /cash\s*flow\s*analysis/i.test(content) && content.includes('|') && (/compilation/i.test(content) || /total\s*(monthly|annual|aggregate)\s*cost/i.test(content));
+  };
+
   // Check if message is a substantial report (abstract, comp, commission, etc.)
   const isExportableReport = (content: string) => {
     const len = content.length;
@@ -542,6 +548,19 @@ export default function DealCopilot() {
     } catch (e) {
       console.error('Word export error:', e);
       toast.error('Failed to export document');
+    }
+  };
+
+  // Export cashflow as Excel
+  const handleExportExcel = async (content: string) => {
+    const h1Match = content.match(/^#\s+(.+)/m);
+    const filename = h1Match?.[1]?.slice(0, 50) || 'Cash_Flow_Analysis';
+    try {
+      await exportCashflowToExcel(content, filename);
+      toast.success('Excel file downloaded');
+    } catch (e) {
+      console.error('Excel export error:', e);
+      toast.error('Failed to export Excel file');
     }
   };
 
@@ -1584,6 +1603,16 @@ For each line item, also produce a monthly breakdown:
                             >
                               <Download className="h-3 w-3" />
                               <span>Word</span>
+                            </button>
+                          )}
+                          {isCashflowReport(msg.content) && (
+                            <button
+                              onClick={() => handleExportExcel(msg.content)}
+                              className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                              title="Export as Excel spreadsheet"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>Excel</span>
                             </button>
                           )}
                           {hasEmailDraft(msg.content) && (

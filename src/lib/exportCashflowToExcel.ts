@@ -1,29 +1,25 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
-const NAVY = '002B5C';
-const WHITE = 'FFFFFF';
-const LIGHT_GRAY = 'F2F2F2';
-const BORDER_COLOR = 'B0B0B0';
-
-const thinBorder: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: BORDER_COLOR } };
-const allBorders: Partial<ExcelJS.Borders> = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
-
-const currency = '#,##0.00';
-const currencyWhole = '#,##0';
-
 interface CashflowData {
   companyName: string;
   analysisType: string;
   compilationStartDate: string;
   compilationTerm: string;
   compilationExpiration: string;
-  leaseTerms: Record<string, string>;
   annualTable: { label: string; values: string[] }[];
   yearHeaders: string[];
-  monthlyTable: { label: string; values: string[] }[];
-  monthHeaders: string[];
   totals: Record<string, string>;
+}
+
+function parseDollar(val: string): number | null {
+  if (!val) return null;
+  const cleaned = val.replace(/[^0-9.\-()]/g, '');
+  if (!cleaned) return null;
+  const isNeg = val.includes('(') && val.includes(')');
+  const num = parseFloat(cleaned.replace(/[()]/g, ''));
+  if (isNaN(num)) return null;
+  return isNeg ? -num : num;
 }
 
 function parseCashflowMarkdown(markdown: string): CashflowData {
@@ -33,15 +29,11 @@ function parseCashflowMarkdown(markdown: string): CashflowData {
     compilationStartDate: '',
     compilationTerm: '',
     compilationExpiration: '',
-    leaseTerms: {},
     annualTable: [],
     yearHeaders: [],
-    monthlyTable: [],
-    monthHeaders: [],
     totals: {},
   };
 
-  // Extract header fields
   const companyMatch = markdown.match(/\*\*Company Name:\*\*\s*(.+)/i);
   if (companyMatch) data.companyName = companyMatch[1].trim();
 
@@ -57,20 +49,6 @@ function parseCashflowMarkdown(markdown: string): CashflowData {
   const expMatch = markdown.match(/\*\*Compilation Expiration.*?:\*\*\s*(.+)/i);
   if (expMatch) data.compilationExpiration = expMatch[1].trim();
 
-  // Extract key lease terms
-  const termFields = [
-    'Lease Commencement Date', 'Analysis Start Date', 'Lease Term',
-    'Lease Expiration Date', 'Base Rent', 'Per Annum Escalation',
-    'Escalation Month', 'Square Feet Leased', 'Total Months of Free Rent',
-    'Lease Type', 'Operating Expense', 'Real Estate Tax',
-    'Tenant Improvement Allowance', 'Project/Buildout Cost',
-  ];
-  for (const field of termFields) {
-    const re = new RegExp(`\\*\\*${field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}.*?:\\*\\*\\s*(.+)`, 'i');
-    const m = markdown.match(re);
-    if (m) data.leaseTerms[field] = m[1].trim();
-  }
-
   // Extract totals
   const totalFields = ['Total Compilation Value', 'Average Annual Cost', 'NPV'];
   for (const field of totalFields) {
@@ -79,34 +57,16 @@ function parseCashflowMarkdown(markdown: string): CashflowData {
     if (m) data.totals[field] = m[1].trim();
   }
 
-  // Parse annual summary table
-  const annualSection = markdown.match(/### Format — Annual Summary Table[\s\S]*?\n(\|[\s\S]*?\n)\n/i)
-    || markdown.match(/Annual Summary[\s\S]*?\n(\|[\s\S]*?\n)\n/i);
-
-  // Find all markdown tables
+  // Parse tables
   const tables = findMarkdownTables(markdown);
-
   if (tables.length > 0) {
-    // First substantial table = annual summary
     const annual = tables[0];
     if (annual.headers.length > 0) {
-      data.yearHeaders = annual.headers.slice(1); // skip label column
+      data.yearHeaders = annual.headers.slice(1);
       data.annualTable = annual.rows.map(row => ({
         label: row[0] || '',
         values: row.slice(1),
       }));
-    }
-
-    // Second substantial table = monthly detail
-    if (tables.length > 1) {
-      const monthly = tables[1];
-      if (monthly.headers.length > 0) {
-        data.monthHeaders = monthly.headers.slice(1);
-        data.monthlyTable = monthly.rows.map(row => ({
-          label: row[0] || '',
-          values: row.slice(1),
-        }));
-      }
     }
   }
 
@@ -121,7 +81,6 @@ function findMarkdownTables(md: string): { headers: string[]; rows: string[][] }
   while (i < lines.length) {
     const line = lines[i].trim();
     if (line.startsWith('|') && line.endsWith('|')) {
-      // Check if next line is separator
       if (i + 1 < lines.length && /^\|[\s\-:|]+\|$/.test(lines[i + 1].trim())) {
         const headers = line.split('|').slice(1, -1).map(c => c.replace(/\*\*/g, '').trim());
         const rows: string[][] = [];
@@ -131,7 +90,7 @@ function findMarkdownTables(md: string): { headers: string[]; rows: string[][] }
           rows.push(cells);
           j++;
         }
-        if (rows.length >= 3) {
+        if (rows.length >= 1) {
           tables.push({ headers, rows });
         }
         i = j;
@@ -144,36 +103,150 @@ function findMarkdownTables(md: string): { headers: string[]; rows: string[][] }
   return tables;
 }
 
-function parseDollar(val: string): number | null {
-  if (!val) return null;
-  const cleaned = val.replace(/[^0-9.\-()]/g, '');
-  if (!cleaned) return null;
-  const isNeg = val.includes('(') && val.includes(')');
-  const num = parseFloat(cleaned.replace(/[()]/g, ''));
-  if (isNaN(num)) return null;
-  return isNeg ? -num : num;
-}
-
 export async function exportCashflowToExcel(markdown: string, filename: string) {
   const data = parseCashflowMarkdown(markdown);
+
+  // Load the template file
   const wb = new ExcelJS.Workbook();
+  try {
+    const response = await fetch('/templates/Cash_Flow_Analysis.xlsx');
+    const arrayBuffer = await response.arrayBuffer();
+    await wb.xlsx.load(arrayBuffer);
+  } catch (err) {
+    console.error('Failed to load template, falling back to generated workbook:', err);
+    return exportCashflowFallback(markdown, filename, data);
+  }
 
-  // ──── Sheet 1: Annual Summary ────
-  const ws1 = wb.addWorksheet('Cash Flow Summary');
+  const ws = wb.getWorksheet(1);
+  if (!ws) {
+    console.error('No worksheet found in template');
+    return exportCashflowFallback(markdown, filename, data);
+  }
+
+  // Fill in header fields — only set values, preserve formatting
+  // Row 1: Company Name
+  const cellA1 = ws.getCell('A1');
+  if (data.companyName) cellA1.value = data.companyName;
+
+  // Row 2: Analysis type (already "Lease Analysis" in template)
+  if (data.analysisType) ws.getCell('A2').value = data.analysisType;
+
+  // Row 4-6: Compilation info — values go in column B
+  if (data.compilationStartDate) ws.getCell('B4').value = data.compilationStartDate;
+  if (data.compilationTerm) {
+    const termNum = parseInt(data.compilationTerm);
+    ws.getCell('B5').value = isNaN(termNum) ? data.compilationTerm : termNum;
+  }
+  if (data.compilationExpiration) ws.getCell('B6').value = data.compilationExpiration;
+
+  // Row 8 is the header row (Analysis Year, Individual Total, Period, Base Rent/SF, etc.)
+  // Rows 9+ are data rows — fill in values but preserve formulas in formula columns
+  const dataStartRow = 9;
+  const dataRows = data.annualTable.filter(item => !/total/i.test(item.label) && item.label);
+
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataStartRow + i;
+    const item = dataRows[i];
+
+    // Column A: Year label (e.g., "Year 1")
+    ws.getCell(`A${row}`).value = item.label;
+
+    // Fill data values into columns B onwards
+    // The template columns are: A=label, B=Individual Total (year), C=Period/Rent per SF, D=Annual Base Rent, E=OpEx, F=Total
+    for (let c = 0; c < item.values.length; c++) {
+      const colLetter = String.fromCharCode(66 + c); // B, C, D, E, F...
+      const cell = ws.getCell(`${colLetter}${row}`);
+      
+      // Check if cell has a formula — if so, skip it to preserve the formula
+      if (cell.formula || cell.sharedFormula) {
+        continue;
+      }
+
+      const val = item.values[c];
+      const num = parseDollar(val);
+      if (num !== null) {
+        cell.value = num;
+      } else {
+        // Try plain number
+        const plain = parseFloat(val?.replace(/,/g, '') || '');
+        if (!isNaN(plain)) {
+          cell.value = plain;
+        } else {
+          cell.value = val || '';
+        }
+      }
+    }
+  }
+
+  // TOTAL row — find it in the annual table
+  const totalItem = data.annualTable.find(item => /total/i.test(item.label));
+  if (totalItem) {
+    const totalRow = dataStartRow + dataRows.length;
+    ws.getCell(`A${totalRow}`).value = totalItem.label || 'TOTAL';
+    
+    for (let c = 0; c < totalItem.values.length; c++) {
+      const colLetter = String.fromCharCode(66 + c);
+      const cell = ws.getCell(`${colLetter}${totalRow}`);
+      
+      // Preserve formulas (SUM formulas in total row)
+      if (cell.formula || cell.sharedFormula) continue;
+
+      const val = totalItem.values[c];
+      const num = parseDollar(val);
+      if (num !== null) {
+        cell.value = num;
+      } else {
+        cell.value = val || '';
+      }
+    }
+  }
+
+  // Totals section at the bottom — find the "Totals" label row and fill below it
+  // Scan for the Totals section starting after the annual table
+  const totalsStartRow = dataStartRow + dataRows.length + 3;
+  let totalsRow = totalsStartRow;
+  for (const [label, val] of Object.entries(data.totals)) {
+    ws.getCell(`A${totalsRow}`).value = label;
+    const num = parseDollar(val);
+    if (num !== null) {
+      ws.getCell(`B${totalsRow}`).value = num;
+    } else {
+      ws.getCell(`B${totalsRow}`).value = val || '';
+    }
+    totalsRow++;
+  }
+
+  // Save
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  saveAs(blob, `${filename.replace(/[^a-zA-Z0-9_\- ]/g, '')}.xlsx`);
+}
+
+// Fallback: build from scratch if template can't be loaded
+async function exportCashflowFallback(markdown: string, filename: string, data: CashflowData) {
+  const NAVY = '002B5C';
+  const WHITE = 'FFFFFF';
+  const LIGHT_GRAY = 'F2F2F2';
+  const BORDER_COLOR = 'B0B0B0';
+  const thinBorder: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: BORDER_COLOR } };
+  const allBorders: Partial<ExcelJS.Borders> = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
+  const currencyWhole = '#,##0';
+  const currency = '#,##0.00';
+
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Cash Flow Summary');
   const yearCount = Math.max(data.yearHeaders.length, 1);
-  const totalCols = yearCount + 2; // label col + individual total + year cols
+  const totalCols = yearCount + 2;
 
-  // Set column widths
-  ws1.getColumn(1).width = 30;
-  ws1.getColumn(2).width = 18;
-  for (let c = 3; c <= totalCols; c++) ws1.getColumn(c).width = 16;
+  ws.getColumn(1).width = 30;
+  ws.getColumn(2).width = 18;
+  for (let c = 3; c <= totalCols; c++) ws.getColumn(c).width = 16;
 
-  // Header rows
   let row = 1;
 
   // Company Name
-  const companyRow = ws1.getRow(row);
-  ws1.mergeCells(row, 1, row, totalCols);
+  const companyRow = ws.getRow(row);
+  ws.mergeCells(row, 1, row, totalCols);
   companyRow.getCell(1).value = data.companyName || 'Company Name';
   companyRow.getCell(1).font = { bold: true, size: 14, color: { argb: WHITE } };
   companyRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
@@ -181,38 +254,31 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
   companyRow.height = 28;
   row++;
 
-  // Type of Analysis
-  const typeRow = ws1.getRow(row);
-  ws1.mergeCells(row, 1, row, totalCols);
+  const typeRow = ws.getRow(row);
+  ws.mergeCells(row, 1, row, totalCols);
   typeRow.getCell(1).value = data.analysisType || 'Lease Analysis';
   typeRow.getCell(1).font = { bold: true, size: 11, color: { argb: WHITE } };
   typeRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
   typeRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
   row++;
-
-  // Blank row
   row++;
 
-  // Compilation info
   const compFields = [
     ['Compilation Start Date', data.compilationStartDate],
     ['Compilation Term (months)', data.compilationTerm],
     ['Compilation Expiration Date', data.compilationExpiration],
   ];
   for (const [label, val] of compFields) {
-    const r = ws1.getRow(row);
+    const r = ws.getRow(row);
     r.getCell(1).value = label;
     r.getCell(1).font = { bold: true, size: 10 };
     r.getCell(2).value = val || '';
     r.getCell(2).font = { size: 10 };
     row++;
   }
-
-  // Blank row
   row++;
 
-  // Year headers row
-  const yearHeaderRow = ws1.getRow(row);
+  const yearHeaderRow = ws.getRow(row);
   yearHeaderRow.getCell(1).value = 'Analysis Year';
   yearHeaderRow.getCell(1).font = { bold: true, size: 10, color: { argb: WHITE } };
   yearHeaderRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
@@ -229,19 +295,15 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
   yearHeaderRow.eachCell(c => { c.border = allBorders; });
   row++;
 
-  // Data rows
   for (const item of data.annualTable) {
-    const r = ws1.getRow(row);
+    const r = ws.getRow(row);
     const label = item.label;
     const isTotal = /total/i.test(label);
-    const isDates = /dates?$/i.test(label) || /start date|end date/i.test(label);
     const isSeparator = !label && item.values.every(v => !v);
-
     if (isSeparator) { row++; continue; }
 
     r.getCell(1).value = label;
-    r.getCell(1).font = { bold: isTotal, size: 10, italic: isDates };
-
+    r.getCell(1).font = { bold: isTotal, size: 10 };
     if (isTotal) {
       r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_GRAY } };
     }
@@ -256,7 +318,7 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
       } else {
         cell.value = val || '';
       }
-      cell.font = { bold: isTotal, size: 10, italic: isDates };
+      cell.font = { bold: isTotal, size: 10 };
       cell.alignment = { horizontal: 'right' };
       if (isTotal) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_GRAY } };
@@ -266,19 +328,17 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
     row++;
   }
 
-  // Blank rows
   row += 2;
 
-  // Totals section
-  const totalsHeaderRow = ws1.getRow(row);
-  ws1.mergeCells(row, 1, row, 3);
+  const totalsHeaderRow = ws.getRow(row);
+  ws.mergeCells(row, 1, row, 3);
   totalsHeaderRow.getCell(1).value = 'Totals';
   totalsHeaderRow.getCell(1).font = { bold: true, size: 12, color: { argb: WHITE } };
   totalsHeaderRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
   row++;
 
   for (const [label, val] of Object.entries(data.totals)) {
-    const r = ws1.getRow(row);
+    const r = ws.getRow(row);
     r.getCell(1).value = label;
     r.getCell(1).font = { bold: true, size: 10 };
     const num = parseDollar(val);
@@ -293,99 +353,6 @@ export async function exportCashflowToExcel(markdown: string, filename: string) 
     row++;
   }
 
-  // ──── Sheet 2: Monthly Detail ────
-  if (data.monthlyTable.length > 0) {
-    const ws2 = wb.addWorksheet('Monthly Detail');
-    const monthCount = Math.max(data.monthHeaders.length, 1);
-
-    ws2.getColumn(1).width = 22;
-    for (let c = 2; c <= monthCount + 1; c++) ws2.getColumn(c).width = 14;
-
-    // Title
-    let mRow = 1;
-    const titleRow = ws2.getRow(mRow);
-    ws2.mergeCells(mRow, 1, mRow, Math.min(monthCount + 1, 14));
-    titleRow.getCell(1).value = `${data.companyName || 'Company'} — Monthly Cash Flow Detail`;
-    titleRow.getCell(1).font = { bold: true, size: 13, color: { argb: WHITE } };
-    titleRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
-    titleRow.height = 26;
-    mRow++;
-
-    // Month headers
-    const mHeaderRow = ws2.getRow(mRow);
-    mHeaderRow.getCell(1).value = 'Month';
-    mHeaderRow.getCell(1).font = { bold: true, size: 10, color: { argb: WHITE } };
-    mHeaderRow.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
-    for (let c = 0; c < data.monthHeaders.length; c++) {
-      const cell = mHeaderRow.getCell(c + 2);
-      cell.value = data.monthHeaders[c];
-      cell.font = { bold: true, size: 9, color: { argb: WHITE } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
-      cell.alignment = { horizontal: 'center' };
-    }
-    mHeaderRow.eachCell(c => { c.border = allBorders; });
-    mRow++;
-
-    // Monthly data rows
-    for (const item of data.monthlyTable) {
-      const r = ws2.getRow(mRow);
-      const label = item.label;
-      const isTotal = /total/i.test(label);
-
-      r.getCell(1).value = label;
-      r.getCell(1).font = { bold: isTotal, size: 9 };
-      if (isTotal) {
-        r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_GRAY } };
-      }
-
-      for (let c = 0; c < item.values.length; c++) {
-        const cell = r.getCell(c + 2);
-        const val = item.values[c];
-        const num = parseDollar(val);
-        if (num !== null) {
-          cell.value = num;
-          cell.numFmt = currencyWhole;
-        } else {
-          cell.value = val || '';
-        }
-        cell.font = { bold: isTotal, size: 9 };
-        cell.alignment = { horizontal: 'right' };
-        if (isTotal) {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_GRAY } };
-        }
-      }
-      r.eachCell(c => { c.border = allBorders; });
-      mRow++;
-    }
-  }
-
-  // ──── Sheet 3: Lease Terms ────
-  if (Object.keys(data.leaseTerms).length > 0) {
-    const ws3 = wb.addWorksheet('Lease Terms');
-    ws3.getColumn(1).width = 35;
-    ws3.getColumn(2).width = 30;
-
-    let tRow = 1;
-    const tTitle = ws3.getRow(tRow);
-    ws3.mergeCells(tRow, 1, tRow, 2);
-    tTitle.getCell(1).value = 'Lease Terms';
-    tTitle.getCell(1).font = { bold: true, size: 13, color: { argb: WHITE } };
-    tTitle.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: NAVY } };
-    tTitle.height = 26;
-    tRow++;
-
-    for (const [key, val] of Object.entries(data.leaseTerms)) {
-      const r = ws3.getRow(tRow);
-      r.getCell(1).value = key;
-      r.getCell(1).font = { bold: true, size: 10 };
-      r.getCell(2).value = val;
-      r.getCell(2).font = { size: 10 };
-      r.eachCell(c => { c.border = allBorders; });
-      tRow++;
-    }
-  }
-
-  // Save
   const buffer = await wb.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   saveAs(blob, `${filename.replace(/[^a-zA-Z0-9_\- ]/g, '')}.xlsx`);

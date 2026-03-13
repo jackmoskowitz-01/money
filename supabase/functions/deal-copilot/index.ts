@@ -463,7 +463,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: selectedModel,
           messages: [{ role: "system", content: systemMessage }, ...messages],
           stream: true,
         }),

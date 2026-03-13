@@ -66,7 +66,8 @@ export function parseMatrixMarkdown(markdown: string): MatrixData {
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('|')) {
-      if (/^\|[\s-:]+\|/.test(trimmed) || /^[\s-:|]+$/.test(trimmed)) {
+      const isSeparatorRow = /^\|(?:\s*:?-{3,}:?\s*\|)+\s*$/.test(trimmed);
+      if (isSeparatorRow) {
         inTable = true;
         continue;
       }

@@ -583,7 +583,7 @@ export default function DealCopilot() {
         return prev;
       }
       if (prev.some(f => f.name === file.name && f.size === file.size)) return prev;
-      toast.success(`📎 ${file.name} attached`);
+      // File attached silently — no toast
       return [...prev, file];
     });
   };

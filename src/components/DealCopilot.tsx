@@ -1369,6 +1369,11 @@ For each line item, also produce a monthly breakdown:
       // Persist assistant message
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+        // Auto-export to Word for /comp commands
+        if (pendingAutoExportRef.current && isExportableReport(assistantSoFar)) {
+          pendingAutoExportRef.current = false;
+          setTimeout(() => handleExportWord(assistantSoFar), 500);
+        }
       }
 
       // Refresh pipeline after any response (in case tools were called)

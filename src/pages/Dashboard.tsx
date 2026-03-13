@@ -21,6 +21,7 @@ import BrokerLeaderboard from '@/components/BrokerLeaderboard';
 import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
+import DailyBriefing from '@/components/DailyBriefing';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
@@ -184,6 +185,9 @@ const Dashboard = () => {
             </div>
           </div>
         </motion.div>
+
+        {/* ═══ AI Daily Briefing ═══ */}
+        <DailyBriefing />
 
         {/* ═══ Stat Cards ═══ */}
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">

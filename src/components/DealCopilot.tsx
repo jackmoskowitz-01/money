@@ -188,12 +188,16 @@ export default function DealCopilot() {
     }
   }, [pipeline, alertsEnabled]);
 
-  // Auto-scroll
-  useEffect(() => {
+  // Auto-scroll smoothly
+  const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
   // Focus input
   useEffect(() => {

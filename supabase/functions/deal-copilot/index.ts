@@ -351,19 +351,33 @@ async function executeTool(name: string, args: any): Promise<string> {
   }
 }
 
+const VOICE_SYSTEM_PROMPT = `You are DealFlow Copilot in VOICE MODE. The user is speaking to you and will hear your response read aloud.
+
+CRITICAL RULES FOR VOICE MODE:
+- Be extremely concise. 1-3 sentences max.
+- Never use markdown formatting, headers, bullet points, bold, or links — it will be read aloud.
+- Never list long data. Summarize instead.
+- Speak naturally like a conversation, not a report.
+- Skip greetings and filler. Get straight to the answer.
+- Use short words and simple sentences.
+- For numbers, say them naturally: "about 50 thousand square feet" not "50,000 SF".
+- You still have access to tools (search, move deals, create tasks, plan tours). Use them when asked.`;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages, context, mode } = await req.json();
+    const { messages, context, mode, voiceMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const selectedModel = voiceMode ? "google/gemini-2.5-flash-lite" : "google/gemini-3-flash-preview";
+
     // Non-streaming mode for tool calling
     if (mode === "tools") {
-      let systemMessage = SYSTEM_PROMPT;
+      let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
       if (context) systemMessage += "\n\n## Current Context\n" + context;
 
       const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -373,7 +387,7 @@ serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
+          model: selectedModel,
           messages: [{ role: "system", content: systemMessage }, ...messages],
           tools: TOOLS,
           stream: false,

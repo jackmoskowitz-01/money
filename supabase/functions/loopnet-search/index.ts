@@ -35,9 +35,26 @@ serve(async (req) => {
 
     const input: Record<string, unknown> = {};
 
+    // If user provided explicit URLs, use them directly
     if (startUrls && startUrls.length > 0) {
       input.startUrls = startUrls.map((url: string) => ({ url }));
+    } else {
+      // Auto-construct a LoopNet search URL from State/City filters
+      // Format: https://www.loopnet.com/search/commercial-real-estate/{city}-{state}/for-lease/
+      const stateVal = (State && State !== "none") ? State.toLowerCase() : "";
+      const cityVal = City ? City.trim().toLowerCase().replace(/\s+/g, "-") : "";
+      
+      if (cityVal && stateVal) {
+        const searchUrl = `https://www.loopnet.com/search/commercial-real-estate/${cityVal}-${stateVal}/for-lease/`;
+        input.startUrls = [{ url: searchUrl }];
+        console.log("Auto-constructed URL:", searchUrl);
+      } else if (stateVal) {
+        const searchUrl = `https://www.loopnet.com/search/commercial-real-estate/${stateVal}/for-lease/`;
+        input.startUrls = [{ url: searchUrl }];
+        console.log("Auto-constructed URL (state only):", searchUrl);
+      }
     }
+
     if (addresses && addresses.length > 0) {
       input.addresses = addresses;
     }

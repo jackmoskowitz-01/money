@@ -19,6 +19,7 @@ import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
 import Settings from "./pages/Settings";
+import LoopNetSearch from "./pages/LoopNetSearch";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -55,6 +56,7 @@ const ProtectedRoutes = () => {
         <Route path="/prospects" element={<Prospects />} />
         <Route path="/activities" element={<ActivityLogger />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/loopnet" element={<LoopNetSearch />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

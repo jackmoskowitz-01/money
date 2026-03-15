@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.territory-analysis]
 verify_jwt = false
+
+[functions.loopnet-search]
+verify_jwt = false

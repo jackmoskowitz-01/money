@@ -250,14 +250,58 @@ const CompanyContacts = ({ entityId, companyName, primaryContact, onContactsChan
           )}
         </AnimatePresence>
 
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-          >
-            <Plus className="h-3 w-3" /> Add Contact
-          </button>
+        {!showForm && !showZoomInfoInput && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+            >
+              <Plus className="h-3 w-3" /> Add Contact
+            </button>
+            <button
+              onClick={() => setShowZoomInfoInput(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+            >
+              <Search className="h-3 w-3" /> Import from ZoomInfo
+            </button>
+          </div>
         )}
+
+        <AnimatePresence>
+          {showZoomInfoInput && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <Card className="border-primary/30 bg-card p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-foreground">Import from ZoomInfo</p>
+                  <button onClick={() => { setShowZoomInfoInput(false); setZoomInfoUrl(''); }} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Paste ZoomInfo people profile URL(s), one per line</p>
+                <textarea
+                  value={zoomInfoUrl}
+                  onChange={e => setZoomInfoUrl(e.target.value)}
+                  placeholder="https://www.zoominfo.com/p/john-smith/123456789"
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleZoomInfoImport}
+                  disabled={zoomInfoLoading || !zoomInfoUrl.trim()}
+                  className="w-full text-xs h-8 gap-1.5"
+                >
+                  {zoomInfoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                  {zoomInfoLoading ? 'Importing...' : 'Import Contacts'}
+                </Button>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CollapsibleContent>
     </Collapsible>
   );

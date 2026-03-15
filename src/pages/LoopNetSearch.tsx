@@ -36,6 +36,7 @@ const US_STATES = [
 type LoopNetListing = { [key: string]: unknown };
 
 const LoopNetSearch = () => {
+  const navigate = useNavigate();
   const [searchUrls, setSearchUrls] = useState('');
   const [state, setState] = useState('none');
   const [city, setCity] = useState('');

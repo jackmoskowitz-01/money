@@ -119,7 +119,7 @@ serve(async (req) => {
     }
 
     // ── Step 2: Auto-import key people from company scrape ──
-    if (entityId) {
+    if (entityId && company) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const sb = createClient(supabaseUrl, supabaseKey);

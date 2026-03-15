@@ -220,6 +220,69 @@ const MapView = () => {
     refreshMarkerIcons();
   }, [visitLog, thresholdDays, trackerEnabled, refreshMarkerIcons]);
 
+  // ---- Activity Coverage Overlay ----
+  const activityCountsByBuilding = useMemo(() => {
+    const all = getActivities();
+    const counts: Record<string, number> = {};
+    all.forEach(a => {
+      if (a.buildingId) counts[a.buildingId] = (counts[a.buildingId] || 0) + 1;
+    });
+    return counts;
+  }, [activityOverlay]); // re-compute when toggled
+
+  const renderActivityCircles = useCallback(async () => {
+    // Clear existing
+    activityCirclesRef.current.forEach(c => c.remove());
+    activityCirclesRef.current = [];
+
+    if (!activityOverlay || !mapInstanceRef.current) return;
+
+    const L = await import('leaflet');
+    const allBuildings = [...mockBuildings, ...costarBuildings, ...googleBuildings];
+
+    allBuildings.forEach(b => {
+      const count = activityCountsByBuilding[b.id] || 0;
+      // Color: green (3+), yellow (1-2), red/transparent (0)
+      let color: string;
+      let fillOpacity: number;
+      let radius: number;
+      if (count >= 3) {
+        color = 'hsl(142, 71%, 45%)'; // green
+        fillOpacity = 0.5;
+        radius = 18;
+      } else if (count >= 1) {
+        color = 'hsl(48, 96%, 53%)'; // yellow
+        fillOpacity = 0.45;
+        radius = 14;
+      } else {
+        color = 'hsl(0, 84%, 60%)'; // red
+        fillOpacity = 0.3;
+        radius = 10;
+      }
+
+      const circle = L.circleMarker([b.lat, b.lng], {
+        radius,
+        color,
+        fillColor: color,
+        fillOpacity,
+        weight: 2,
+        opacity: 0.8,
+      }).addTo(mapInstanceRef.current);
+
+      circle.bindTooltip(
+        `<strong>${b.name}</strong><br/>${count} activit${count === 1 ? 'y' : 'ies'}`,
+        { direction: 'top', offset: [0, -10] }
+      );
+      circle.on('click', () => setSelectedBuilding(b));
+
+      activityCirclesRef.current.push(circle);
+    });
+  }, [activityOverlay, activityCountsByBuilding, googleBuildings]);
+
+  useEffect(() => {
+    renderActivityCircles();
+  }, [renderActivityCircles]);
+
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{
       id: 'primary',

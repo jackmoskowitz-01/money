@@ -76,6 +76,46 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
     }
   }, [prospectId, companyName, website, address, onEnriched]);
 
+  const [zoomInfoLoading, setZoomInfoLoading] = useState(false);
+
+  const fetchZoomInfoEnrichment = useCallback(async () => {
+    setZoomInfoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('apify-zoominfo-enrich', {
+        body: { companyName, entityId: prospectId },
+      });
+
+      if (error) throw error;
+      if (data?.enrichment) {
+        const enriched: ProspectEnrichment = {
+          industry: data.enrichment.industry,
+          employeeCount: data.enrichment.employeeCount,
+          companySize: data.enrichment.companySize,
+          headquarters: data.enrichment.headquarters,
+          officeLocations: data.enrichment.officeLocations || [],
+          description: data.enrichment.description,
+          recentNews: data.enrichment.recentNews || [],
+          spaceDetails: data.enrichment.spaceDetails || { currentSqft: null, buildingName: null, leaseExpiration: null },
+          creSignals: data.enrichment.creSignals || [],
+          confidenceScore: data.enrichment.confidenceScore || 90,
+          enrichedAt: new Date().toISOString(),
+          citations: [],
+        };
+        setEnrichment(enriched);
+        updateCustomProspect(prospectId, { enrichment: enriched });
+        onEnriched?.(enriched);
+        toast.success('ZoomInfo enrichment complete');
+      } else {
+        toast.error('No ZoomInfo data found');
+      }
+    } catch (e) {
+      console.error('ZoomInfo enrichment failed:', e);
+      toast.error('ZoomInfo enrichment failed');
+    } finally {
+      setZoomInfoLoading(false);
+    }
+  }, [prospectId, companyName, onEnriched]);
+
   // Auto-enrich on mount if no cached data
   useEffect(() => {
     if (!enrichment) {

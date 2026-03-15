@@ -437,6 +437,12 @@ const LoopNetDetail = () => {
 
         {/* Broker & Contact */}
         <Section title="Broker & Contact" icon={User}>
+          {get('Broker') && (
+            <div className="mb-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Brokerage</span>
+              <p className="text-xs font-semibold text-foreground mt-0.5">{get('Broker')}</p>
+            </div>
+          )}
           {brokerDetails.length > 0 ? (
             <BrokersSection brokers={brokerDetails} />
           ) : (
@@ -444,10 +450,15 @@ const LoopNetDetail = () => {
               <Field label="Broker Name" value={get('brokerName', 'agent_fullName')} />
               <Field label="Broker Company" value={get('brokerCompany', 'agent_company_name')} />
               <Field label="Phone" value={get('phone', 'contactNumber')} />
+              <Field label="First Name" value={get('agent_firstName')} />
+              <Field label="Last Name" value={get('agent_lastName')} />
             </div>
           )}
           {get('agent_photoUrl') && (
             <img src={get('agent_photoUrl')} alt="Agent" className="w-16 h-16 rounded-full object-cover border border-border mt-2" />
+          )}
+          {get('agent_profileUrl') && (
+            <a href={get('agent_profileUrl')} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">View Agent Profile</a>
           )}
           {contactDetails && Object.values(contactDetails).some(v => v != null && v !== '') && (
             <div className="mt-3">

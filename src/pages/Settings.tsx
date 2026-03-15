@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download, Loader2 } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 

@@ -117,7 +117,7 @@ export const updateCustomProspect = (id: string, updates: Partial<CustomProspect
   if (updates.enrichment !== undefined) dbUpdates.enrichment = updates.enrichment as unknown as Record<string, unknown>;
   dbUpdates.updated_at = new Date().toISOString();
 
-  supabase.from('custom_prospects').update(dbUpdates).eq('id', id).then(({ error }) => {
+  supabase.from('custom_prospects' as any).update(dbUpdates).eq('id', id).then(({ error }: any) => {
     if (error) console.error('DB update prospect error:', error);
   });
 

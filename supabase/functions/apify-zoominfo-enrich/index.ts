@@ -61,58 +61,62 @@ serve(async (req) => {
       }
     }
 
-    // Map ZoomInfo company data → ProspectEnrichment shape
-    const addr = company.address || {};
-    const hq = [addr.city, addr.state, addr.country].filter(Boolean).join(", ");
-    const empCount = company.number_of_employees;
-    const empNum = parseInt(empCount, 10);
-    let companySize = "mid-market";
-    if (empNum < 50) companySize = "startup";
-    else if (empNum < 200) companySize = "small";
-    else if (empNum < 1000) companySize = "mid-market";
-    else companySize = "enterprise";
+    // Map ZoomInfo company data → ProspectEnrichment shape (only if company scrape ran)
+    if (company) {
+      const addr = (company as Record<string, unknown>).address as Record<string, string> || {};
+      const hq = [addr.city, addr.state, addr.country].filter(Boolean).join(", ");
+      const empCount = company.number_of_employees as string;
+      const empNum = parseInt(empCount, 10);
+      let companySize = "mid-market";
+      if (empNum < 50) companySize = "startup";
+      else if (empNum < 200) companySize = "small";
+      else if (empNum < 1000) companySize = "mid-market";
+      else companySize = "enterprise";
 
-    const enrichment = {
-      industry: company.industries?.join(", ") || null,
-      employeeCount: empCount || null,
-      companySize,
-      headquarters: hq || null,
-      officeLocations: hq ? [hq] : [],
-      description: company.description || null,
-      recentNews: [],
-      spaceDetails: { currentSqft: null, buildingName: null, leaseExpiration: null },
-      creSignals: [] as string[],
-      confidenceScore: 90,
-      revenue: company.revenue_text || null,
-      revenueRaw: company.revenue || null,
-      website: company.website || null,
-      foundingYear: company.founding_year || null,
-      stockSymbol: company.stock_symbol || null,
-      phone: company.phone_number || null,
-      socialLinks: company.social_network_urls || [],
-      fundings: company.fundings || null,
-      zoomInfoId: company.id || null,
-      zoomInfoUrl: company.url || null,
-      source: "zoominfo",
-    };
+      const enrichment = {
+        industry: (company.industries as string[])?.join(", ") || null,
+        employeeCount: empCount || null,
+        companySize,
+        headquarters: hq || null,
+        officeLocations: hq ? [hq] : [],
+        description: company.description || null,
+        recentNews: [],
+        spaceDetails: { currentSqft: null, buildingName: null, leaseExpiration: null },
+        creSignals: [] as string[],
+        confidenceScore: 90,
+        revenue: company.revenue_text || null,
+        revenueRaw: company.revenue || null,
+        website: company.website || null,
+        foundingYear: company.founding_year || null,
+        stockSymbol: company.stock_symbol || null,
+        phone: company.phone_number || null,
+        socialLinks: company.social_network_urls || [],
+        fundings: company.fundings || null,
+        zoomInfoId: company.id || null,
+        zoomInfoUrl: company.url || null,
+        source: "zoominfo",
+      };
 
-    // Generate CRE signals from ZoomInfo data
-    if (company.revenue_text) {
-      enrichment.creSignals.push(`Revenue: ${company.revenue_text}`);
-    }
-    if (company.founding_year) {
-      const age = new Date().getFullYear() - company.founding_year;
-      if (age <= 5) enrichment.creSignals.push(`Young company (founded ${company.founding_year}) — likely in growth phase`);
-    }
-    if (empNum > 500) {
-      enrichment.creSignals.push(`${empCount} employees — enterprise-scale tenant potential`);
-    }
-    if (company.fundings?.totals?.last_funding_amount) {
-      enrichment.creSignals.push(`Recent funding: ${company.fundings.totals.last_funding_amount} — potential expansion signal`);
-    }
+      if (company.revenue_text) {
+        enrichment.creSignals.push(`Revenue: ${company.revenue_text}`);
+      }
+      if (company.founding_year) {
+        const age = new Date().getFullYear() - (company.founding_year as number);
+        if (age <= 5) enrichment.creSignals.push(`Young company (founded ${company.founding_year}) — likely in growth phase`);
+      }
+      if (empNum > 500) {
+        enrichment.creSignals.push(`${empCount} employees — enterprise-scale tenant potential`);
+      }
+      if ((company.fundings as Record<string, unknown>)?.totals) {
+        const totals = (company.fundings as Record<string, Record<string, string>>).totals;
+        if (totals?.last_funding_amount) {
+          enrichment.creSignals.push(`Recent funding: ${totals.last_funding_amount} — potential expansion signal`);
+        }
+      }
 
-    results.enrichment = enrichment;
-    results.rawCompany = company;
+      results.enrichment = enrichment;
+      results.rawCompany = company;
+    }
 
     // ── Step 2: Auto-import key people from company scrape ──
     if (entityId) {

@@ -116,11 +116,61 @@ const ProspectSearch = () => {
     setNewAddress(prediction.description);
     setShowSuggestions(false);
     setAddressSuggestions([]);
-    // Auto-fill name if empty
     if (!newName.trim() && prediction.mainText) {
       setNewName(prediction.mainText);
     }
   };
+
+  const handleZoomInfoLookup = useCallback(async () => {
+    if (!newName.trim()) {
+      toast.error('Enter a company name first');
+      return;
+    }
+    setZoomInfoLoading(true);
+    const toastId = toast.loading(`Looking up "${newName}" on ZoomInfo...`);
+    try {
+      const { data, error } = await supabase.functions.invoke('apify-zoominfo-enrich', {
+        body: { companyName: newName.trim() },
+      });
+      if (error) throw error;
+      if (!data?.success || !data?.enrichment) {
+        toast.dismiss(toastId);
+        toast.error('No ZoomInfo data found for this company');
+        setZoomInfoLoading(false);
+        return;
+      }
+
+      const enrichment = data.enrichment;
+      // Auto-fill form fields from ZoomInfo data
+      if (enrichment.website && !newWebsite.trim()) setNewWebsite(enrichment.website);
+      if (enrichment.headquarters && !newAddress.trim()) setNewAddress(enrichment.headquarters);
+
+      // Create the prospect with enrichment baked in
+      const prospect = addCustomProspect({
+        name: newName.trim(),
+        website: enrichment.website || newWebsite.trim(),
+        address: enrichment.headquarters || newAddress.trim() || 'Unknown',
+      });
+
+      // Save enrichment data
+      updateCustomProspect(prospect.id, {
+        enrichment: {
+          ...enrichment,
+          enrichedAt: new Date().toISOString(),
+          citations: [],
+        },
+      });
+
+      toast.dismiss(toastId);
+      toast.success(`Created ${prospect.name} with ZoomInfo data`);
+      navigate(`/prospect/${prospect.id}`);
+      closeSearch();
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error(err instanceof Error ? err.message : 'ZoomInfo lookup failed');
+    }
+    setZoomInfoLoading(false);
+  }, [newName, newWebsite, newAddress, navigate]);
 
   const allResults = useMemo<SearchResult[]>(() => {
     const customResults: SearchResult[] = customProspects.map(cp => ({

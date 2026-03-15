@@ -283,6 +283,7 @@ const LoopNetDetail = () => {
   const amenities = getArr('amenities') as Array<Record<string, unknown>>;
   const highlights = getArr('highlights') as string[];
   const investmentHighlights = getArr('investmentHighlights') as string[];
+  const dataPoints = getArr('dataPoints') as string[];
   const nearbyAmenities = getArr('nearbyAmenities') as Array<Record<string, unknown>>;
   const nearbyHospitals = getArr('nearbyHospitals') as Array<Record<string, unknown>>;
   const nearbyBusiness = getObj('nearbyBusiness');
@@ -290,7 +291,10 @@ const LoopNetDetail = () => {
   const lotDetails = getObj('lotDetails');
   const contactDetails = getObj('contactDetails');
   const propertyTaxes = getObj('propertyTaxes');
+  const sustainability = getObj('sustainability');
   const links = getArr('links') as Array<{ url: string; description: string }>;
+  const attachments = getArr('attachments') as Array<{ url?: string; name?: string; description?: string }>;
+  const unitMix = getArr('unitMix') as Array<Record<string, unknown>>;
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-10 px-4 sm:px-6 lg:px-8">

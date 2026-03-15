@@ -40,6 +40,7 @@ const LoopNetSearch = () => {
   const [searchUrls, setSearchUrls] = useState('');
   const [state, setState] = useState('none');
   const [city, setCity] = useState('');
+  const [propertyType, setPropertyType] = useState('office-space');
   const [maxItems, setMaxItems] = useState('10');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');

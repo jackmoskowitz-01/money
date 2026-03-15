@@ -242,6 +242,39 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_prospects: {
+        Row: {
+          address: string
+          created_at: string
+          enrichment: Json | null
+          id: string
+          name: string
+          source: string
+          updated_at: string
+          website: string
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          enrichment?: Json | null
+          id?: string
+          name: string
+          source?: string
+          updated_at?: string
+          website?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          enrichment?: Json | null
+          id?: string
+          name?: string
+          source?: string
+          updated_at?: string
+          website?: string
+        }
+        Relationships: []
+      }
       pipeline_deals: {
         Row: {
           building_id: string

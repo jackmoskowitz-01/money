@@ -215,10 +215,6 @@ const LoopNetSearch = () => {
                 <Input type="number" min={1} max={10000} value={maxItems} onChange={(e) => setMaxItems(e.target.value)} className="bg-secondary/30 border-border" />
               </div>
               <div className="flex items-center gap-2">
-                <Switch checked={includeDetails} onCheckedChange={setIncludeDetails} id="details" />
-                <Label htmlFor="details" className="text-xs text-muted-foreground cursor-pointer">Include listing details</Label>
-              </div>
-              <div className="flex items-center gap-2">
                 <Switch checked={moreResults} onCheckedChange={setMoreResults} id="moreResults" />
                 <Label htmlFor="moreResults" className="text-xs text-muted-foreground cursor-pointer">Bypass 500 limit</Label>
               </div>

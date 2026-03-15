@@ -239,7 +239,7 @@ const LoopNetSearch = () => {
                   {results.map((listing, i) => {
                     const imgUrl = getField(listing, 'imageUrl', 'image', 'thumbnailUrl', 'photo', 'mainImage');
                     return (
-                      <TableRow key={i} className="border-border">
+                      <TableRow key={i} className="border-border cursor-pointer hover:bg-muted/30" onClick={() => navigate('/loopnet/detail', { state: { listing } })}>
                         <TableCell className="p-1">
                           {imgUrl !== '—' ? (
                             <img src={imgUrl} alt="" className="w-14 h-10 object-cover rounded" />

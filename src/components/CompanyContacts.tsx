@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, User, Mail, Phone, X, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, User, Mail, Phone, X, ChevronDown, Search, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import {
 
 interface Props {
   entityId: string;
+  companyName?: string;
   primaryContact?: {
     name: string;
     title: string;
@@ -23,11 +24,14 @@ interface Props {
   onContactsChange?: () => void;
 }
 
-const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) => {
+const CompanyContacts = ({ entityId, companyName, primaryContact, onContactsChange }: Props) => {
   const [contacts, setContacts] = useState<CompanyContact[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [zoomInfoLoading, setZoomInfoLoading] = useState(false);
+  const [zoomInfoUrl, setZoomInfoUrl] = useState('');
+  const [showZoomInfoInput, setShowZoomInfoInput] = useState(false);
 
   const loadContacts = useCallback(async () => {
     const data = await getContactsAsync(entityId);
@@ -91,6 +95,42 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
       onContactsChange?.();
     } catch {
       toast.error('Failed to remove contact');
+    }
+  };
+
+  const handleZoomInfoImport = async () => {
+    if (!zoomInfoUrl.trim()) return;
+    const urls = zoomInfoUrl.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
+    if (urls.length === 0) {
+      toast.error('Paste valid ZoomInfo profile URL(s)');
+      return;
+    }
+    setZoomInfoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('apify-zoominfo-enrich', {
+        body: {
+          companyName: companyName || 'Unknown',
+          entityId,
+          importContacts: true,
+          peopleProfileUrls: urls,
+        },
+      });
+      if (error) throw error;
+      const count = data?.peopleImportCount || 0;
+      if (count > 0) {
+        toast.success(`Imported ${count} contact(s) from ZoomInfo`);
+        loadContacts();
+        onContactsChange?.();
+      } else {
+        toast.error('No contacts could be imported');
+      }
+      setZoomInfoUrl('');
+      setShowZoomInfoInput(false);
+    } catch (err) {
+      console.error('ZoomInfo import failed:', err);
+      toast.error('ZoomInfo import failed');
+    } finally {
+      setZoomInfoLoading(false);
     }
   };
 
@@ -210,14 +250,58 @@ const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) 
           )}
         </AnimatePresence>
 
-        {!showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-          >
-            <Plus className="h-3 w-3" /> Add Contact
-          </button>
+        {!showForm && !showZoomInfoInput && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+            >
+              <Plus className="h-3 w-3" /> Add Contact
+            </button>
+            <button
+              onClick={() => setShowZoomInfoInput(true)}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+            >
+              <Search className="h-3 w-3" /> Import from ZoomInfo
+            </button>
+          </div>
         )}
+
+        <AnimatePresence>
+          {showZoomInfoInput && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <Card className="border-primary/30 bg-card p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-foreground">Import from ZoomInfo</p>
+                  <button onClick={() => { setShowZoomInfoInput(false); setZoomInfoUrl(''); }} className="text-muted-foreground hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">Paste ZoomInfo people profile URL(s), one per line</p>
+                <textarea
+                  value={zoomInfoUrl}
+                  onChange={e => setZoomInfoUrl(e.target.value)}
+                  placeholder="https://www.zoominfo.com/p/john-smith/123456789"
+                  rows={3}
+                  className="w-full rounded-md border border-border bg-secondary/50 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleZoomInfoImport}
+                  disabled={zoomInfoLoading || !zoomInfoUrl.trim()}
+                  className="w-full text-xs h-8 gap-1.5"
+                >
+                  {zoomInfoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                  {zoomInfoLoading ? 'Importing...' : 'Import Contacts'}
+                </Button>
+              </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </CollapsibleContent>
     </Collapsible>
   );

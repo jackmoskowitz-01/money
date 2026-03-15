@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Sparkles, Building2, Users, MapPin, Briefcase, Zap, User, Newspaper, RefreshCw, ExternalLink, Shield } from 'lucide-react';
+import { Loader2, Sparkles, Building2, Users, MapPin, Briefcase, Zap, User, Newspaper, RefreshCw, ExternalLink, Shield, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { type ProspectEnrichment, updateCustomProspect, getCustomProspect } from '@/data/customProspects';
+import { supabase } from '@/integrations/supabase/client';
 
 const ENRICH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-prospect`;
 
@@ -75,6 +76,46 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
     }
   }, [prospectId, companyName, website, address, onEnriched]);
 
+  const [zoomInfoLoading, setZoomInfoLoading] = useState(false);
+
+  const fetchZoomInfoEnrichment = useCallback(async () => {
+    setZoomInfoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('apify-zoominfo-enrich', {
+        body: { companyName, entityId: prospectId },
+      });
+
+      if (error) throw error;
+      if (data?.enrichment) {
+        const enriched: ProspectEnrichment = {
+          industry: data.enrichment.industry,
+          employeeCount: data.enrichment.employeeCount,
+          companySize: data.enrichment.companySize,
+          headquarters: data.enrichment.headquarters,
+          officeLocations: data.enrichment.officeLocations || [],
+          description: data.enrichment.description,
+          recentNews: data.enrichment.recentNews || [],
+          spaceDetails: data.enrichment.spaceDetails || { currentSqft: null, buildingName: null, leaseExpiration: null },
+          creSignals: data.enrichment.creSignals || [],
+          confidenceScore: data.enrichment.confidenceScore || 90,
+          enrichedAt: new Date().toISOString(),
+          citations: [],
+        };
+        setEnrichment(enriched);
+        updateCustomProspect(prospectId, { enrichment: enriched });
+        onEnriched?.(enriched);
+        toast.success('ZoomInfo enrichment complete');
+      } else {
+        toast.error('No ZoomInfo data found');
+      }
+    } catch (e) {
+      console.error('ZoomInfo enrichment failed:', e);
+      toast.error('ZoomInfo enrichment failed');
+    } finally {
+      setZoomInfoLoading(false);
+    }
+  }, [prospectId, companyName, onEnriched]);
+
   // Auto-enrich on mount if no cached data
   useEffect(() => {
     if (!enrichment) {
@@ -108,7 +149,18 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
           {enrichment?.enrichedAt && (
             <span className="text-[10px] text-muted-foreground/60">Updated {timeSince(enrichment.enrichedAt)}</span>
           )}
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchEnrichment} disabled={loading} title="Re-enrich">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[10px] gap-1"
+            onClick={fetchZoomInfoEnrichment}
+            disabled={zoomInfoLoading || loading}
+            title="Enrich via ZoomInfo"
+          >
+            <Search className={`h-3 w-3 ${zoomInfoLoading ? 'animate-spin' : ''}`} />
+            {zoomInfoLoading ? 'ZoomInfo...' : 'ZoomInfo'}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchEnrichment} disabled={loading || zoomInfoLoading} title="Re-enrich via AI">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

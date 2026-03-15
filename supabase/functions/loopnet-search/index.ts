@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const APIFY_BASE = "https://api.apify.com/v2";
-const ACTOR_ID = "parseforge~loopnet-com-commercial-real-estate-scraper";
+const ACTOR_ID = "piotrv1001~loopnet-listings-scraper";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -15,22 +15,21 @@ serve(async (req) => {
     const APIFY_API_KEY = Deno.env.get("APIFY_API_KEY");
     if (!APIFY_API_KEY) throw new Error("APIFY_API_KEY is not configured");
 
-    const { searchUrl, spaceUse, location, maxItems, proxyConfiguration } = await req.json();
+    const body = await req.json();
+    console.log("Raw body:", JSON.stringify(body));
 
-    // Build input — searchUrl takes priority over spaceUse/location
-    const input: Record<string, unknown> = {};
+    const { searchUrls, maxItems } = body;
 
-    if (searchUrl) {
-      input.searchUrl = searchUrl;
-    } else {
-      if (spaceUse) input.spaceUse = spaceUse;
-      if (location) input.location = location;
+    // This actor requires searchUrls as array of {url: string}
+    if (!searchUrls || searchUrls.length === 0) {
+      throw new Error("At least one LoopNet search URL is required");
     }
 
-    if (maxItems) input.maxItems = Math.min(Math.max(1, maxItems), 1000000);
-    if (proxyConfiguration) input.proxyConfiguration = proxyConfiguration;
+    const input: Record<string, unknown> = {
+      searchUrls: searchUrls.map((u: string) => ({ url: u })),
+    };
 
-    console.log(`LoopNet search input:`, JSON.stringify(input));
+    console.log("LoopNet search input:", JSON.stringify(input));
 
     const response = await fetch(
       `${APIFY_BASE}/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=300&format=json`,
@@ -47,8 +46,13 @@ serve(async (req) => {
       throw new Error(`Apify API failed [${response.status}]: ${errText}`);
     }
 
-    const results = await response.json();
+    let results = await response.json();
     console.log(`LoopNet results: ${Array.isArray(results) ? results.length : 0} items`);
+
+    // Apply maxItems limit client-side
+    if (maxItems && Array.isArray(results)) {
+      results = results.slice(0, maxItems);
+    }
 
     return new Response(
       JSON.stringify({ success: true, data: results }),

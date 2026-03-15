@@ -46,7 +46,7 @@ const LoopNetSearch = () => {
   const [priceMax, setPriceMax] = useState('');
   const [sizeMin, setSizeMin] = useState('');
   const [sizeMax, setSizeMax] = useState('');
-  const [includeDetails, setIncludeDetails] = useState(false);
+  
   const [moreResults, setMoreResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<LoopNetListing[]>([]);

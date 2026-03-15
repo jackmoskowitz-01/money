@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Building2, Loader2, ExternalLink, MapPin, DollarSign, User, Phone, Download, Image, Filter, Link2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,7 @@ const US_STATES = [
 type LoopNetListing = { [key: string]: unknown };
 
 const LoopNetSearch = () => {
+  const navigate = useNavigate();
   const [searchUrls, setSearchUrls] = useState('');
   const [state, setState] = useState('none');
   const [city, setCity] = useState('');
@@ -237,7 +239,7 @@ const LoopNetSearch = () => {
                   {results.map((listing, i) => {
                     const imgUrl = getField(listing, 'imageUrl', 'image', 'thumbnailUrl', 'photo', 'mainImage');
                     return (
-                      <TableRow key={i} className="border-border">
+                      <TableRow key={i} className="border-border cursor-pointer hover:bg-muted/30" onClick={() => navigate('/loopnet/detail', { state: { listing } })}>
                         <TableCell className="p-1">
                           {imgUrl !== '—' ? (
                             <img src={imgUrl} alt="" className="w-14 h-10 object-cover rounded" />
@@ -260,7 +262,7 @@ const LoopNetSearch = () => {
                           {getField(listing, 'propertyType', 'type', 'spaceUse', 'category')}
                         </TableCell>
                         <TableCell className="text-xs text-foreground whitespace-nowrap">
-                          {getField(listing, 'size', 'spaceSf', 'buildingSize', 'squareFeet', 'totalAvailableSf')}
+                          {getField(listing, 'buildingSize', 'squareFootage', 'size', 'spaceSf', 'totalAvailableSf')}
                         </TableCell>
                         <TableCell className="text-xs text-foreground whitespace-nowrap">
                           <div className="flex items-center gap-0.5">

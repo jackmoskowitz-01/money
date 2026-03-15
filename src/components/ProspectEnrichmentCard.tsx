@@ -104,7 +104,17 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
         setEnrichment(enriched);
         updateCustomProspect(prospectId, { enrichment: enriched });
         onEnriched?.(enriched);
-        toast.success('ZoomInfo enrichment complete');
+
+        // Report key people auto-imported
+        const peopleFound = data.keyPeopleFound || 0;
+        const peopleImported = data.keyPeopleImported || 0;
+        if (peopleImported > 0) {
+          toast.success(`ZoomInfo enrichment complete — ${peopleImported} key people added to contacts`);
+        } else if (peopleFound > 0) {
+          toast.success(`ZoomInfo enrichment complete — ${peopleFound} key people found (already in contacts)`);
+        } else {
+          toast.success('ZoomInfo enrichment complete');
+        }
       } else {
         toast.error('No ZoomInfo data found');
       }

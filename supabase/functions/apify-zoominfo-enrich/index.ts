@@ -109,15 +109,105 @@ serve(async (req) => {
     results.enrichment = enrichment;
     results.rawCompany = company;
 
-    // ── Step 2: People profile import (optional) ──
-    if (importContacts && peopleProfileUrls?.length > 0 && entityId) {
-      console.log(`Importing ${peopleProfileUrls.length} ZoomInfo people profiles`);
-
+    // ── Step 2: Auto-import key people from company scrape ──
+    if (entityId) {
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
       const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       const sb = createClient(supabaseUrl, supabaseKey);
 
       const importedContacts: unknown[] = [];
+      const keyPeople: Array<{ name: string; title: string; profileUrl?: string }> = [];
+
+      // Extract key people from company scrape — ZoomInfo company pages include executives
+      if (company.ceo) {
+        keyPeople.push({ name: company.ceo, title: "CEO" });
+      }
+      if (company.cto) {
+        keyPeople.push({ name: company.cto, title: "CTO" });
+      }
+      if (company.cfo) {
+        keyPeople.push({ name: company.cfo, title: "CFO" });
+      }
+      if (company.coo) {
+        keyPeople.push({ name: company.coo, title: "COO" });
+      }
+      // Many ZoomInfo company scrapes return a `key_people` or `employees` array
+      if (Array.isArray(company.key_people)) {
+        for (const person of company.key_people) {
+          const name = person.full_name || person.name;
+          const title = person.title || person.job_title || "";
+          const profileUrl = person.profile_url || person.url || null;
+          if (name && !keyPeople.some(kp => kp.name === name)) {
+            keyPeople.push({ name, title, profileUrl });
+          }
+        }
+      }
+      if (Array.isArray(company.employees)) {
+        for (const person of company.employees.slice(0, 15)) {
+          const name = person.full_name || person.name;
+          const title = person.title || person.job_title || "";
+          const profileUrl = person.profile_url || person.url || null;
+          if (name && !keyPeople.some(kp => kp.name === name)) {
+            keyPeople.push({ name, title, profileUrl });
+          }
+        }
+      }
+
+      console.log(`Found ${keyPeople.length} key people from company scrape`);
+
+      // Insert key people as contacts (skip duplicates by name+entity)
+      for (const person of keyPeople) {
+        try {
+          // Check if contact already exists
+          const { data: existing } = await sb
+            .from("company_contacts")
+            .select("id")
+            .eq("entity_id", entityId)
+            .eq("name", person.name)
+            .maybeSingle();
+
+          if (existing) {
+            console.log(`Skipping duplicate: ${person.name}`);
+            continue;
+          }
+
+          const { data: inserted, error } = await sb
+            .from("company_contacts")
+            .insert({
+              entity_id: entityId,
+              name: person.name,
+              title: person.title,
+              email: "",
+            })
+            .select()
+            .single();
+
+          if (error) {
+            console.error(`Failed to insert ${person.name}:`, error.message);
+          } else {
+            importedContacts.push(inserted);
+          }
+        } catch (err) {
+          console.error(`Error inserting ${person.name}:`, err);
+        }
+      }
+
+      results.importedContacts = importedContacts;
+      results.keyPeopleFound = keyPeople.length;
+      results.keyPeopleImported = importedContacts.length;
+      // Return key people with profile URLs so frontend can offer deep enrichment
+      results.keyPeople = keyPeople;
+    }
+
+    // ── Step 3: People profile import (optional, for deep enrichment) ──
+    if (importContacts && peopleProfileUrls?.length > 0 && entityId) {
+      console.log(`Deep-enriching ${peopleProfileUrls.length} ZoomInfo people profiles`);
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(supabaseUrl, supabaseKey);
+
+      const deepEnrichedContacts: unknown[] = [];
 
       for (const profileUrl of peopleProfileUrls.slice(0, 10)) {
         try {
@@ -127,8 +217,7 @@ serve(async (req) => {
           );
 
           if (!peopleResp.ok) {
-            const errText = await peopleResp.text();
-            console.error(`People scrape failed for ${profileUrl}:`, errText);
+            console.error(`People scrape failed for ${profileUrl}:`, await peopleResp.text());
             continue;
           }
 
@@ -136,9 +225,7 @@ serve(async (req) => {
           const person = Array.isArray(peopleData) ? peopleData[0] : peopleData;
           if (!person || !person.full_name) continue;
 
-          // Map to company_contacts
           const contactData = {
-            entity_id: entityId,
             name: person.full_name,
             email: person.contact_info?.email?.replace(/\*/g, '') || person.email || "",
             title: person.title || person.job_title || "",
@@ -146,24 +233,32 @@ serve(async (req) => {
             direct_phone: person.contact_info?.phone || null,
           };
 
-          const { data: inserted, error } = await sb
+          // Upsert — update existing contact with enriched data
+          const { data: existing } = await sb
             .from("company_contacts")
-            .insert(contactData)
-            .select()
-            .single();
+            .select("id")
+            .eq("entity_id", entityId)
+            .eq("name", person.full_name)
+            .maybeSingle();
 
-          if (error) {
-            console.error(`Failed to insert contact ${person.full_name}:`, error.message);
+          if (existing) {
+            await sb.from("company_contacts").update(contactData).eq("id", existing.id);
+            deepEnrichedContacts.push({ ...existing, ...contactData, updated: true });
           } else {
-            importedContacts.push(inserted);
+            const { data: inserted, error } = await sb
+              .from("company_contacts")
+              .insert({ entity_id: entityId, ...contactData })
+              .select()
+              .single();
+            if (!error) deepEnrichedContacts.push(inserted);
           }
         } catch (err) {
           console.error(`Error processing ${profileUrl}:`, err);
         }
       }
 
-      results.importedContacts = importedContacts;
-      results.peopleImportCount = importedContacts.length;
+      results.deepEnrichedContacts = deepEnrichedContacts;
+      results.peopleImportCount = deepEnrichedContacts.length;
     }
 
     console.log("ZoomInfo enrichment complete");

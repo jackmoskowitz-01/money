@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
 import AutoEnrichBadges from '@/components/AutoEnrichBadges';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar, Activity } from 'lucide-react';
 import { recordVisit, getVisitLog, isStale, getLastVisitLabel, getThresholdDays, setThresholdDays } from '@/lib/buildingVisitTracker';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
@@ -18,6 +18,7 @@ import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
+import { getActivities, type ActivityEntry } from '@/data/activityData';
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
@@ -39,10 +40,12 @@ const MapView = () => {
   const [thresholdInput, setThresholdInput] = useState(String(getThresholdDays()));
   const [visitLog, setVisitLog] = useState(getVisitLog());
   const [trackerEnabled, setTrackerEnabled] = useState(false);
+  const [activityOverlay, setActivityOverlay] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
   const mockMarkersRef = useRef<any[]>([]);
+  const activityCirclesRef = useRef<any[]>([]);
   const fetchedRef = useRef(false);
 
   const fetchGoogleBuildings = useCallback(async () => {
@@ -216,6 +219,69 @@ const MapView = () => {
   useEffect(() => {
     refreshMarkerIcons();
   }, [visitLog, thresholdDays, trackerEnabled, refreshMarkerIcons]);
+
+  // ---- Activity Coverage Overlay ----
+  const activityCountsByBuilding = useMemo(() => {
+    const all = getActivities();
+    const counts: Record<string, number> = {};
+    all.forEach(a => {
+      if (a.buildingId) counts[a.buildingId] = (counts[a.buildingId] || 0) + 1;
+    });
+    return counts;
+  }, [activityOverlay]); // re-compute when toggled
+
+  const renderActivityCircles = useCallback(async () => {
+    // Clear existing
+    activityCirclesRef.current.forEach(c => c.remove());
+    activityCirclesRef.current = [];
+
+    if (!activityOverlay || !mapInstanceRef.current) return;
+
+    const L = await import('leaflet');
+    const allBuildings = [...mockBuildings, ...costarBuildings, ...googleBuildings];
+
+    allBuildings.forEach(b => {
+      const count = activityCountsByBuilding[b.id] || 0;
+      // Color: green (3+), yellow (1-2), red/transparent (0)
+      let color: string;
+      let fillOpacity: number;
+      let radius: number;
+      if (count >= 3) {
+        color = 'hsl(142, 71%, 45%)'; // green
+        fillOpacity = 0.5;
+        radius = 18;
+      } else if (count >= 1) {
+        color = 'hsl(48, 96%, 53%)'; // yellow
+        fillOpacity = 0.45;
+        radius = 14;
+      } else {
+        color = 'hsl(0, 84%, 60%)'; // red
+        fillOpacity = 0.3;
+        radius = 10;
+      }
+
+      const circle = L.circleMarker([b.lat, b.lng], {
+        radius,
+        color,
+        fillColor: color,
+        fillOpacity,
+        weight: 2,
+        opacity: 0.8,
+      }).addTo(mapInstanceRef.current);
+
+      circle.bindTooltip(
+        `<strong>${b.name}</strong><br/>${count} activit${count === 1 ? 'y' : 'ies'}`,
+        { direction: 'top', offset: [0, -10] }
+      );
+      circle.on('click', () => setSelectedBuilding(b));
+
+      activityCirclesRef.current.push(circle);
+    });
+  }, [activityOverlay, activityCountsByBuilding, googleBuildings]);
+
+  useEffect(() => {
+    renderActivityCircles();
+  }, [renderActivityCircles]);
 
   const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{
@@ -438,7 +504,7 @@ const MapView = () => {
                 </div>
 
                 {/* Territory Tracker Button */}
-                <div className="px-3 pb-3">
+                <div className="px-3 pb-1.5">
                   <button
                     onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
                     className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${trackerEnabled ? 'border-primary/40 bg-primary/10 hover:bg-primary/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
@@ -450,6 +516,28 @@ const MapView = () => {
                     </div>
                     <div className={`h-2.5 w-2.5 rounded-full ${trackerEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
                   </button>
+                </div>
+
+                {/* Activity Coverage Toggle */}
+                <div className="px-3 pb-3">
+                  <button
+                    onClick={() => setActivityOverlay(prev => !prev)}
+                    className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${activityOverlay ? 'border-accent/40 bg-accent/10 hover:bg-accent/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
+                  >
+                    <Activity className={`h-4 w-4 ${activityOverlay ? 'text-accent' : 'text-muted-foreground'}`} />
+                    <div className="text-left flex-1">
+                      <p className="text-[11px] font-bold text-foreground">Activity Coverage</p>
+                      <p className="text-[10px] text-muted-foreground">{activityOverlay ? 'On · Showing engagement heatmap' : 'Off · Visualize outreach gaps'}</p>
+                    </div>
+                    <div className={`h-2.5 w-2.5 rounded-full ${activityOverlay ? 'bg-accent' : 'bg-muted-foreground/30'}`} />
+                  </button>
+                  {activityOverlay && (
+                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground px-1">
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(142, 71%, 45%)' }} /> 3+ activities</span>
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(48, 96%, 53%)' }} /> 1-2</span>
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(0, 84%, 60%)' }} /> None</span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

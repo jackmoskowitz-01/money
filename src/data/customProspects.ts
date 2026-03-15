@@ -86,14 +86,14 @@ export const addCustomProspect = (prospect: Omit<CustomProspect, 'id' | 'created
   localStorage.setItem(CUSTOM_PROSPECTS_KEY, JSON.stringify([newProspect, ...prospects]));
 
   // Also save to DB (fire-and-forget)
-  supabase.from('custom_prospects').insert({
+  supabase.from('custom_prospects' as any).insert({
     id: newProspect.id,
     name: newProspect.name,
     website: newProspect.website || '',
     address: newProspect.address || '',
     enrichment: newProspect.enrichment as unknown as Record<string, unknown> || null,
     source: 'manual',
-  }).then(({ error }) => {
+  }).then(({ error }: any) => {
     if (error) console.error('DB insert prospect error:', error);
   });
 

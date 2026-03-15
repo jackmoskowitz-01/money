@@ -1,13 +1,14 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, DollarSign, User, Phone, ExternalLink, Mail, Image, Ruler, Calendar, Tag, FileText, Shield, TreePine, Bus, Landmark, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, DollarSign, User, ExternalLink, Ruler, Tag, FileText, TreePine, Bus, Landmark, ChevronDown, ChevronUp, Clock, Mail, Phone, Star, Utensils, ShoppingBag, Hospital, Plane } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useState } from 'react';
 
 type Listing = Record<string, unknown>;
 
+/* ── Collapsible Section ── */
 const Section = ({ title, icon: Icon, children, defaultOpen = true }: { title: string; icon: React.ElementType; children: React.ReactNode; defaultOpen?: boolean }) => {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -24,22 +25,220 @@ const Section = ({ title, icon: Icon, children, defaultOpen = true }: { title: s
   );
 };
 
+/* ── Simple key-value field (strings only) ── */
 const Field = ({ label, value }: { label: string; value: unknown }) => {
   if (value == null || value === '' || value === '—') return null;
-  const str = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
-  const isLong = str.length > 200;
+  if (typeof value === 'object') return null; // skip objects, render them with specialized components
   return (
     <div className="py-1.5">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-      {isLong ? (
-        <pre className="text-xs text-foreground mt-0.5 whitespace-pre-wrap break-words bg-muted/20 rounded p-2 max-h-48 overflow-y-auto">{str}</pre>
-      ) : (
-        <p className="text-xs text-foreground mt-0.5">{str}</p>
+      <p className="text-xs text-foreground mt-0.5">{String(value)}</p>
+    </div>
+  );
+};
+
+/* ── Label/Value pairs table (for propertyFacts, PropertyFactsExtened) ── */
+const LabelValueTable = ({ data }: { data: Array<{ label: string; value: string }> }) => {
+  const filtered = data.filter(d => d.value && d.value.trim());
+  if (filtered.length === 0) return null;
+  return (
+    <div className="rounded border border-border overflow-hidden">
+      <Table>
+        <TableBody>
+          {filtered.map((row, i) => (
+            <TableRow key={i} className="border-border">
+              <TableCell className="text-[10px] font-medium text-muted-foreground w-1/3 py-1.5 px-3">{row.label}</TableCell>
+              <TableCell className="text-xs text-foreground py-1.5 px-3">{row.value}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+/* ── Key/value object renderer (for propertyFacts object format) ── */
+const KeyValueObject = ({ data }: { data: Record<string, unknown> }) => {
+  const entries = Object.entries(data).filter(([, v]) => v != null && v !== '');
+  if (entries.length === 0) return null;
+  return (
+    <div className="rounded border border-border overflow-hidden">
+      <Table>
+        <TableBody>
+          {entries.map(([key, val], i) => (
+            <TableRow key={i} className="border-border">
+              <TableCell className="text-[10px] font-medium text-muted-foreground w-1/3 py-1.5 px-3">{key.replace(/([A-Z])/g, ' $1').trim()}</TableCell>
+              <TableCell className="text-xs text-foreground py-1.5 px-3">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
+/* ── Spaces / Availability cards ── */
+const SpacesSection = ({ spaces }: { spaces: Array<Record<string, unknown>> }) => {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? spaces : spaces.slice(0, 5);
+  return (
+    <div className="space-y-2">
+      {visible.map((space, i) => (
+        <div key={i} className="rounded border border-border p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">{String(space.name || `Space ${i + 1}`)}</span>
+            <div className="flex gap-2">
+              {space.size && <Badge variant="outline" className="text-[10px]">{String(space.size)}</Badge>}
+              {space.rate && <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">{String(space.rate)}</Badge>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-muted-foreground">
+            {space.spaceType && <div><span className="font-medium">Type:</span> {String(space.spaceType)}</div>}
+            {space.leaseType && <div><span className="font-medium">Lease:</span> {String(space.leaseType)}</div>}
+            {space.termLength && <div><span className="font-medium">Term:</span> {String(space.termLength)}</div>}
+            {space.spaceUse && <div><span className="font-medium">Use:</span> {String(space.spaceUse)}</div>}
+            {space.availability && <div><span className="font-medium">Available:</span> {String(space.availability)}</div>}
+            {space.buildOut && <div><span className="font-medium">Build Out:</span> {String(space.buildOut)}</div>}
+          </div>
+          {Array.isArray(space.highlights) && space.highlights.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(space.highlights as string[]).slice(0, 4).map((h, j) => (
+                <Badge key={j} variant="secondary" className="text-[9px] font-normal">{h}</Badge>
+              ))}
+              {(space.highlights as string[]).length > 4 && <Badge variant="secondary" className="text-[9px]">+{(space.highlights as string[]).length - 4}</Badge>}
+            </div>
+          )}
+        </div>
+      ))}
+      {spaces.length > 5 && (
+        <Button variant="ghost" size="sm" onClick={() => setShowAll(!showAll)} className="text-xs w-full">
+          {showAll ? 'Show less' : `Show all ${spaces.length} spaces`}
+        </Button>
       )}
     </div>
   );
 };
 
+/* ── Brokers cards ── */
+const BrokersSection = ({ brokers }: { brokers: Array<Record<string, unknown>> }) => (
+  <div className="space-y-3">
+    {brokers.map((b, i) => (
+      <div key={i} className="flex gap-3 p-3 rounded border border-border">
+        {b.photoUrl && String(b.photoUrl).includes('http') && (
+          <img src={String(b.photoUrl).replace('{s}', '120')} alt="" className="w-14 h-14 rounded-full object-cover border border-border shrink-0" />
+        )}
+        <div className="space-y-1 min-w-0">
+          <p className="text-xs font-semibold text-foreground">{String(b.name || '')}</p>
+          {b.title && <p className="text-[10px] text-muted-foreground">{String(b.title)}</p>}
+          {b.company && <p className="text-[10px] text-muted-foreground">{String(b.company)}</p>}
+          <div className="flex flex-wrap gap-3 mt-1">
+            {b.email && (
+              <a href={`mailto:${b.email}`} className="flex items-center gap-1 text-[10px] text-primary hover:underline">
+                <Mail className="h-3 w-3" /> {String(b.email)}
+              </a>
+            )}
+            {b.phone && (
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                <Phone className="h-3 w-3" /> {String(b.phone)}
+              </span>
+            )}
+          </div>
+          {b.bio && String(b.bio).length > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{String(b.bio)}</p>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ── Amenities list ── */
+const AmenitiesList = ({ items }: { items: Array<Record<string, unknown>> }) => (
+  <div className="flex flex-wrap gap-1.5">
+    {items.map((a, i) => (
+      <Badge key={i} variant="secondary" className="text-[10px] font-normal">{String(a.name || a)}</Badge>
+    ))}
+  </div>
+);
+
+/* ── Highlights list ── */
+const HighlightsList = ({ items }: { items: string[] }) => (
+  <ul className="space-y-1.5">
+    {items.map((h, i) => (
+      <li key={i} className="text-xs text-foreground flex gap-2">
+        <Star className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+        <span>{h}</span>
+      </li>
+    ))}
+  </ul>
+);
+
+/* ── Nearby table ── */
+const NearbyTable = ({ title, icon: Icon, items }: { title: string; icon: React.ElementType; items: Array<Record<string, unknown>> }) => {
+  if (!items || items.length === 0) return null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        <span className="text-[10px] uppercase tracking-wider font-medium">{title}</span>
+      </div>
+      <div className="rounded border border-border overflow-hidden">
+        <Table>
+          <TableBody>
+            {items.map((item, i) => (
+              <TableRow key={i} className="border-border">
+                <TableCell className="text-xs text-foreground py-1.5 px-3 font-medium">{String(item.name || '')}</TableCell>
+                {item.type && <TableCell className="text-[10px] text-muted-foreground py-1.5 px-3">{String(item.type)}</TableCell>}
+                {item.roomCount && <TableCell className="text-[10px] text-muted-foreground py-1.5 px-3">{String(item.roomCount)}</TableCell>}
+                <TableCell className="text-[10px] text-muted-foreground py-1.5 px-3 text-right">
+                  {String(item.distance || item.travelTime || item.drivingDuration || '')}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};
+
+/* ── Transportation section ── */
+const TransportationSection = ({ data }: { data: Array<Record<string, unknown>> }) => (
+  <div className="space-y-2">
+    {data.map((t, i) => {
+      const stops = (t.stops as Array<Record<string, unknown>>) || [];
+      return (
+        <div key={i} className="space-y-1">
+          {stops.map((stop, j) => {
+            const dist = stop.distance as Record<string, string> | undefined;
+            const drive = stop.drive as Record<string, string> | undefined;
+            return (
+              <div key={j} className="flex items-center justify-between py-1.5 px-3 rounded border border-border text-xs">
+                <div className="flex items-center gap-2">
+                  <Plane className="h-3 w-3 text-muted-foreground" />
+                  <span className="text-foreground font-medium">{String(stop.name || '')}</span>
+                </div>
+                <div className="flex gap-3 text-[10px] text-muted-foreground">
+                  {dist?.Display && <span>{dist.Display}</span>}
+                  {drive?.Display && <span>{drive.Display} drive</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    })}
+  </div>
+);
+
+/* ── Lot details renderer ── */
+const LotDetails = ({ data }: { data: Record<string, unknown> }) => {
+  const entries = Object.entries(data).filter(([, v]) => v != null && v !== '');
+  if (entries.length === 0) return null;
+  return <KeyValueObject data={Object.fromEntries(entries)} />;
+};
+
+/* ── Main Component ── */
 const LoopNetDetail = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,15 +256,41 @@ const LoopNetDetail = () => {
 
   const get = (...keys: string[]): string => {
     for (const k of keys) {
-      if (listing[k] != null && listing[k] !== '') return String(listing[k]);
+      if (listing[k] != null && listing[k] !== '' && typeof listing[k] !== 'object') return String(listing[k]);
     }
     return '';
   };
 
-  const getObj = (key: string): unknown => listing[key] ?? null;
+  const getArr = (key: string): unknown[] => {
+    const v = listing[key];
+    return Array.isArray(v) ? v : [];
+  };
+
+  const getObj = (key: string): Record<string, unknown> | null => {
+    const v = listing[key];
+    return (v && typeof v === 'object' && !Array.isArray(v)) ? v as Record<string, unknown> : null;
+  };
+
   const images = (listing.images as string[] | undefined) || (listing.KVImages as string[] | undefined) || [];
   const name = get('header', 'name', 'address', 'propertyName');
   const listingUrl = get('listingUrl', 'url', 'link');
+
+  // Structured data
+  const spaces = getArr('spaces') as Array<Record<string, unknown>>;
+  const brokerDetails = getArr('brokerDetails') as Array<Record<string, unknown>>;
+  const propertyFactsObj = getObj('propertyFacts');
+  const propertyFactsExt = getArr('PropertyFactsExtened') as Array<{ label: string; value: string }>;
+  const amenities = getArr('amenities') as Array<Record<string, unknown>>;
+  const highlights = getArr('highlights') as string[];
+  const investmentHighlights = getArr('investmentHighlights') as string[];
+  const nearbyAmenities = getArr('nearbyAmenities') as Array<Record<string, unknown>>;
+  const nearbyHospitals = getArr('nearbyHospitals') as Array<Record<string, unknown>>;
+  const nearbyBusiness = getObj('nearbyBusiness');
+  const transportation = getArr('transportation') as Array<Record<string, unknown>>;
+  const lotDetails = getObj('lotDetails');
+  const contactDetails = getObj('contactDetails');
+  const propertyTaxes = getObj('propertyTaxes');
+  const links = getArr('links') as Array<{ url: string; description: string }>;
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-10 px-4 sm:px-6 lg:px-8">
@@ -82,7 +307,7 @@ const LoopNetDetail = () => {
             <h1 className="text-xl font-bold text-foreground">{name || 'Listing Detail'}</h1>
             <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
-              <span>{get('address', 'city') && get('state') ? `${get('address')}, ${get('city')}, ${get('state')} ${get('zip')}` : get('address', 'city', 'state')}</span>
+              <span>{[get('address'), get('city'), get('state'), get('zip')].filter(Boolean).join(', ')}</span>
             </div>
             {get('propertyType', 'propertyTypeDetailed') && (
               <Badge variant="outline" className="mt-2 text-[10px] bg-primary/10 text-primary border-primary/20">
@@ -133,12 +358,12 @@ const LoopNetDetail = () => {
           ))}
         </div>
 
-        {/* Description / Summary */}
+        {/* Description */}
         {(get('description') || get('executiveSummary') || get('summary')) && (
           <Section title="Description" icon={FileText}>
             <Field label="Executive Summary" value={get('executiveSummary')} />
             <Field label="Description" value={get('description')} />
-            <Field label="Summary" value={get('summary')} />
+            {typeof listing.summary === 'string' && <Field label="Summary" value={listing.summary} />}
           </Section>
         )}
 
@@ -149,57 +374,75 @@ const LoopNetDetail = () => {
             <Field label="Property Type (Detailed)" value={get('propertyTypeDetailed')} />
             <Field label="Building Size" value={get('buildingSize', 'squareFootage')} />
             <Field label="Number of Units" value={get('numberOfUnits')} />
-            <Field label="Lot Details" value={getObj('lotDetails')} />
             <Field label="Zoning" value={get('zoning')} />
             <Field label="Year Built" value={get('yearBuilt')} />
             <Field label="Date on Market" value={get('date_market')} />
             <Field label="Property ID" value={get('propertyId')} />
-            <Field label="Submarket ID" value={get('submarketId')} />
           </div>
-          {getObj('propertyFacts') && <Field label="Property Facts (Full)" value={getObj('propertyFacts')} />}
-          {getObj('PropertyFactsExtened') && <Field label="Property Facts Extended" value={getObj('PropertyFactsExtened')} />}
+          {lotDetails && (
+            <div className="mt-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Lot Details</span>
+              <div className="mt-1"><LotDetails data={lotDetails} /></div>
+            </div>
+          )}
+          {propertyFactsObj && (
+            <div className="mt-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Building Facts</span>
+              <div className="mt-1"><KeyValueObject data={propertyFactsObj} /></div>
+            </div>
+          )}
+          {propertyFactsExt.length > 0 && (
+            <div className="mt-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Extended Details</span>
+              <div className="mt-1"><LabelValueTable data={propertyFactsExt} /></div>
+            </div>
+          )}
         </Section>
 
         {/* Financial */}
-        {(get('price') || get('capRate') || getObj('propertyTaxes')) && (
+        {(get('price') || get('capRate') || propertyTaxes) && (
           <Section title="Financial" icon={DollarSign}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
               <Field label="Price" value={get('price')} />
-              <Field label="Price (Numeric)" value={get('priceNumeric')} />
               <Field label="Price Currency" value={get('priceCurrency')} />
               <Field label="Cap Rate" value={get('capRate')} />
             </div>
-            <Field label="Property Taxes" value={getObj('propertyTaxes')} />
-            <Field label="Property Taxes (Extended)" value={getObj('propertyTaxesExtended')} />
+            {propertyTaxes && Object.values(propertyTaxes).some(v => v != null && v !== '') && (
+              <div className="mt-3">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Property Taxes</span>
+                <div className="mt-1"><KeyValueObject data={propertyTaxes} /></div>
+              </div>
+            )}
           </Section>
         )}
 
-        {/* Spaces / Availability */}
-        {(getObj('spaces') || getObj('availability')) && (
-          <Section title="Spaces & Availability" icon={Ruler}>
-            <Field label="Spaces" value={getObj('spaces')} />
-            <Field label="Availability" value={getObj('availability')} />
-            <Field label="Unit Mix" value={getObj('unitMix')} />
+        {/* Spaces */}
+        {spaces.length > 0 && (
+          <Section title={`Available Spaces (${spaces.length})`} icon={Ruler}>
+            <SpacesSection spaces={spaces} />
           </Section>
         )}
 
-        {/* Broker / Contact */}
+        {/* Broker & Contact */}
         <Section title="Broker & Contact" icon={User}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-            <Field label="Broker Name" value={get('brokerName', 'agent_fullName')} />
-            <Field label="Broker Company" value={get('brokerCompany', 'agent_company_name')} />
-            <Field label="Phone" value={get('phone', 'contactNumber')} />
-            <Field label="Agent Photo" value={get('agent_photoUrl') ? undefined : undefined} />
-          </div>
+          {brokerDetails.length > 0 ? (
+            <BrokersSection brokers={brokerDetails} />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+              <Field label="Broker Name" value={get('brokerName', 'agent_fullName')} />
+              <Field label="Broker Company" value={get('brokerCompany', 'agent_company_name')} />
+              <Field label="Phone" value={get('phone', 'contactNumber')} />
+            </div>
+          )}
           {get('agent_photoUrl') && (
             <img src={get('agent_photoUrl')} alt="Agent" className="w-16 h-16 rounded-full object-cover border border-border mt-2" />
           )}
-          {get('agent_profileUrl') && (
-            <a href={get('agent_profileUrl')} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">View Agent Profile</a>
+          {contactDetails && Object.values(contactDetails).some(v => v != null && v !== '') && (
+            <div className="mt-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Contact Details</span>
+              <div className="mt-1"><KeyValueObject data={contactDetails} /></div>
+            </div>
           )}
-          <Field label="Broker Details" value={getObj('brokerDetails')} />
-          <Field label="Broker (Full)" value={getObj('Broker')} />
-          <Field label="Contact Details" value={getObj('contactDetails')} />
         </Section>
 
         {/* Location */}
@@ -212,46 +455,77 @@ const LoopNetDetail = () => {
             <Field label="Country" value={get('country')} />
             <Field label="Latitude" value={get('latitude')} />
             <Field label="Longitude" value={get('longitude')} />
-            <Field label="Position" value={getObj('position')} />
           </div>
         </Section>
 
         {/* Amenities & Highlights */}
-        {(getObj('amenities') || getObj('highlights') || getObj('investmentHighlights')) && (
+        {(amenities.length > 0 || highlights.length > 0 || investmentHighlights.length > 0) && (
           <Section title="Amenities & Highlights" icon={TreePine} defaultOpen={false}>
-            <Field label="Amenities" value={getObj('amenities')} />
-            <Field label="Highlights" value={getObj('highlights')} />
-            <Field label="Investment Highlights" value={getObj('investmentHighlights')} />
-            <Field label="Sustainability" value={getObj('sustainability')} />
+            {amenities.length > 0 && (
+              <div className="mb-3">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Amenities</span>
+                <div className="mt-1.5"><AmenitiesList items={amenities} /></div>
+              </div>
+            )}
+            {highlights.length > 0 && (
+              <div className="mb-3">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Highlights</span>
+                <div className="mt-1.5"><HighlightsList items={highlights} /></div>
+              </div>
+            )}
+            {investmentHighlights.length > 0 && (
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Investment Highlights</span>
+                <div className="mt-1.5"><HighlightsList items={investmentHighlights} /></div>
+              </div>
+            )}
           </Section>
         )}
 
         {/* Nearby */}
-        {(getObj('nearbyAmenities') || getObj('nearbyBusiness') || getObj('nearbyHospitals') || getObj('transportation') || getObj('demographics')) && (
-          <Section title="Nearby & Demographics" icon={Landmark} defaultOpen={false}>
-            <Field label="Nearby Amenities" value={getObj('nearbyAmenities')} />
-            <Field label="Nearby Business" value={getObj('nearbyBusiness')} />
-            <Field label="Nearby Hospitals" value={getObj('nearbyHospitals')} />
-            <Field label="Transportation" value={getObj('transportation')} />
-            <Field label="Demographics" value={getObj('demographics')} />
+        {(nearbyAmenities.length > 0 || nearbyBusiness || nearbyHospitals.length > 0 || transportation.length > 0) && (
+          <Section title="Nearby & Transportation" icon={Landmark} defaultOpen={false}>
+            <div className="space-y-4">
+              <NearbyTable title="Hotels" icon={Star} items={nearbyAmenities} />
+              <NearbyTable title="Hospitals" icon={Hospital} items={nearbyHospitals} />
+              {nearbyBusiness && (
+                <>
+                  {Array.isArray((nearbyBusiness as Record<string, unknown>).restaurants) && (
+                    <NearbyTable title="Restaurants" icon={Utensils} items={(nearbyBusiness as Record<string, unknown>).restaurants as Array<Record<string, unknown>>} />
+                  )}
+                  {Array.isArray((nearbyBusiness as Record<string, unknown>).retail) && (
+                    <NearbyTable title="Retail" icon={ShoppingBag} items={(nearbyBusiness as Record<string, unknown>).retail as Array<Record<string, unknown>>} />
+                  )}
+                </>
+              )}
+              {transportation.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Bus className="h-3 w-3" />
+                    <span className="text-[10px] uppercase tracking-wider font-medium">Transportation</span>
+                  </div>
+                  <TransportationSection data={transportation} />
+                </div>
+              )}
+            </div>
           </Section>
         )}
 
-        {/* Other / Misc */}
-        <Section title="Additional Data" icon={FileText} defaultOpen={false}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-            <Field label="Ad Level" value={get('adLevel')} />
-            <Field label="Access Control" value={get('accessControl')} />
-            <Field label="Is Auction" value={get('isAuction')} />
-            <Field label="Auction End Date" value={get('auctionEndDate')} />
-            <Field label="Logo URL" value={get('logoUrl')} />
-          </div>
-          <Field label="Data Points" value={getObj('dataPoints')} />
-          <Field label="Attachments" value={getObj('attachments')} />
-          <Field label="Links" value={getObj('links')} />
-        </Section>
+        {/* Links */}
+        {links.length > 0 && (
+          <Section title="Links & Attachments" icon={ExternalLink} defaultOpen={false}>
+            <div className="space-y-1">
+              {links.map((link, i) => (
+                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
+                  <ExternalLink className="h-3 w-3" />
+                  {link.description || link.url}
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
 
-        {/* Raw JSON toggle */}
+        {/* Raw JSON */}
         <RawJsonSection listing={listing} />
       </div>
     </div>

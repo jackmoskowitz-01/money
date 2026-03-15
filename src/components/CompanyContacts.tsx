@@ -15,6 +15,7 @@ import {
 
 interface Props {
   entityId: string;
+  companyName?: string;
   primaryContact?: {
     name: string;
     title: string;

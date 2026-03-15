@@ -504,7 +504,7 @@ const MapView = () => {
                 </div>
 
                 {/* Territory Tracker Button */}
-                <div className="px-3 pb-3">
+                <div className="px-3 pb-1.5">
                   <button
                     onClick={() => { setThresholdInput(String(thresholdDays)); setShowThresholdModal(true); }}
                     className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${trackerEnabled ? 'border-primary/40 bg-primary/10 hover:bg-primary/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
@@ -516,6 +516,28 @@ const MapView = () => {
                     </div>
                     <div className={`h-2.5 w-2.5 rounded-full ${trackerEnabled ? 'bg-primary' : 'bg-muted-foreground/30'}`} />
                   </button>
+                </div>
+
+                {/* Activity Coverage Toggle */}
+                <div className="px-3 pb-3">
+                  <button
+                    onClick={() => setActivityOverlay(prev => !prev)}
+                    className={`w-full flex items-center gap-2 rounded-md border p-2.5 transition-colors ${activityOverlay ? 'border-accent/40 bg-accent/10 hover:bg-accent/15' : 'border-border bg-secondary/30 hover:bg-secondary/50'}`}
+                  >
+                    <Activity className={`h-4 w-4 ${activityOverlay ? 'text-accent' : 'text-muted-foreground'}`} />
+                    <div className="text-left flex-1">
+                      <p className="text-[11px] font-bold text-foreground">Activity Coverage</p>
+                      <p className="text-[10px] text-muted-foreground">{activityOverlay ? 'On · Showing engagement heatmap' : 'Off · Visualize outreach gaps'}</p>
+                    </div>
+                    <div className={`h-2.5 w-2.5 rounded-full ${activityOverlay ? 'bg-accent' : 'bg-muted-foreground/30'}`} />
+                  </button>
+                  {activityOverlay && (
+                    <div className="mt-1.5 flex items-center gap-3 text-[10px] text-muted-foreground px-1">
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(142, 71%, 45%)' }} /> 3+ activities</span>
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(48, 96%, 53%)' }} /> 1-2</span>
+                      <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full inline-block" style={{ background: 'hsl(0, 84%, 60%)' }} /> None</span>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

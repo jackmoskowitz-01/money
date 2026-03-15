@@ -40,6 +40,7 @@ const LoopNetSearch = () => {
   const [searchUrls, setSearchUrls] = useState('');
   const [state, setState] = useState('none');
   const [city, setCity] = useState('');
+  const [propertyType, setPropertyType] = useState('office-space');
   const [maxItems, setMaxItems] = useState('10');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
@@ -69,6 +70,7 @@ const LoopNetSearch = () => {
         body.startUrls = searchUrls.split('\n').map(u => u.trim()).filter(Boolean);
       } else {
         if (state !== 'none') body.State = state;
+        body.propertyType = propertyType;
         if (city.trim()) body.City = city.trim();
         if (priceMin) body.PriceMin = parseInt(priceMin);
         if (priceMax) body.PriceMax = parseInt(priceMax);
@@ -156,6 +158,22 @@ const LoopNetSearch = () => {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">Property Type</Label>
+                    <Select value={propertyType} onValueChange={setPropertyType}>
+                      <SelectTrigger className="bg-secondary/30 border-border"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="office-space">Office</SelectItem>
+                        <SelectItem value="retail-space">Retail</SelectItem>
+                        <SelectItem value="industrial-space">Industrial</SelectItem>
+                        <SelectItem value="commercial-real-estate">All Commercial</SelectItem>
+                        <SelectItem value="restaurants">Restaurants</SelectItem>
+                        <SelectItem value="land">Land</SelectItem>
+                        <SelectItem value="medical-office">Medical Office</SelectItem>
+                        <SelectItem value="multifamily">Multifamily</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground">State</Label>
                     <Select value={state} onValueChange={setState}>

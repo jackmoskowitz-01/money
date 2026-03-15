@@ -58,6 +58,7 @@ const ProtectedRoutes = () => {
         <Route path="/activities" element={<ActivityLogger />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/loopnet" element={<LoopNetSearch />} />
+        <Route path="/loopnet/detail" element={<LoopNetDetail />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

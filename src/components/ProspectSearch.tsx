@@ -78,6 +78,7 @@ const ProspectSearch = () => {
   const [addressSuggestions, setAddressSuggestions] = useState<PlacePrediction[]>([]);
   const [addressLoading, setAddressLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [zoomInfoLoading, setZoomInfoLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchAddressSuggestions = useCallback(async (input: string) => {

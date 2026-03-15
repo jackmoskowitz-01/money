@@ -50,3 +50,12 @@ verify_jwt = false
 
 [functions.loopnet-search]
 verify_jwt = false
+
+[functions.apify-zoominfo-company]
+verify_jwt = false
+
+[functions.apify-zoominfo-enrich]
+verify_jwt = false
+
+[functions.apify-zoominfo-people]
+verify_jwt = false

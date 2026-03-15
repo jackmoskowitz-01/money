@@ -473,11 +473,23 @@ const ProspectSearch = () => {
                     </div>
 
                     {/* Create Footer */}
-                    <div className="border-t border-border px-4 py-3 flex items-center justify-end gap-2">
+                    <div className="border-t border-border px-4 py-3 flex items-center justify-between gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setView('search')}>Cancel</Button>
-                      <Button size="sm" onClick={handleCreate} disabled={!newName.trim() || !newAddress.trim()}>
-                        <Plus className="mr-1 h-3 w-3" /> Create Prospect
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleZoomInfoLookup}
+                          disabled={!newName.trim() || zoomInfoLoading}
+                          className="gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                        >
+                          {zoomInfoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                          Create with ZoomInfo
+                        </Button>
+                        <Button size="sm" onClick={handleCreate} disabled={!newName.trim() || !newAddress.trim()}>
+                          <Plus className="mr-1 h-3 w-3" /> Create Prospect
+                        </Button>
+                      </div>
                     </div>
                   </motion.div>
                 )}

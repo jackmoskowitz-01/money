@@ -340,6 +340,7 @@ const Settings = () => {
 
           {/* Workflow */}
           <TabsContent value="workflow">
+            <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Workflow Customization</CardTitle>
@@ -374,6 +375,49 @@ const Settings = () => {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Zapier Webhook */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" /> ZoomInfo → Zapier Webhook
+                </CardTitle>
+                <CardDescription>Use this URL in your Zapier Zap to auto-create prospects from ZoomInfo</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Webhook URL</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zoominfo-webhook`}
+                      className="font-mono text-xs bg-secondary/50"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/zoominfo-webhook`);
+                        toast.success('Webhook URL copied!');
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                <div className="rounded-md bg-secondary/30 border border-border p-3 space-y-2">
+                  <p className="text-xs font-medium text-foreground">Setup Instructions:</p>
+                  <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                    <li>In Zapier, create a new Zap with a ZoomInfo trigger (e.g., "New Company Added")</li>
+                    <li>Add a "Webhooks by Zapier" action → choose "POST"</li>
+                    <li>Paste the webhook URL above</li>
+                    <li>Map ZoomInfo fields: <code className="bg-secondary px-1 rounded text-[10px]">company_name</code>, <code className="bg-secondary px-1 rounded text-[10px]">website</code>, <code className="bg-secondary px-1 rounded text-[10px]">headquarters</code>, <code className="bg-secondary px-1 rounded text-[10px]">industry</code>, <code className="bg-secondary px-1 rounded text-[10px]">employee_count</code>, <code className="bg-secondary px-1 rounded text-[10px]">revenue</code></li>
+                    <li>Turn on your Zap — prospects will auto-appear in DealFlow!</li>
+                  </ol>
+                </div>
+              </CardContent>
+            </Card>
+            </div>
           </TabsContent>
 
           {/* Appearance & Data */}

@@ -113,6 +113,7 @@ const CompanyContacts = ({ entityId, companyName, primaryContact, onContactsChan
           entityId,
           importContacts: true,
           peopleProfileUrls: urls,
+          skipCompanyScrape: true,
         },
       });
       if (error) throw error;

@@ -15,45 +15,50 @@ serve(async (req) => {
     const APIFY_API_KEY = Deno.env.get("APIFY_API_KEY");
     if (!APIFY_API_KEY) throw new Error("APIFY_API_KEY is not configured");
 
-    const { companyName, companyUrl, entityId, importContacts, peopleProfileUrls } = await req.json();
-
-    if (!companyName && !companyUrl) {
-      return new Response(
-        JSON.stringify({ error: "Provide companyName or companyUrl" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const { companyName, companyUrl, entityId, importContacts, peopleProfileUrls, skipCompanyScrape } = await req.json();
 
     const results: Record<string, unknown> = {};
+    let company: Record<string, unknown> | null = null;
 
-    // ── Step 1: Company enrichment ──
-    console.log(`ZoomInfo enriching company: ${companyName || companyUrl}`);
-    const companyInput = {
-      urls_or_companies_names: [companyUrl || companyName],
-      include_similar_companies: false,
-      max_retries_per_url: 3,
-      ignore_url_failures: true,
-    };
+    // ── Step 1: Company enrichment (skip if only doing people import) ──
+    if (skipCompanyScrape) {
+      console.log("Skipping company scrape — people-only import");
+    } else {
+      if (!companyName && !companyUrl) {
+        return new Response(
+          JSON.stringify({ error: "Provide companyName or companyUrl" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-    const companyResp = await fetch(
-      `${APIFY_BASE}/acts/ecomscrape~zoominfo-company-scraper/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=120&format=json`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(companyInput) }
-    );
+      console.log(`ZoomInfo enriching company: ${companyName || companyUrl}`);
+      const companyInput = {
+        urls_or_companies_names: [companyUrl || companyName],
+        include_similar_companies: false,
+        max_retries_per_url: 3,
+        ignore_url_failures: true,
+      };
 
-    if (!companyResp.ok) {
-      const errText = await companyResp.text();
-      console.error("Company scrape failed:", companyResp.status, errText);
-      throw new Error(`Company scrape failed [${companyResp.status}]`);
-    }
-
-    const companyData = await companyResp.json();
-    const company = Array.isArray(companyData) ? companyData[0] : companyData;
-
-    if (!company || company.error) {
-      return new Response(
-        JSON.stringify({ error: "No company data found", raw: company }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      const companyResp = await fetch(
+        `${APIFY_BASE}/acts/ecomscrape~zoominfo-company-scraper/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=120&format=json`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(companyInput) }
       );
+
+      if (!companyResp.ok) {
+        const errText = await companyResp.text();
+        console.error("Company scrape failed:", companyResp.status, errText);
+        throw new Error(`Company scrape failed [${companyResp.status}]`);
+      }
+
+      const companyData = await companyResp.json();
+      company = Array.isArray(companyData) ? companyData[0] : companyData;
+
+      if (!company || (company as Record<string, unknown>).error) {
+        return new Response(
+          JSON.stringify({ error: "No company data found", raw: company }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Map ZoomInfo company data → ProspectEnrichment shape

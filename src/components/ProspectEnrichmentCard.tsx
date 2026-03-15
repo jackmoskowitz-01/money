@@ -149,7 +149,18 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
           {enrichment?.enrichedAt && (
             <span className="text-[10px] text-muted-foreground/60">Updated {timeSince(enrichment.enrichedAt)}</span>
           )}
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchEnrichment} disabled={loading} title="Re-enrich">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-[10px] gap-1"
+            onClick={fetchZoomInfoEnrichment}
+            disabled={zoomInfoLoading || loading}
+            title="Enrich via ZoomInfo"
+          >
+            <Search className={`h-3 w-3 ${zoomInfoLoading ? 'animate-spin' : ''}`} />
+            {zoomInfoLoading ? 'ZoomInfo...' : 'ZoomInfo'}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={fetchEnrichment} disabled={loading || zoomInfoLoading} title="Re-enrich via AI">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>

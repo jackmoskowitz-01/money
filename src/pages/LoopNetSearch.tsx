@@ -70,6 +70,7 @@ const LoopNetSearch = () => {
         body.startUrls = searchUrls.split('\n').map(u => u.trim()).filter(Boolean);
       } else {
         if (state !== 'none') body.State = state;
+        body.propertyType = propertyType;
         if (city.trim()) body.City = city.trim();
         if (priceMin) body.PriceMin = parseInt(priceMin);
         if (priceMax) body.PriceMax = parseInt(priceMax);

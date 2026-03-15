@@ -98,6 +98,42 @@ const CompanyContacts = ({ entityId, companyName, primaryContact, onContactsChan
     }
   };
 
+  const handleZoomInfoImport = async () => {
+    if (!zoomInfoUrl.trim()) return;
+    const urls = zoomInfoUrl.split('\n').map(u => u.trim()).filter(u => u.startsWith('http'));
+    if (urls.length === 0) {
+      toast.error('Paste valid ZoomInfo profile URL(s)');
+      return;
+    }
+    setZoomInfoLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('apify-zoominfo-enrich', {
+        body: {
+          companyName: companyName || 'Unknown',
+          entityId,
+          importContacts: true,
+          peopleProfileUrls: urls,
+        },
+      });
+      if (error) throw error;
+      const count = data?.peopleImportCount || 0;
+      if (count > 0) {
+        toast.success(`Imported ${count} contact(s) from ZoomInfo`);
+        loadContacts();
+        onContactsChange?.();
+      } else {
+        toast.error('No contacts could be imported');
+      }
+      setZoomInfoUrl('');
+      setShowZoomInfoInput(false);
+    } catch (err) {
+      console.error('ZoomInfo import failed:', err);
+      toast.error('ZoomInfo import failed');
+    } finally {
+      setZoomInfoLoading(false);
+    }
+  };
+
   const totalContacts = (primaryContact ? 1 : 0) + contacts.length;
 
   return (

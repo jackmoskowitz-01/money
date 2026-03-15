@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const APIFY_BASE = "https://api.apify.com/v2";
-const ACTOR_ID = "memo23~apify-loopnet-search-cheerio";
+const ACTOR_ID = "memo23~loopnet-scraper-ppe";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const APIFY_BASE = "https://api.apify.com/v2";
-const ACTOR_ID = "piotrv1001~loopnet-listings-scraper";
+const ACTOR_ID = "memo23~apify-loopnet-search-cheerio";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -18,16 +18,41 @@ serve(async (req) => {
     const body = await req.json();
     console.log("Raw body:", JSON.stringify(body));
 
-    const { searchUrls, maxItems } = body;
+    const {
+      startUrls,
+      addresses,
+      maxItems,
+      includeListingDetails,
+      moreResults,
+      PriceMin,
+      PriceMax,
+      BuildingSizeRangeMin,
+      BuildingSizeRangeMax,
+      State,
+      City,
+      maxConcurrency,
+    } = body;
 
-    // This actor requires searchUrls as array of {url: string}
-    if (!searchUrls || searchUrls.length === 0) {
-      throw new Error("At least one LoopNet search URL is required");
+    const input: Record<string, unknown> = {};
+
+    if (startUrls && startUrls.length > 0) {
+      input.startUrls = startUrls.map((url: string) => ({ url }));
     }
+    if (addresses && addresses.length > 0) {
+      input.addresses = addresses;
+    }
+    if (maxItems) input.maxItems = maxItems;
+    if (includeListingDetails) input.includeListingDetails = true;
+    if (moreResults) input.moreResults = true;
+    if (PriceMin != null) input.PriceMin = PriceMin;
+    if (PriceMax != null) input.PriceMax = PriceMax;
+    if (BuildingSizeRangeMin != null) input.BuildingSizeRangeMin = BuildingSizeRangeMin;
+    if (BuildingSizeRangeMax != null) input.BuildingSizeRangeMax = BuildingSizeRangeMax;
+    if (State && State !== "none") input.State = State;
+    if (City) input.City = City;
+    if (maxConcurrency) input.maxConcurrency = maxConcurrency;
 
-    const input: Record<string, unknown> = {
-      searchUrls: searchUrls.map((u: string) => ({ url: u })),
-    };
+    input.proxy = { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] };
 
     console.log("LoopNet search input:", JSON.stringify(input));
 
@@ -46,13 +71,8 @@ serve(async (req) => {
       throw new Error(`Apify API failed [${response.status}]: ${errText}`);
     }
 
-    let results = await response.json();
+    const results = await response.json();
     console.log(`LoopNet results: ${Array.isArray(results) ? results.length : 0} items`);
-
-    // Apply maxItems limit client-side
-    if (maxItems && Array.isArray(results)) {
-      results = results.slice(0, maxItems);
-    }
 
     return new Response(
       JSON.stringify({ success: true, data: results }),

@@ -262,7 +262,7 @@ const LoopNetSearch = () => {
                           {getField(listing, 'propertyType', 'type', 'spaceUse', 'category')}
                         </TableCell>
                         <TableCell className="text-xs text-foreground whitespace-nowrap">
-                          {getField(listing, 'size', 'spaceSf', 'buildingSize', 'squareFeet', 'totalAvailableSf')}
+                          {getField(listing, 'buildingSize', 'squareFootage', 'size', 'spaceSf', 'totalAvailableSf')}
                         </TableCell>
                         <TableCell className="text-xs text-foreground whitespace-nowrap">
                           <div className="flex items-center gap-0.5">

@@ -240,6 +240,107 @@ const LotDetails = ({ data }: { data: Record<string, unknown> }) => {
   return <KeyValueObject data={Object.fromEntries(entries)} />;
 };
 
+/* ── Known Tenants (manual entry) ── */
+type ManualTenant = { id: string; name: string; industry: string; sqft: string; floor: string; notes: string };
+
+const TenantsSection = ({ buildingAddress }: { buildingAddress: string }) => {
+  const storageKey = `loopnet-tenants-${buildingAddress}`;
+  const [tenants, setTenants] = useState<ManualTenant[]>(() => {
+    try { return JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch { return []; }
+  });
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', industry: '', sqft: '', floor: '', notes: '' });
+
+  const saveTenants = (updated: ManualTenant[]) => {
+    setTenants(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+  };
+
+  const handleAdd = () => {
+    if (!form.name.trim()) { toast.error('Tenant name is required'); return; }
+    const tenant: ManualTenant = {
+      id: `lt-${Date.now()}`,
+      name: form.name.trim(),
+      industry: form.industry.trim(),
+      sqft: form.sqft.trim(),
+      floor: form.floor.trim(),
+      notes: form.notes.trim(),
+    };
+    saveTenants([...tenants, tenant]);
+    setForm({ name: '', industry: '', sqft: '', floor: '', notes: '' });
+    setShowForm(false);
+    toast.success(`${tenant.name} added as tenant`);
+  };
+
+  const handleRemove = (id: string) => {
+    saveTenants(tenants.filter(t => t.id !== id));
+    toast.success('Tenant removed');
+  };
+
+  return (
+    <Section title={`Known Tenants (${tenants.length})`} icon={Users} defaultOpen={true}>
+      {tenants.length === 0 && !showForm && (
+        <p className="text-xs text-muted-foreground mb-2">No tenants tracked yet. Add tenants you discover in this building.</p>
+      )}
+
+      {tenants.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {tenants.map(t => (
+            <div key={t.id} className="flex items-center gap-3 rounded border border-border p-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Building2 className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-foreground">{t.name}</p>
+                <div className="flex flex-wrap gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                  {t.industry && <span>{t.industry}</span>}
+                  {t.sqft && <span>· {t.sqft} SF</span>}
+                  {t.floor && <span>· Floor {t.floor}</span>}
+                </div>
+                {t.notes && <p className="text-[10px] text-muted-foreground mt-0.5 italic">{t.notes}</p>}
+              </div>
+              <button
+                onClick={() => handleRemove(t.id)}
+                className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm ? (
+        <Card className="border-primary/30 bg-card p-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-foreground">Add Tenant</p>
+            <button onClick={() => setShowForm(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <Input placeholder="Company name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" autoFocus />
+          <div className="grid grid-cols-3 gap-2">
+            <Input placeholder="Industry" value={form.industry} onChange={e => setForm({ ...form, industry: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
+            <Input placeholder="Sq Ft" value={form.sqft} onChange={e => setForm({ ...form, sqft: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
+            <Input placeholder="Floor" value={form.floor} onChange={e => setForm({ ...form, floor: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
+          </div>
+          <Input placeholder="Notes (optional)" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className="border-border bg-secondary/50 text-xs h-8" />
+          <Button size="sm" onClick={handleAdd} className="w-full text-xs h-8">
+            <Plus className="mr-1 h-3 w-3" /> Add Tenant
+          </Button>
+        </Card>
+      ) : (
+        <button
+          onClick={() => setShowForm(true)}
+          className="w-full flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border py-2.5 text-xs text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Tenant
+        </button>
+      )}
+    </Section>
+  );
+};
+
 /* ── Main Component ── */
 const LoopNetDetail = () => {
   const location = useLocation();

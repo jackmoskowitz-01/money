@@ -283,6 +283,7 @@ const LoopNetDetail = () => {
   const amenities = getArr('amenities') as Array<Record<string, unknown>>;
   const highlights = getArr('highlights') as string[];
   const investmentHighlights = getArr('investmentHighlights') as string[];
+  const dataPoints = getArr('dataPoints') as string[];
   const nearbyAmenities = getArr('nearbyAmenities') as Array<Record<string, unknown>>;
   const nearbyHospitals = getArr('nearbyHospitals') as Array<Record<string, unknown>>;
   const nearbyBusiness = getObj('nearbyBusiness');
@@ -290,7 +291,10 @@ const LoopNetDetail = () => {
   const lotDetails = getObj('lotDetails');
   const contactDetails = getObj('contactDetails');
   const propertyTaxes = getObj('propertyTaxes');
+  const sustainability = getObj('sustainability');
   const links = getArr('links') as Array<{ url: string; description: string }>;
+  const attachments = getArr('attachments') as Array<{ url?: string; name?: string; description?: string }>;
+  const unitMix = getArr('unitMix') as Array<Record<string, unknown>>;
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-10 px-4 sm:px-6 lg:px-8">
@@ -309,19 +313,31 @@ const LoopNetDetail = () => {
               <MapPin className="h-3.5 w-3.5" />
               <span>{[get('address'), get('city'), get('state'), get('zip')].filter(Boolean).join(', ')}</span>
             </div>
-            {get('propertyType', 'propertyTypeDetailed') && (
-              <Badge variant="outline" className="mt-2 text-[10px] bg-primary/10 text-primary border-primary/20">
-                {get('propertyType', 'propertyTypeDetailed')}
-              </Badge>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {get('propertyType', 'propertyTypeDetailed') && (
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                  {get('propertyType', 'propertyTypeDetailed')}
+                </Badge>
+              )}
+              {String(listing.isAuction) === 'true' && (
+                <Badge variant="destructive" className="text-[10px]">
+                  🔨 Auction {get('auctionEndDate') ? `· Ends ${get('auctionEndDate')}` : ''}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {get('logoUrl') && (
+              <img src={get('logoUrl')} alt="Logo" className="h-10 w-10 rounded object-contain border border-border" />
+            )}
+            {listingUrl && (
+              <a href={listingUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" /> View on LoopNet
+                </Button>
+              </a>
             )}
           </div>
-          {listingUrl && (
-            <a href={listingUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <ExternalLink className="h-3.5 w-3.5" /> View on LoopNet
-              </Button>
-            </a>
-          )}
         </div>
 
         {/* Images */}
@@ -425,6 +441,12 @@ const LoopNetDetail = () => {
 
         {/* Broker & Contact */}
         <Section title="Broker & Contact" icon={User}>
+          {get('Broker') && (
+            <div className="mb-3">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Brokerage</span>
+              <p className="text-xs font-semibold text-foreground mt-0.5">{get('Broker')}</p>
+            </div>
+          )}
           {brokerDetails.length > 0 ? (
             <BrokersSection brokers={brokerDetails} />
           ) : (
@@ -432,10 +454,15 @@ const LoopNetDetail = () => {
               <Field label="Broker Name" value={get('brokerName', 'agent_fullName')} />
               <Field label="Broker Company" value={get('brokerCompany', 'agent_company_name')} />
               <Field label="Phone" value={get('phone', 'contactNumber')} />
+              <Field label="First Name" value={get('agent_firstName')} />
+              <Field label="Last Name" value={get('agent_lastName')} />
             </div>
           )}
           {get('agent_photoUrl') && (
             <img src={get('agent_photoUrl')} alt="Agent" className="w-16 h-16 rounded-full object-cover border border-border mt-2" />
+          )}
+          {get('agent_profileUrl') && (
+            <a href={get('agent_profileUrl')} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">View Agent Profile</a>
           )}
           {contactDetails && Object.values(contactDetails).some(v => v != null && v !== '') && (
             <div className="mt-3">
@@ -511,19 +538,60 @@ const LoopNetDetail = () => {
           </Section>
         )}
 
-        {/* Links */}
-        {links.length > 0 && (
+        {/* Data Points */}
+        {dataPoints.length > 0 && (
+          <Section title="Key Data Points" icon={Star} defaultOpen={false}>
+            <HighlightsList items={dataPoints} />
+          </Section>
+        )}
+
+        {/* Unit Mix */}
+        {unitMix.length > 0 && (
+          <Section title="Unit Mix" icon={Ruler} defaultOpen={false}>
+            {unitMix.map((unit, i) => (
+              <div key={i} className="py-1">
+                <KeyValueObject data={unit} />
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {/* Sustainability */}
+        {sustainability && Object.values(sustainability).some(v => v != null && v !== '') && (
+          <Section title="Sustainability" icon={TreePine} defaultOpen={false}>
+            <KeyValueObject data={sustainability} />
+          </Section>
+        )}
+
+        {/* Links & Attachments */}
+        {(links.length > 0 || attachments.length > 0) && (
           <Section title="Links & Attachments" icon={ExternalLink} defaultOpen={false}>
             <div className="space-y-1">
               {links.map((link, i) => (
-                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
+                <a key={`l-${i}`} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
                   <ExternalLink className="h-3 w-3" />
                   {link.description || link.url}
+                </a>
+              ))}
+              {attachments.map((att, i) => (
+                <a key={`a-${i}`} href={String(att.url || '')} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
+                  <FileText className="h-3 w-3" />
+                  {att.name || att.description || String(att.url || `Attachment ${i + 1}`)}
                 </a>
               ))}
             </div>
           </Section>
         )}
+
+        {/* Additional Metadata */}
+        <Section title="Additional Data" icon={FileText} defaultOpen={false}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+            <Field label="Ad Level" value={get('adLevel')} />
+            <Field label="Access Control" value={get('accessControl')} />
+            <Field label="Submarket ID" value={get('submarketId')} />
+            <Field label="Position" value={get('position')} />
+          </div>
+        </Section>
 
         {/* Raw JSON */}
         <RawJsonSection listing={listing} />

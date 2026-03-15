@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, Building2, Loader2, ExternalLink, MapPin, DollarSign, User, Phone, Download, Image, Filter, Link2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

@@ -40,10 +40,12 @@ const MapView = () => {
   const [thresholdInput, setThresholdInput] = useState(String(getThresholdDays()));
   const [visitLog, setVisitLog] = useState(getVisitLog());
   const [trackerEnabled, setTrackerEnabled] = useState(false);
+  const [activityOverlay, setActivityOverlay] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
   const mockMarkersRef = useRef<any[]>([]);
+  const activityCirclesRef = useRef<any[]>([]);
   const fetchedRef = useRef(false);
 
   const fetchGoogleBuildings = useCallback(async () => {

@@ -148,7 +148,7 @@ export const migrateLocalProspectsToDb = async () => {
   if (local.length === 0) return;
 
   for (const p of local) {
-    const { error } = await supabase.from('custom_prospects').upsert({
+    const { error } = await (supabase.from('custom_prospects' as any) as any).upsert({
       id: p.id,
       name: p.name,
       website: p.website || '',

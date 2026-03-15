@@ -24,11 +24,14 @@ interface Props {
   onContactsChange?: () => void;
 }
 
-const CompanyContacts = ({ entityId, primaryContact, onContactsChange }: Props) => {
+const CompanyContacts = ({ entityId, companyName, primaryContact, onContactsChange }: Props) => {
   const [contacts, setContacts] = useState<CompanyContact[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', title: '', mobilePhone: '', directPhone: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [zoomInfoLoading, setZoomInfoLoading] = useState(false);
+  const [zoomInfoUrl, setZoomInfoUrl] = useState('');
+  const [showZoomInfoInput, setShowZoomInfoInput] = useState(false);
 
   const loadContacts = useCallback(async () => {
     const data = await getContactsAsync(entityId);

@@ -30,6 +30,7 @@ serve(async (req) => {
       BuildingSizeRangeMax,
       State,
       City,
+      propertyType,
       maxConcurrency,
     } = body;
 

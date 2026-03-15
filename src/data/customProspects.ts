@@ -130,8 +130,7 @@ export const getCustomProspect = (id: string): CustomProspect | undefined => {
 
 /** Async: Get a single prospect from DB */
 export const getCustomProspectAsync = async (id: string): Promise<CustomProspect | undefined> => {
-  const { data, error } = await supabase
-    .from('custom_prospects')
+  const { data, error } = await (supabase.from('custom_prospects' as any) as any)
     .select('*')
     .eq('id', id)
     .maybeSingle();

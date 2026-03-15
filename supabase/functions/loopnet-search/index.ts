@@ -16,6 +16,7 @@ serve(async (req) => {
     if (!APIFY_API_KEY) throw new Error("APIFY_API_KEY is not configured");
 
     const body = await req.json();
+    console.log("Raw body received:", JSON.stringify(body));
     const {
       startUrls,
       addresses,

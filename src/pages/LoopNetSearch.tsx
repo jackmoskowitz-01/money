@@ -46,7 +46,7 @@ const LoopNetSearch = () => {
   const [priceMax, setPriceMax] = useState('');
   const [sizeMin, setSizeMin] = useState('');
   const [sizeMax, setSizeMax] = useState('');
-  const [includeDetails, setIncludeDetails] = useState(false);
+  
   const [moreResults, setMoreResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<LoopNetListing[]>([]);
@@ -64,7 +64,7 @@ const LoopNetSearch = () => {
     try {
       const body: Record<string, unknown> = {
         maxItems: parseInt(maxItems) || 10,
-        includeListingDetails: includeDetails,
+        includeListingDetails: true,
         moreResults,
       };
 
@@ -213,10 +213,6 @@ const LoopNetSearch = () => {
               <div className="space-y-2 w-32">
                 <Label className="text-xs text-muted-foreground">Max Items</Label>
                 <Input type="number" min={1} max={10000} value={maxItems} onChange={(e) => setMaxItems(e.target.value)} className="bg-secondary/30 border-border" />
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch checked={includeDetails} onCheckedChange={setIncludeDetails} id="details" />
-                <Label htmlFor="details" className="text-xs text-muted-foreground cursor-pointer">Include listing details</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch checked={moreResults} onCheckedChange={setMoreResults} id="moreResults" />

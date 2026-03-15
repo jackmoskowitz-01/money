@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const APIFY_BASE = "https://api.apify.com/v2";
-const ACTOR_ID = "parseforge~loopnet-com-commercial-real-estate-scraper";
+const ACTOR_ID = "memo23~apify-loopnet-search-cheerio";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -15,23 +15,48 @@ serve(async (req) => {
     const APIFY_API_KEY = Deno.env.get("APIFY_API_KEY");
     if (!APIFY_API_KEY) throw new Error("APIFY_API_KEY is not configured");
 
-    const { searchUrl, spaceUse, location, maxItems, proxyConfiguration } = await req.json();
+    const body = await req.json();
+    const {
+      startUrls,
+      addresses,
+      maxItems,
+      includeListingDetails,
+      moreResults,
+      PriceMin,
+      PriceMax,
+      BuildingSizeRangeMin,
+      BuildingSizeRangeMax,
+      State,
+      City,
+      maxConcurrency,
+    } = body;
 
-    // Build input — searchUrl takes priority over spaceUse/location
+    // Build input for memo23 actor
     const input: Record<string, unknown> = {};
 
-    if (searchUrl) {
-      input.searchUrl = searchUrl;
-    } else {
-      if (spaceUse) input.spaceUse = spaceUse;
-      if (location) input.location = location;
+    if (startUrls && startUrls.length > 0) {
+      input.startUrls = startUrls.map((url: string) => ({ url }));
     }
+    if (addresses && addresses.length > 0) {
+      input.addresses = addresses;
+    }
+    if (maxItems) input.maxItems = maxItems;
+    if (includeListingDetails) input.includeListingDetails = true;
+    if (moreResults) input.moreResults = true;
+    if (PriceMin != null) input.PriceMin = PriceMin;
+    if (PriceMax != null) input.PriceMax = PriceMax;
+    if (BuildingSizeRangeMin != null) input.BuildingSizeRangeMin = BuildingSizeRangeMin;
+    if (BuildingSizeRangeMax != null) input.BuildingSizeRangeMax = BuildingSizeRangeMax;
+    if (State && State !== "none") input.State = State;
+    if (City) input.City = City;
+    if (maxConcurrency) input.maxConcurrency = maxConcurrency;
 
-    if (maxItems) input.maxItems = Math.min(Math.max(1, maxItems), 1000000);
-    if (proxyConfiguration) input.proxyConfiguration = proxyConfiguration;
+    // Use residential proxy by default
+    input.proxy = { useApifyProxy: true, apifyProxyGroups: ["RESIDENTIAL"] };
 
     console.log(`LoopNet search input:`, JSON.stringify(input));
 
+    // Increase timeout to 5 minutes for scraping
     const response = await fetch(
       `${APIFY_BASE}/acts/${ACTOR_ID}/run-sync-get-dataset-items?token=${APIFY_API_KEY}&timeout=300&format=json`,
       {

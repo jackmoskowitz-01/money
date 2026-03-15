@@ -538,19 +538,60 @@ const LoopNetDetail = () => {
           </Section>
         )}
 
-        {/* Links */}
-        {links.length > 0 && (
+        {/* Data Points */}
+        {dataPoints.length > 0 && (
+          <Section title="Key Data Points" icon={Star} defaultOpen={false}>
+            <HighlightsList items={dataPoints} />
+          </Section>
+        )}
+
+        {/* Unit Mix */}
+        {unitMix.length > 0 && (
+          <Section title="Unit Mix" icon={Ruler} defaultOpen={false}>
+            {unitMix.map((unit, i) => (
+              <div key={i} className="py-1">
+                <KeyValueObject data={unit} />
+              </div>
+            ))}
+          </Section>
+        )}
+
+        {/* Sustainability */}
+        {sustainability && Object.values(sustainability).some(v => v != null && v !== '') && (
+          <Section title="Sustainability" icon={TreePine} defaultOpen={false}>
+            <KeyValueObject data={sustainability} />
+          </Section>
+        )}
+
+        {/* Links & Attachments */}
+        {(links.length > 0 || attachments.length > 0) && (
           <Section title="Links & Attachments" icon={ExternalLink} defaultOpen={false}>
             <div className="space-y-1">
               {links.map((link, i) => (
-                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
+                <a key={`l-${i}`} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
                   <ExternalLink className="h-3 w-3" />
                   {link.description || link.url}
+                </a>
+              ))}
+              {attachments.map((att, i) => (
+                <a key={`a-${i}`} href={String(att.url || '')} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs text-primary hover:underline py-1">
+                  <FileText className="h-3 w-3" />
+                  {att.name || att.description || String(att.url || `Attachment ${i + 1}`)}
                 </a>
               ))}
             </div>
           </Section>
         )}
+
+        {/* Additional Metadata */}
+        <Section title="Additional Data" icon={FileText} defaultOpen={false}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
+            <Field label="Ad Level" value={get('adLevel')} />
+            <Field label="Access Control" value={get('accessControl')} />
+            <Field label="Submarket ID" value={get('submarketId')} />
+            <Field label="Position" value={get('position')} />
+          </div>
+        </Section>
 
         {/* Raw JSON */}
         <RawJsonSection listing={listing} />

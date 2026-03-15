@@ -18,6 +18,7 @@ const navItems = [
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
+  { path: '/loopnet', label: 'LoopNet', icon: Search },
 ];
 
 const Navbar = () => {

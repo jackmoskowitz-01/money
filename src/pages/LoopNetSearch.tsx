@@ -56,6 +56,8 @@ const LoopNetSearch = () => {
     if (searchMode === 'url') {
       const urls = searchUrls.split('\n').map(u => u.trim()).filter(Boolean);
       if (urls.length === 0) { toast.error('Enter at least one LoopNet search URL'); return; }
+    } else {
+      if (state === 'none') { toast.error('Please select a state for filter search'); return; }
     }
     setLoading(true);
     setResults([]);

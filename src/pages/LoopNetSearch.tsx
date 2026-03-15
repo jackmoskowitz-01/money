@@ -64,7 +64,7 @@ const LoopNetSearch = () => {
     try {
       const body: Record<string, unknown> = {
         maxItems: parseInt(maxItems) || 10,
-        includeListingDetails: includeDetails,
+        includeListingDetails: true,
         moreResults,
       };
 

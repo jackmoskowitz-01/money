@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Building2, User, X, Plus, Globe, MapPin, ArrowLeft, Loader2 } from 'lucide-react';
+import { Search, Building2, User, X, Plus, Globe, MapPin, ArrowLeft, Loader2, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { buildings } from '@/data/mockData';
-import { getCustomProspects, addCustomProspect, type CustomProspect } from '@/data/customProspects';
+import { getCustomProspects, addCustomProspect, updateCustomProspect, type CustomProspect } from '@/data/customProspects';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const AUTOCOMPLETE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/places-autocomplete`;
 

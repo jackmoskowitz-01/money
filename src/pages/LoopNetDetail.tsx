@@ -474,6 +474,9 @@ const LoopNetDetail = () => {
           )}
         </Section>
 
+        {/* Known Tenants (manual entry) */}
+        <TenantsSection buildingAddress={[get('address'), get('city'), get('state')].filter(Boolean).join(', ')} />
+
         {/* Location */}
         <Section title="Location" icon={MapPin} defaultOpen={false}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">

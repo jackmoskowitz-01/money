@@ -309,19 +309,31 @@ const LoopNetDetail = () => {
               <MapPin className="h-3.5 w-3.5" />
               <span>{[get('address'), get('city'), get('state'), get('zip')].filter(Boolean).join(', ')}</span>
             </div>
-            {get('propertyType', 'propertyTypeDetailed') && (
-              <Badge variant="outline" className="mt-2 text-[10px] bg-primary/10 text-primary border-primary/20">
-                {get('propertyType', 'propertyTypeDetailed')}
-              </Badge>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {get('propertyType', 'propertyTypeDetailed') && (
+                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                  {get('propertyType', 'propertyTypeDetailed')}
+                </Badge>
+              )}
+              {String(listing.isAuction) === 'true' && (
+                <Badge variant="destructive" className="text-[10px]">
+                  🔨 Auction {get('auctionEndDate') ? `· Ends ${get('auctionEndDate')}` : ''}
+                </Badge>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {get('logoUrl') && (
+              <img src={get('logoUrl')} alt="Logo" className="h-10 w-10 rounded object-contain border border-border" />
+            )}
+            {listingUrl && (
+              <a href={listingUrl} target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <ExternalLink className="h-3.5 w-3.5" /> View on LoopNet
+                </Button>
+              </a>
             )}
           </div>
-          {listingUrl && (
-            <a href={listingUrl} target="_blank" rel="noopener noreferrer">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <ExternalLink className="h-3.5 w-3.5" /> View on LoopNet
-              </Button>
-            </a>
-          )}
         </div>
 
         {/* Images */}

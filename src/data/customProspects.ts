@@ -56,8 +56,7 @@ const toProspect = (row: DbProspect): CustomProspect => ({
 
 /** Async: Get all custom prospects from DB */
 export const getCustomProspectsAsync = async (): Promise<CustomProspect[]> => {
-  const { data, error } = await supabase
-    .from('custom_prospects')
+  const { data, error } = await (supabase.from('custom_prospects' as any) as any)
     .select('*')
     .order('created_at', { ascending: false });
   if (error) {

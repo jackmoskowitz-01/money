@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Sparkles, Building2, Users, MapPin, Briefcase, Zap, User, Newspaper, RefreshCw, ExternalLink, Shield } from 'lucide-react';
+import { Loader2, Sparkles, Building2, Users, MapPin, Briefcase, Zap, User, Newspaper, RefreshCw, ExternalLink, Shield, Search } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { type ProspectEnrichment, updateCustomProspect, getCustomProspect } from '@/data/customProspects';
+import { supabase } from '@/integrations/supabase/client';
 
 const ENRICH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-prospect`;
 

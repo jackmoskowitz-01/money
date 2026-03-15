@@ -19,6 +19,7 @@ import Tasks from "./pages/Tasks";
 import Prospects from "./pages/Prospects";
 import ActivityLogger from "./pages/ActivityLogger";
 import Settings from "./pages/Settings";
+import LoopNetSearch from "./pages/LoopNetSearch";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 

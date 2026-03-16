@@ -698,6 +698,72 @@ const Settings = () => {
           {/* AI & Integrations */}
           <TabsContent value="integrations">
             <div className="space-y-6">
+              {/* ═══ AI Intelligence Flywheels ═══ */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence
+                  </CardTitle>
+                  <CardDescription>
+                    Three toggles that control how your AI learns and what it knows. The more you turn on, the smarter your Copilot gets.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {[
+                    {
+                      key: 'aiAutoBrainExtraction' as const,
+                      groupKeys: ['aiAutoBrainExtraction'] as const,
+                      label: 'Brain (Continuous Learning)',
+                      emoji: '🧠',
+                      desc: 'The AI automatically learns from EVERYTHING you do — log an activity, move a deal, send an email, post a scoop, complete a task. Every action makes the AI smarter.',
+                      activeDesc: 'Active — learning from every action you take across the platform',
+                    },
+                    {
+                      key: 'aiEmailPerformanceLoop' as const,
+                      groupKeys: ['aiEmailPerformanceLoop', 'aiStyleTraining', 'aiDealPatternLearning', 'aiActivityInsights'] as const,
+                      label: 'Performance Intelligence',
+                      emoji: '📊',
+                      desc: 'Analyzes your email reply rates, best templates, writing style, deal win/loss patterns, activity timing, and pipeline velocity — coaching you on what works.',
+                      activeDesc: 'Active — analyzing emails, deals, activities & communication style',
+                    },
+                    {
+                      key: 'aiScoopSynthesis' as const,
+                      groupKeys: ['aiScoopSynthesis', 'aiContactMemory'] as const,
+                      label: 'Market & Relationship Intelligence',
+                      emoji: '🔍',
+                      desc: 'Aggregates scoops into market trend summaries and builds contact interaction timelines — so the AI knows what\'s happening in the market and your history with every person.',
+                      activeDesc: 'Active — synthesizing market intel & tracking relationships',
+                    },
+                  ].map((item, idx) => (
+                    <div key={item.key} className={`flex items-center justify-between py-3.5 ${idx > 0 ? 'border-t border-border' : ''}`}>
+                      <div className="flex-1 min-w-0 pr-4">
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                          <span>{item.emoji}</span> {item.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+                          {integrations[item.key] ? item.activeDesc : item.desc}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={integrations[item.key]}
+                        onCheckedChange={v => setIntegrations(i => {
+                          const update: any = { ...i };
+                          item.groupKeys.forEach(k => { update[k] = v; });
+                          return update;
+                        })}
+                      />
+                    </div>
+                  ))}
+
+                  <div className="pt-4">
+                    <Button onClick={() => saveAll('AI Intelligence')} className="w-full" disabled={saving}>
+                      {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Save AI Settings
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -772,72 +838,6 @@ const Settings = () => {
                     {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                     Save Settings
                   </Button>
-                </CardContent>
-              </Card>
-
-              {/* ═══ AI Intelligence Flywheels ═══ */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence
-                  </CardTitle>
-                  <CardDescription>
-                    Three toggles that control how your AI learns and what it knows. The more you turn on, the smarter your Copilot gets.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-1">
-                  {[
-                    {
-                      key: 'aiAutoBrainExtraction' as const,
-                      groupKeys: ['aiAutoBrainExtraction'] as const,
-                      label: 'Brain (Continuous Learning)',
-                      emoji: '🧠',
-                      desc: 'The AI automatically learns from EVERYTHING you do — log an activity, move a deal, send an email, post a scoop, complete a task. Every action makes the AI smarter.',
-                      activeDesc: 'Active — learning from every action you take across the platform',
-                    },
-                    {
-                      key: 'aiEmailPerformanceLoop' as const,
-                      groupKeys: ['aiEmailPerformanceLoop', 'aiStyleTraining', 'aiDealPatternLearning', 'aiActivityInsights'] as const,
-                      label: 'Performance Intelligence',
-                      emoji: '📊',
-                      desc: 'Analyzes your email reply rates, best templates, writing style, deal win/loss patterns, activity timing, and pipeline velocity — coaching you on what works.',
-                      activeDesc: 'Active — analyzing emails, deals, activities & communication style',
-                    },
-                    {
-                      key: 'aiScoopSynthesis' as const,
-                      groupKeys: ['aiScoopSynthesis', 'aiContactMemory'] as const,
-                      label: 'Market & Relationship Intelligence',
-                      emoji: '🔍',
-                      desc: 'Aggregates scoops into market trend summaries and builds contact interaction timelines — so the AI knows what\'s happening in the market and your history with every person.',
-                      activeDesc: 'Active — synthesizing market intel & tracking relationships',
-                    },
-                  ].map((item, idx) => (
-                    <div key={item.key} className={`flex items-center justify-between py-3.5 ${idx > 0 ? 'border-t border-border' : ''}`}>
-                      <div className="flex-1 min-w-0 pr-4">
-                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
-                          <span>{item.emoji}</span> {item.label}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
-                          {integrations[item.key] ? item.activeDesc : item.desc}
-                        </p>
-                      </div>
-                      <Switch
-                        checked={integrations[item.key]}
-                        onCheckedChange={v => setIntegrations(i => {
-                          const update: any = { ...i };
-                          item.groupKeys.forEach(k => { update[k] = v; });
-                          return update;
-                        })}
-                      />
-                    </div>
-                  ))}
-
-                  <div className="pt-4">
-                    <Button onClick={() => saveAll('AI Intelligence')} className="w-full" disabled={saving}>
-                      {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                      Save AI Settings
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             </div>

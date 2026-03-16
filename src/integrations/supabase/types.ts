@@ -942,6 +942,13 @@ export type Database = {
       user_settings: {
         Row: {
           activity_categories: string
+          ai_activity_insights: boolean
+          ai_auto_brain_extraction: boolean
+          ai_contact_memory: boolean
+          ai_deal_pattern_learning: boolean
+          ai_email_performance_loop: boolean
+          ai_scoop_synthesis: boolean
+          ai_style_training: boolean
           asset_classes: string
           brain_enabled: boolean
           brokerage: string
@@ -981,6 +988,13 @@ export type Database = {
         }
         Insert: {
           activity_categories?: string
+          ai_activity_insights?: boolean
+          ai_auto_brain_extraction?: boolean
+          ai_contact_memory?: boolean
+          ai_deal_pattern_learning?: boolean
+          ai_email_performance_loop?: boolean
+          ai_scoop_synthesis?: boolean
+          ai_style_training?: boolean
           asset_classes?: string
           brain_enabled?: boolean
           brokerage?: string
@@ -1020,6 +1034,13 @@ export type Database = {
         }
         Update: {
           activity_categories?: string
+          ai_activity_insights?: boolean
+          ai_auto_brain_extraction?: boolean
+          ai_contact_memory?: boolean
+          ai_deal_pattern_learning?: boolean
+          ai_email_performance_loop?: boolean
+          ai_scoop_synthesis?: boolean
+          ai_style_training?: boolean
           asset_classes?: string
           brain_enabled?: boolean
           brokerage?: string

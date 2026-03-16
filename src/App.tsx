@@ -22,6 +22,7 @@ import Settings from "./pages/Settings";
 import LoopNetSearch from "./pages/LoopNetSearch";
 import LoopNetDetail from "./pages/LoopNetDetail";
 import EmailAnalytics from "./pages/EmailAnalytics";
+import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -82,6 +83,7 @@ const AppRoutes = () => {
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/" replace /> : <Auth />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/landing" element={<Landing />} />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
   );

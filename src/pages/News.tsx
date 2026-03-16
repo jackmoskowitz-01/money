@@ -48,6 +48,9 @@ type CompanyNewsItem = NewsItem & {
   matchedBuildingId?: string;
   relevanceScore?: number;
   url?: string;
+  signals?: string[];
+  outreach_reason?: string;
+  urgency?: 'hot' | 'warm' | 'watch';
 };
 
 // LocalStorage-backed cache so news survives reloads

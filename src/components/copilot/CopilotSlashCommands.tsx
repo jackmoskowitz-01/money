@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch, LayoutGrid, TrendingUp, Presentation } from 'lucide-react';
+import { Mail, Search, ListTodo, MoveRight, BarChart3, MapPin, Calculator, FileBox, FileSearch, LayoutGrid, TrendingUp, Presentation, FileBarChart } from 'lucide-react';
 
 const COMMANDS = [
   { command: '/move', description: 'Move a deal to a new stage', icon: MoveRight, template: 'Move [prospect] to [stage]' },
@@ -13,7 +13,7 @@ const COMMANDS = [
   { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
   { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },
   { command: '/cashflow', description: 'Generate a lease cash flow analysis', icon: TrendingUp, template: 'Run a cash flow analysis on the attached lease' },
-  
+  { command: '/market report', description: 'Pull up a past market report', icon: FileBarChart, template: '/market report ' },
 ];
 
 interface Props {
@@ -26,7 +26,10 @@ export default function CopilotSlashCommands({ input, visible, onSelect }: Props
   if (!visible) return null;
 
   const filter = input.slice(1).toLowerCase();
-  const filtered = COMMANDS.filter(c => c.command.slice(1).startsWith(filter) || !filter);
+  const filtered = COMMANDS.filter(c => {
+    const cmd = c.command.slice(1);
+    return cmd.startsWith(filter) || !filter;
+  });
 
   if (filtered.length === 0) return null;
 

@@ -8,6 +8,7 @@ import {
   BarChart3, Users, Ruler, TrendingUp,
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import {
   stageLabels, stageColors, generateTouchpoints, touchpointLabels,
   type PipelineStage, type PipelineItem, type Touchpoint,

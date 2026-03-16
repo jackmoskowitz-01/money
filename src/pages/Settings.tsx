@@ -779,10 +779,10 @@ const Settings = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence Flywheels
+                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence
                   </CardTitle>
                   <CardDescription>
-                    Each flywheel makes your AI smarter as you use the platform. Turn them on individually — the more you enable, the more powerful your Copilot becomes.
+                    Three toggles that control how your AI learns and what it knows. The more you turn on, the smarter your Copilot gets.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-1">

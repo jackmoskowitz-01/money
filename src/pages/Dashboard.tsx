@@ -248,6 +248,9 @@ const Dashboard = () => {
 
           {/* ── PERFORMANCE TAB ── */}
           <TabsContent value="performance" className="mt-0 space-y-6">
+            {/* Broker Activity first */}
+            <BrokerLeaderboard />
+
             {/* AI Briefing + Today's Focus row */}
             <div className="grid gap-4 lg:grid-cols-2">
               <DailyBriefing />
@@ -296,7 +299,7 @@ const Dashboard = () => {
                 </Card>
               )}
             </div>
-            <BrokerLeaderboard />
+
             <div className="grid gap-4 lg:grid-cols-2">
               <DealVelocity />
               <RevenueForecast />

@@ -226,7 +226,7 @@ export default function DealCopilot() {
       // Check if memory is enabled in settings
       const { data: settings } = await supabase
         .from('user_settings' as any)
-        .select('copilot_memory, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
+        .select('copilot_memory, copilot_name, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
         .eq('user_id', user.id)
         .single();
 

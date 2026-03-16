@@ -1625,6 +1625,75 @@ For each line item, also produce a monthly breakdown:
               </div>
             )}
 
+            {/* Market Report Picker */}
+            <AnimatePresence>
+              {marketReportSearch.open && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute inset-0 z-30 bg-card flex flex-col"
+                >
+                  <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-semibold text-foreground flex-1">Market Reports</h3>
+                    <button
+                      onClick={() => setMarketReportSearch({ open: false, query: '', results: [], loading: false })}
+                      className="rounded-md p-1 hover:bg-secondary text-muted-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="px-4 py-2 border-b border-border">
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search reports (e.g. vacancy, submarket, comp)..."
+                      value={marketReportSearch.query}
+                      onChange={e => {
+                        const q = e.target.value;
+                        setMarketReportSearch(prev => ({ ...prev, query: q }));
+                        searchMarketReports(q);
+                      }}
+                      className="w-full bg-secondary/30 border border-border rounded-lg px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-4 py-2 space-y-2">
+                    {marketReportSearch.loading ? (
+                      <div className="flex items-center justify-center py-8 gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        <span className="text-xs text-muted-foreground">Searching reports...</span>
+                      </div>
+                    ) : marketReportSearch.results.length === 0 ? (
+                      <div className="py-8 text-center">
+                        <FileText className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">No reports found</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-1">Try asking Copilot to generate a market report first</p>
+                      </div>
+                    ) : (
+                      marketReportSearch.results.map((report, i) => (
+                        <motion.button
+                          key={i}
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.03 }}
+                          onClick={() => handleSelectReport(report)}
+                          className="w-full text-left p-3 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/50 hover:border-primary/30 transition-all group"
+                        >
+                          <p className="text-xs font-medium text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                            {report.preview}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {report.date} · {report.content.length > 1000 ? `${Math.round(report.content.length / 100) / 10}k chars` : `${report.content.length} chars`}
+                          </p>
+                        </motion.button>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Messages */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-4 scroll-smooth">
               {/* Pinned messages bar */}

@@ -1,6 +1,6 @@
 // Activity log, tasks, assignments, and enrichment data
 
-export type ActivityType = 'email_sent' | 'call' | 'meeting' | 'note' | 'stage_change' | 'ai_email' | 'task_created';
+export type ActivityType = 'email_sent' | 'call' | 'meeting' | 'note' | 'stage_change' | 'ai_email' | 'task_created' | 'do_not_call' | 'meeting_set';
 
 export type ActivityEntry = {
   id: string;

@@ -800,6 +800,28 @@ const Settings = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" /> Copilot Name
+                  </CardTitle>
+                  <CardDescription>Give your AI assistant a custom name</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="copilot-name">Assistant Name</Label>
+                    <Input
+                      id="copilot-name"
+                      value={integrations.copilotName}
+                      onChange={e => setIntegrations(i => ({ ...i, copilotName: e.target.value }))}
+                      placeholder="DealFlow Copilot"
+                      maxLength={40}
+                    />
+                    <p className="text-xs text-muted-foreground">This name appears in the Copilot header</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
                     <Brain className="h-4 w-4 text-primary" /> Conversation Memory
                   </CardTitle>
                   <CardDescription>Let Copilot remember past conversations to give personalized responses</CardDescription>

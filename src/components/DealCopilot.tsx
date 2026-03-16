@@ -81,6 +81,7 @@ export default function DealCopilot() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [brainEnabled, setBrainEnabled] = useState(false);
   const [brainContext, setBrainContext] = useState<string | null>(null);
+  const [copilotName, setCopilotName] = useState('DealFlow Copilot');
   const [aiSettings, setAiSettings] = useState({
     aiAutoBrainExtraction: false,
     aiEmailPerformanceLoop: false,

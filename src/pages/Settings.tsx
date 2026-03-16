@@ -53,6 +53,13 @@ const Settings = () => {
     calendarConnected: false,
     copilotMemory: true,
     brainEnabled: false,
+    aiAutoBrainExtraction: false,
+    aiEmailPerformanceLoop: false,
+    aiDealPatternLearning: false,
+    aiActivityInsights: false,
+    aiStyleTraining: false,
+    aiScoopSynthesis: false,
+    aiContactMemory: false,
   });
 
   const [brokerProfile, setBrokerProfile] = useState({
@@ -125,6 +132,13 @@ const Settings = () => {
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
           brainEnabled: (s as any).brain_enabled ?? false,
+          aiAutoBrainExtraction: (s as any).ai_auto_brain_extraction ?? false,
+          aiEmailPerformanceLoop: (s as any).ai_email_performance_loop ?? false,
+          aiDealPatternLearning: (s as any).ai_deal_pattern_learning ?? false,
+          aiActivityInsights: (s as any).ai_activity_insights ?? false,
+          aiStyleTraining: (s as any).ai_style_training ?? false,
+          aiScoopSynthesis: (s as any).ai_scoop_synthesis ?? false,
+          aiContactMemory: (s as any).ai_contact_memory ?? false,
         });
         setBrokerProfile({
           specialties: s.specialties || '',
@@ -195,6 +209,13 @@ const Settings = () => {
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
         brain_enabled: integrations.brainEnabled,
+        ai_auto_brain_extraction: integrations.aiAutoBrainExtraction,
+        ai_email_performance_loop: integrations.aiEmailPerformanceLoop,
+        ai_deal_pattern_learning: integrations.aiDealPatternLearning,
+        ai_activity_insights: integrations.aiActivityInsights,
+        ai_style_training: integrations.aiStyleTraining,
+        ai_scoop_synthesis: integrations.aiScoopSynthesis,
+        ai_contact_memory: integrations.aiContactMemory,
         specialties: brokerProfile.specialties,
         years_experience: brokerProfile.yearsExperience,
         deal_size_sweet_spot: brokerProfile.dealSizeSweetSpot,
@@ -705,12 +726,6 @@ const Settings = () => {
                       }}
                     />
                   </div>
-                  {integrations.calendarConnected && (
-                    <div className="rounded-md bg-success/5 border border-success/20 p-3">
-                      <p className="text-xs text-success font-medium">✓ Calendar connected</p>
-                      <p className="text-[10px] text-muted-foreground mt-1">Copilot will check your calendar before suggesting meeting times</p>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -736,15 +751,6 @@ const Settings = () => {
                       onCheckedChange={v => setIntegrations(i => ({ ...i, copilotMemory: v }))}
                     />
                   </div>
-                  {integrations.copilotMemory && (
-                    <div className="rounded-md bg-primary/5 border border-primary/20 p-3 space-y-2">
-                      <p className="text-xs text-primary font-medium">🧠 Memory is active</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        Copilot will reference your past deal notes, outreach patterns, and conversation history. 
-                        It may also crack a joke if you've left something funny in the notes 😄
-                      </p>
-                    </div>
-                  )}
 
                   {/* Brain */}
                   <div className="flex items-center justify-between py-3 border-t border-border mt-4 pt-4">
@@ -752,8 +758,8 @@ const Settings = () => {
                       <p className="text-sm font-medium text-foreground flex items-center gap-1.5">🧠 Brain</p>
                       <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
                         {integrations.brainEnabled
-                          ? 'Brain is active — your Copilot learns from every interaction and gets smarter over time'
-                          : 'Brain is off — enable to give your Copilot persistent memory, pattern recognition, and adaptive intelligence'}
+                          ? 'Brain is active — persistent memory, trigger stacking, live data awareness'
+                          : 'Enable for persistent memory, pattern recognition, and adaptive intelligence'}
                       </p>
                     </div>
                     <Switch
@@ -761,48 +767,98 @@ const Settings = () => {
                       onCheckedChange={v => setIntegrations(i => ({ ...i, brainEnabled: v }))}
                     />
                   </div>
-                  {integrations.brainEnabled ? (
-                    <div className="rounded-md bg-primary/5 border border-primary/20 p-4 space-y-3">
-                      <p className="text-xs text-primary font-semibold">🧠 Brain is learning</p>
-                      <div className="space-y-2">
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Persistent Memory</strong> — Learns facts, preferences, and deal patterns permanently across sessions. Remembers what worked with specific prospects weeks later.</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Multi-Step Reasoning</strong> — Chains together market research, pipeline analysis, and outreach drafting autonomously before responding with a complete strategy.</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Learning Loop</strong> — After every deal outcome, analyzes what worked and updates its internal playbook so it gets smarter with every deal you close.</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Live Data Awareness</strong> — Always knows the current state of your pipeline, recent activities, critical dates, and tasks without you telling it.</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">🎯 Trigger Stacking</strong> — Combines multiple converging signals (lease expirations + stale deals + overdue follow-ups + large SF) into prioritized "Strike Now" alerts. When 2+ signals stack on a single deal, it surfaces that deal as urgent and tells you exactly why.</p>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="text-primary text-xs mt-0.5">•</span>
-                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">⏱️ Time Allocation</strong> — Analyzes how you spend your time across calls, tours, emails, meetings, and proposals over the last 30 days. Proactively coaches you on rebalancing — if you're heavy on emails but light on tours, it'll flag it and suggest who to visit.</p>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-md bg-muted/30 border border-border p-3">
-                      <p className="text-[11px] text-muted-foreground">
-                        When enabled, your Copilot becomes an adaptive AI partner that learns your deal style, remembers prospect details across conversations, tracks real-time pipeline changes, stacks multiple deal signals into "Strike Now" alerts, coaches you on time allocation, and proactively improves its strategy recommendations over time. Think of it as giving your Copilot a permanent brain.
-                      </p>
-                    </div>
-                  )}
 
                   <Button onClick={() => saveAll('AI & Integrations')} className="mt-2" disabled={saving}>
                     {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                     Save Settings
                   </Button>
+                </CardContent>
+              </Card>
+
+              {/* ═══ AI Intelligence Flywheels ═══ */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence Flywheels
+                  </CardTitle>
+                  <CardDescription>
+                    Each flywheel makes your AI smarter as you use the platform. Turn them on individually — the more you enable, the more powerful your Copilot becomes.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-1">
+                  {[
+                    {
+                      key: 'aiAutoBrainExtraction' as const,
+                      label: 'Auto Brain Extraction',
+                      emoji: '🧠',
+                      desc: 'Automatically extract and remember key facts from every Copilot conversation — prospect preferences, deal details, relationships — without you doing anything.',
+                      activeDesc: 'Active — extracting facts from every conversation',
+                    },
+                    {
+                      key: 'aiEmailPerformanceLoop' as const,
+                      label: 'Email Performance Loop',
+                      emoji: '📧',
+                      desc: 'Analyze your email reply rates, best templates, and tone effectiveness. The Copilot references actual performance data when drafting new outreach.',
+                      activeDesc: 'Active — learning from your email performance',
+                    },
+                    {
+                      key: 'aiDealPatternLearning' as const,
+                      label: 'Deal Pattern Learning',
+                      emoji: '📊',
+                      desc: 'Track win/loss outcomes and reasons. The AI learns what closes deals vs what stalls — avg touchpoints to win, pipeline velocity patterns, and more.',
+                      activeDesc: 'Active — learning from deal outcomes',
+                    },
+                    {
+                      key: 'aiActivityInsights' as const,
+                      label: 'Activity Pattern Insights',
+                      emoji: '⚡',
+                      desc: 'Analyze your activity patterns — peak hours, most productive days, optimal outreach timing — and coach you on improving your workflow.',
+                      activeDesc: 'Active — analyzing your activity patterns',
+                    },
+                    {
+                      key: 'aiStyleTraining' as const,
+                      label: 'Communication Style Training',
+                      emoji: '✍️',
+                      desc: 'Learn your writing style from actual sent emails. The AI matches your email length, tone, and word choices more precisely over time.',
+                      activeDesc: 'Active — learning your communication style',
+                    },
+                    {
+                      key: 'aiScoopSynthesis' as const,
+                      label: 'Market Intel Synthesis',
+                      emoji: '🔍',
+                      desc: 'Aggregate scoops into trend summaries — "3 law firms expanding in NoMa this quarter" — so the Copilot spots patterns across market intel.',
+                      activeDesc: 'Active — synthesizing market intelligence',
+                    },
+                    {
+                      key: 'aiContactMemory' as const,
+                      label: 'Contact Relationship Memory',
+                      emoji: '👥',
+                      desc: 'Build unified interaction timelines per contact across emails, calls, and meetings. The AI knows your full history with every person.',
+                      activeDesc: 'Active — tracking contact relationships',
+                    },
+                  ].map((item, idx) => (
+                    <div key={item.key} className={`flex items-center justify-between py-3.5 ${idx > 0 ? 'border-t border-border' : ''}`}>
+                      <div className="flex-1 min-w-0 pr-4">
+                        <p className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                          <span>{item.emoji}</span> {item.label}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+                          {integrations[item.key] ? item.activeDesc : item.desc}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={integrations[item.key]}
+                        onCheckedChange={v => setIntegrations(i => ({ ...i, [item.key]: v }))}
+                      />
+                    </div>
+                  ))}
+
+                  <div className="pt-4">
+                    <Button onClick={() => saveAll('AI Intelligence')} className="w-full" disabled={saving}>
+                      {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Save AI Settings
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </div>

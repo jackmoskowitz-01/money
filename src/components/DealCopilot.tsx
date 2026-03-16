@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { formatIntelligenceContext, type IntelligenceData } from '@/hooks/useIntelligence';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -80,6 +81,16 @@ export default function DealCopilot() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [brainEnabled, setBrainEnabled] = useState(false);
   const [brainContext, setBrainContext] = useState<string | null>(null);
+  const [aiSettings, setAiSettings] = useState({
+    aiAutoBrainExtraction: false,
+    aiEmailPerformanceLoop: false,
+    aiDealPatternLearning: false,
+    aiActivityInsights: false,
+    aiStyleTraining: false,
+    aiScoopSynthesis: false,
+    aiContactMemory: false,
+  });
+  const [intelligenceContext, setIntelligenceContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoExportRef = useRef(false);
@@ -214,14 +225,104 @@ export default function DealCopilot() {
       // Check if memory is enabled in settings
       const { data: settings } = await supabase
         .from('user_settings' as any)
-        .select('copilot_memory')
+        .select('copilot_memory, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
         .eq('user_id', user.id)
         .single();
 
-      const enabled = (settings as any)?.copilot_memory ?? true;
-      const brainOn = (settings as any)?.brain_enabled ?? false;
+      const s = settings as any;
+      const enabled = s?.copilot_memory ?? true;
+      const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
       setBrainEnabled(brainOn);
+
+      const newAiSettings = {
+        aiAutoBrainExtraction: s?.ai_auto_brain_extraction ?? false,
+        aiEmailPerformanceLoop: s?.ai_email_performance_loop ?? false,
+        aiDealPatternLearning: s?.ai_deal_pattern_learning ?? false,
+        aiActivityInsights: s?.ai_activity_insights ?? false,
+        aiStyleTraining: s?.ai_style_training ?? false,
+        aiScoopSynthesis: s?.ai_scoop_synthesis ?? false,
+        aiContactMemory: s?.ai_contact_memory ?? false,
+      };
+      setAiSettings(newAiSettings);
+
+      // Fetch intelligence data if any flywheel is enabled
+      const anyFlywheelEnabled = Object.values(newAiSettings).some(v => v);
+      if (anyFlywheelEnabled) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const intelResp = await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/intelligence-gather`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${session.access_token}`,
+                },
+                body: JSON.stringify({}),
+              }
+            );
+            if (intelResp.ok) {
+              const intelData = await intelResp.json() as IntelligenceData;
+              // Build filtered context based on which flywheels are enabled
+              const parts: string[] = ['## 🧠 Intelligence Insights (auto-computed from your data)\n'];
+
+              if (newAiSettings.aiEmailPerformanceLoop && intelData.emailStats.totalSent > 0) {
+                const es = intelData.emailStats;
+                parts.push(`### Email Performance (${es.totalSent} emails)`);
+                parts.push(`- Reply rate: ${es.replyRate}% | Avg response: ${es.avgResponseHours}h`);
+                if (es.bestTemplates.length > 0) parts.push(`- Best templates: ${es.bestTemplates.slice(0, 3).map(t => `"${t.template}" (${t.replyRate}%)`).join(', ')}`);
+                if (es.bestTones.length > 0) parts.push(`- Best tones: ${es.bestTones.slice(0, 3).map(t => `${t.tone} (${t.replyRate}%)`).join(', ')}`);
+                if (es.bestReasons.length > 0) parts.push(`- Best reasons: ${es.bestReasons.slice(0, 3).map(r => `"${r.reason}" (${r.replyRate}%)`).join(', ')}`);
+                if (es.industryPerformance.length > 0) parts.push(`- Industry response: ${es.industryPerformance.slice(0, 3).map(i => `${i.industry} ${i.replyRate}%`).join(', ')}`);
+                parts.push(`- IMPORTANT: Reference these stats when drafting emails. Use the best-performing templates and tones.`);
+              }
+
+              if (newAiSettings.aiActivityInsights && intelData.activityPatterns.totalActivities > 0) {
+                const ap = intelData.activityPatterns;
+                parts.push(`\n### Activity Patterns (${ap.totalActivities} activities)`);
+                const topDay = Object.entries(ap.byDayOfWeek).sort(([,a],[,b]) => b - a);
+                if (topDay.length > 0) parts.push(`- Most active: ${topDay.slice(0, 3).map(([d,c]) => `${d} (${c})`).join(', ')}`);
+                const topHour = Object.entries(ap.byHour).sort(([,a],[,b]) => b - a);
+                if (topHour.length > 0) parts.push(`- Peak hours: ${topHour.slice(0, 3).map(([h,c]) => `${h} (${c})`).join(', ')}`);
+              }
+
+              if (newAiSettings.aiDealPatternLearning && intelData.dealPatterns.totalDeals > 0) {
+                const dp = intelData.dealPatterns;
+                parts.push(`\n### Deal Patterns (${dp.totalDeals} deals)`);
+                parts.push(`- Win rate: ${dp.winRate}%`);
+                if (dp.avgTouchpointsToWin > 0) parts.push(`- Avg touchpoints to win: ${dp.avgTouchpointsToWin}`);
+                if (dp.avgDaysToWin > 0) parts.push(`- Avg days to win: ${dp.avgDaysToWin}`);
+                if (dp.outcomeReasons.length > 0) parts.push(`- Win/loss reasons: ${dp.outcomeReasons.slice(0, 5).map(r => `"${r.reason}" (${r.count}x)`).join(', ')}`);
+              }
+
+              if (newAiSettings.aiScoopSynthesis && intelData.scoopTrends.totalScoops > 0) {
+                const st = intelData.scoopTrends;
+                parts.push(`\n### Market Intel Trends (${st.totalScoops} scoops)`);
+                if (st.topTags.length > 0) parts.push(`- Trending: ${st.topTags.slice(0, 5).map(t => `#${t.tag} (${t.count})`).join(', ')}`);
+                if (st.recentHighlights.length > 0) parts.push(`- Recent: ${st.recentHighlights.slice(0, 3).join(' | ')}`);
+              }
+
+              if (newAiSettings.aiStyleTraining && intelData.styleFingerprint.avgWordCount > 0) {
+                parts.push(`\n### Your Communication Style`);
+                parts.push(`- Avg email: ${intelData.styleFingerprint.avgWordCount} words | Dominant tone: ${intelData.styleFingerprint.dominantTone}`);
+                parts.push(`- IMPORTANT: Match this style when drafting emails unless told otherwise.`);
+              }
+
+              if (newAiSettings.aiContactMemory && intelData.contactDensity.totalContacts > 0) {
+                parts.push(`\n### Contact Intelligence (${intelData.contactDensity.totalContacts} contacts tracked)`);
+              }
+
+              if (parts.length > 1) {
+                setIntelligenceContext(parts.join('\n'));
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Intelligence fetch error:', err);
+        }
+      }
 
       // Load brain context if enabled
       if (brainOn) {
@@ -1761,7 +1862,8 @@ For each line item, also produce a monthly breakdown:
         }
       }
 
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx);
+      const intelligenceCtx = intelligenceContext ? `\n\n${intelligenceContext}` : '';
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
@@ -1867,7 +1969,7 @@ For each line item, also produce a monthly breakdown:
       }
 
       // Brain learning: extract facts from the conversation asynchronously
-      if (brainEnabled && assistantSoFar && user) {
+      if ((brainEnabled || aiSettings.aiAutoBrainExtraction) && assistantSoFar && user) {
         (async () => {
           try {
             const userText = text.trim();

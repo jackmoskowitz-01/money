@@ -8,6 +8,7 @@ import {
   BarChart3, Users, Ruler, TrendingUp,
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
 import {
   stageLabels, stageColors, generateTouchpoints, touchpointLabels,
   type PipelineStage, type PipelineItem, type Touchpoint,
@@ -43,6 +44,10 @@ const Pipeline = () => {
   const [newProspect, setNewProspect] = useState({
     name: '', company: '', email: '', phone: '', sqft: '',
   });
+
+  // Outcome tracking state
+  const [outcomeDialog, setOutcomeDialog] = useState<{ tenantId: string; buildingId: string; stage: PipelineStage } | null>(null);
+  const [outcomeReason, setOutcomeReason] = useState('');
 
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<PipelineItem | null>(null);
@@ -94,10 +99,36 @@ const Pipeline = () => {
   };
 
   const handleStageChange = async (tenantId: string, buildingId: string, newStage: PipelineStage) => {
+    // If moving to won or lost, prompt for outcome reason
+    if (newStage === 'won' || newStage === 'lost') {
+      setOutcomeDialog({ tenantId, buildingId, stage: newStage });
+      return;
+    }
     await updateStage(tenantId, buildingId, newStage);
     if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
       setSelectedItem({ ...selectedItem, stage: newStage });
     }
+  };
+
+  const handleOutcomeConfirm = async () => {
+    if (!outcomeDialog) return;
+    const { tenantId, buildingId, stage } = outcomeDialog;
+    await updateStage(tenantId, buildingId, stage);
+    // Save outcome and reason
+    await supabase
+      .from('pipeline_deals')
+      .update({
+        outcome: stage === 'won' ? 'won' : 'lost',
+        outcome_reason: outcomeReason.trim(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('tenant_id', tenantId)
+      .eq('building_id', buildingId);
+    if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
+      setSelectedItem({ ...selectedItem, stage });
+    }
+    setOutcomeDialog(null);
+    setOutcomeReason('');
   };
 
   const handleAddNote = async () => {
@@ -805,6 +836,56 @@ const Pipeline = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Outcome Dialog */}
+      <Dialog open={!!outcomeDialog} onOpenChange={v => { if (!v) { setOutcomeDialog(null); setOutcomeReason(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {outcomeDialog?.stage === 'won' ? '🎉 Deal Won!' : '📉 Deal Lost'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <p className="text-sm text-muted-foreground">
+              {outcomeDialog?.stage === 'won'
+                ? 'Congrats! What made this deal close?'
+                : 'What happened? This helps the AI learn for next time.'}
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {(outcomeDialog?.stage === 'won'
+                ? ['Strong relationship', 'Competitive pricing', 'Perfect timing', 'Market knowledge', 'Referral']
+                : ['Lost to competitor', 'Budget constraints', 'Went dark', 'Decided to renew', 'Bad timing', 'Wrong fit']
+              ).map(reason => (
+                <button
+                  key={reason}
+                  onClick={() => setOutcomeReason(reason)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    outcomeReason === reason
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/30'
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+            <Input
+              placeholder="Add more detail (optional)..."
+              value={outcomeReason}
+              onChange={e => setOutcomeReason(e.target.value)}
+              className="text-sm"
+            />
+            <div className="flex gap-2 justify-end pt-2">
+              <Button variant="outline" size="sm" onClick={() => { setOutcomeDialog(null); setOutcomeReason(''); }}>
+                Skip
+              </Button>
+              <Button size="sm" onClick={handleOutcomeConfirm}>
+                {outcomeDialog?.stage === 'won' ? '🎉 Confirm Win' : 'Confirm'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

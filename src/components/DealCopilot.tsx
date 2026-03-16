@@ -436,7 +436,7 @@ export default function DealCopilot() {
       }
     };
     loadMemoryAndSettings();
-  }, [user, currentEntityName]);
+  }, [user, currentEntityName, open]);
 
   // Save message to DB
   const persistMessage = useCallback(async (msg: Msg, convId: string) => {

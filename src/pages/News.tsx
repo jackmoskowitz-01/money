@@ -48,6 +48,9 @@ type CompanyNewsItem = NewsItem & {
   matchedBuildingId?: string;
   relevanceScore?: number;
   url?: string;
+  signals?: string[];
+  outreach_reason?: string;
+  urgency?: 'hot' | 'warm' | 'watch';
 };
 
 // LocalStorage-backed cache so news survives reloads
@@ -432,12 +435,20 @@ const News = () => {
   }, [companyNews]);
 
   // ───── Stats ─────
+  const signalCount = useMemo(() => {
+    return companyNews.filter(cn => cn.signals && cn.signals.length > 0).length;
+  }, [companyNews]);
+
+  const hotSignalCount = useMemo(() => {
+    return companyNews.filter(cn => cn.urgency === 'hot').length;
+  }, [companyNews]);
+
   const stats = useMemo(() => [
     { label: 'Total Articles', value: currentNews.length, icon: Newspaper, color: 'text-primary bg-primary/10' },
-    { label: 'Unread', value: unreadCount, icon: Eye, color: 'text-info bg-info/10' },
+    { label: 'Signals Detected', value: signalCount, icon: Zap, color: hotSignalCount > 0 ? 'text-destructive bg-destructive/10' : 'text-warning bg-warning/10' },
     { label: 'Companies Scanned', value: companiesScanned, icon: Building2, color: 'text-success bg-success/10' },
     { label: 'Bookmarked', value: bookmarkedIds.size, icon: Bookmark, color: 'text-warning bg-warning/10' },
-  ], [currentNews.length, unreadCount, companiesScanned, bookmarkedIds.size]);
+  ], [currentNews.length, signalCount, hotSignalCount, companiesScanned, bookmarkedIds.size]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];
@@ -882,7 +893,41 @@ const News = () => {
             >
               {news.title}
             </h3>
-            <p className="text-xs leading-relaxed text-muted-foreground mb-3">{news.summary}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground mb-2">{news.summary}</p>
+
+            {/* Signal badges + outreach reason */}
+            {isCompanyNews && companyItem && (companyItem.signals?.length || companyItem.outreach_reason) && (
+              <div className="mb-3 space-y-1.5">
+                {companyItem.signals && companyItem.signals.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {companyItem.urgency === 'hot' && (
+                      <Badge className="bg-destructive/15 text-destructive border-destructive/30 text-[9px] px-1.5 py-0 font-bold animate-pulse">
+                        🔥 HOT
+                      </Badge>
+                    )}
+                    {companyItem.urgency === 'warm' && (
+                      <Badge className="bg-warning/15 text-warning border-warning/30 text-[9px] px-1.5 py-0 font-bold">
+                        ⚡ WARM
+                      </Badge>
+                    )}
+                    {companyItem.signals.map(signal => (
+                      <Badge key={signal} variant="outline" className="text-[8px] px-1.5 py-0 bg-primary/5 text-primary border-primary/20">
+                        {signal.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      </Badge>
+                    ))}
+                    {companyItem.relevanceScore && companyItem.relevanceScore >= 70 && (
+                      <span className="text-[9px] text-muted-foreground ml-1">Score: {companyItem.relevanceScore}</span>
+                    )}
+                  </div>
+                )}
+                {companyItem.outreach_reason && (
+                  <div className="flex items-start gap-1.5 rounded-md bg-primary/5 border border-primary/10 px-2.5 py-1.5">
+                    <Sparkles className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+                    <p className="text-[11px] text-primary font-medium leading-snug">{companyItem.outreach_reason}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Prospect bar */}
             <button

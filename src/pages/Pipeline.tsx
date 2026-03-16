@@ -44,6 +44,10 @@ const Pipeline = () => {
     name: '', company: '', email: '', phone: '', sqft: '',
   });
 
+  // Outcome tracking state
+  const [outcomeDialog, setOutcomeDialog] = useState<{ tenantId: string; buildingId: string; stage: PipelineStage } | null>(null);
+  const [outcomeReason, setOutcomeReason] = useState('');
+
   // Drag-and-drop state
   const [dragItem, setDragItem] = useState<PipelineItem | null>(null);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);

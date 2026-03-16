@@ -891,13 +891,14 @@ serve(async (req) => {
 
       if (choice?.finish_reason === "tool_calls" || choice?.message?.tool_calls?.length > 0) {
         const toolCalls = choice.message.tool_calls;
-        const toolResults: string[] = [];
 
-        for (const tc of toolCalls) {
-          const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-          const result = await executeTool(tc.function.name, args, systemMessage);
-          toolResults.push(result);
-        }
+        // Execute ALL tool calls in parallel for maximum speed
+        const toolResults = await Promise.all(
+          toolCalls.map(async (tc: any) => {
+            const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
+            return executeTool(tc.function.name, args, systemMessage);
+          })
+        );
 
         // Second call: feed tool results back to get a natural response
         const followUpMessages = [

@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, X, UserPlus, Upload, Download, Loader2 } from 'lucide-react';
+import { ChevronDown, Plus, X, UserPlus, Upload, Download, Loader2, Pencil, Check } from 'lucide-react';
 import { type Building, type Tenant } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { digestEvent } from '@/lib/autoDigest';
 
 type StackingPlanProps = {
   building: Building;
@@ -151,6 +152,53 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
     setNewTenant({ name: '', industry: '', sqft: '', floor: '', leaseExpiration: '' });
     setShowAddForm(false);
     onTenantsChange?.(allTenants);
+
+    // Feed to Brain
+    digestEvent('stacking_plan_updated', {
+      action: 'tenant_added',
+      building_name: building.name || building.address,
+      tenant_name: row.tenant_name,
+      industry: row.industry,
+      sqft: row.sqft,
+      floor: row.floor,
+      lease_expiration: row.lease_expiration,
+    });
+  };
+
+  // Inline edit for DB tenants
+  const [editingTenant, setEditingTenant] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Partial<DbTenant>>({});
+
+  const startEdit = (dt: DbTenant) => {
+    setEditingTenant(dt.id);
+    setEditValues({ tenant_name: dt.tenant_name, industry: dt.industry, sqft: dt.sqft, floor: dt.floor, lease_expiration: dt.lease_expiration });
+  };
+
+  const saveEdit = async (id: string) => {
+    const { error } = await supabase.from('stacking_plans' as any).update({
+      tenant_name: editValues.tenant_name,
+      industry: editValues.industry,
+      sqft: Number(editValues.sqft) || 0,
+      floor: editValues.floor,
+      lease_expiration: editValues.lease_expiration,
+    } as any).eq('id', id);
+    if (error) {
+      toast.error('Failed to update tenant');
+      return;
+    }
+    setDbTenants(prev => prev.map(t => t.id === id ? { ...t, ...editValues, sqft: Number(editValues.sqft) || 0 } as DbTenant : t));
+    setEditingTenant(null);
+    toast.success('Tenant updated');
+
+    digestEvent('stacking_plan_updated', {
+      action: 'tenant_updated',
+      building_name: building.name || building.address,
+      tenant_name: editValues.tenant_name,
+      industry: editValues.industry,
+      sqft: editValues.sqft,
+      floor: editValues.floor,
+      lease_expiration: editValues.lease_expiration,
+    });
   };
 
   const handleRemoveDb = async (id: string) => {
@@ -205,6 +253,15 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
       if (error) throw error;
       if (data) setDbTenants(prev => [...prev, ...(data as unknown as DbTenant[])]);
       toast.success(`📋 ${tenants.length} tenants imported from ${file.name}`);
+
+      // Feed to Brain
+      digestEvent('stacking_plan_updated', {
+        action: 'bulk_import',
+        building_name: building.name || building.address,
+        tenant_count: tenants.length,
+        tenants_summary: tenants.slice(0, 5).map((t: any) => `${t.tenant_name || t.name} (${t.sqft || '?'} SF, Fl ${t.floor || '?'})`).join(', '),
+        source: file.name,
+      });
     } catch (err: any) {
       console.error('Upload parse error:', err);
       toast.error(err.message || 'Failed to parse stacking plan');
@@ -465,23 +522,46 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
         </button>
       )}
 
-      {/* DB tenants list for removal */}
+      {/* DB tenants list for editing/removal */}
       {dbTenants.length > 0 && (
         <div className="mt-2 space-y-0.5">
           <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
             Added ({dbTenants.length})
           </p>
           {dbTenants.map(dt => (
-            <div key={dt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px]">
-              <span className="text-foreground font-medium truncate">
-                {dt.tenant_name}
-                <span className="text-muted-foreground"> · Fl {dt.floor}</span>
-                {dt.source === 'upload' && <span className="text-primary/60 ml-1">📄</span>}
-              </span>
-              <button onClick={() => handleRemoveDb(dt.id)} className="text-muted-foreground hover:text-destructive ml-1">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
+            editingTenant === dt.id ? (
+              <div key={dt.id} className="rounded border border-accent/30 bg-accent/5 p-1.5 space-y-1">
+                <div className="flex gap-1">
+                  <Input placeholder="Name" value={editValues.tenant_name || ''} onChange={e => setEditValues(v => ({ ...v, tenant_name: e.target.value }))} className="h-6 text-[10px]" />
+                  <Input placeholder="Industry" value={editValues.industry || ''} onChange={e => setEditValues(v => ({ ...v, industry: e.target.value }))} className="h-6 text-[10px] w-20" />
+                </div>
+                <div className="flex gap-1">
+                  <Input placeholder="Floor" value={editValues.floor || ''} onChange={e => setEditValues(v => ({ ...v, floor: e.target.value }))} className="h-6 text-[10px] w-14" />
+                  <Input placeholder="SF" type="number" value={editValues.sqft || ''} onChange={e => setEditValues(v => ({ ...v, sqft: Number(e.target.value) }))} className="h-6 text-[10px] w-16" />
+                  <Input placeholder="Lease exp" value={editValues.lease_expiration || ''} onChange={e => setEditValues(v => ({ ...v, lease_expiration: e.target.value }))} className="h-6 text-[10px] flex-1" />
+                  <Button size="sm" className="h-6 w-6 p-0" onClick={() => saveEdit(dt.id)}><Check className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingTenant(null)}><X className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            ) : (
+              <div key={dt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px] group">
+                <span className="text-foreground font-medium truncate">
+                  {dt.tenant_name}
+                  <span className="text-muted-foreground"> · Fl {dt.floor}</span>
+                  {dt.sqft > 0 && <span className="text-muted-foreground"> · {(dt.sqft / 1000).toFixed(0)}k SF</span>}
+                  {dt.lease_expiration && dt.lease_expiration !== 'N/A' && <span className="text-muted-foreground"> · {dt.lease_expiration}</span>}
+                  {dt.source === 'upload' && <span className="text-primary/60 ml-1">📄</span>}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => startEdit(dt)} className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button onClick={() => handleRemoveDb(dt.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )
           ))}
         </div>
       )}

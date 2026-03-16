@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
 import AutoEnrichBadges from '@/components/AutoEnrichBadges';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar, Activity } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar, Activity, Pencil, Check } from 'lucide-react';
 import { recordVisit, getVisitLog, isStale, getLastVisitLabel, getThresholdDays, setThresholdDays } from '@/lib/buildingVisitTracker';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';
@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
 import { getActivities, type ActivityEntry } from '@/data/activityData';
+import { digestEvent } from '@/lib/autoDigest';
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
@@ -41,6 +42,8 @@ const MapView = () => {
   const [visitLog, setVisitLog] = useState(getVisitLog());
   const [trackerEnabled, setTrackerEnabled] = useState(false);
   const [activityOverlay, setActivityOverlay] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editFieldValue, setEditFieldValue] = useState('');
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
@@ -652,19 +655,107 @@ const MapView = () => {
               </div>
 
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-md bg-secondary p-2">
-                  <p className="text-lg font-bold text-foreground">{selectedBuilding.sqft.toLocaleString()}</p>
-                  <p className="text-[10px] text-muted-foreground">Total SF</p>
+                <div
+                  className="rounded-md bg-secondary p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all group"
+                  onClick={() => { setEditingField('sqft'); setEditFieldValue(String(selectedBuilding.sqft)); }}
+                >
+                  {editingField === 'sqft' ? (
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="number"
+                        value={editFieldValue}
+                        onChange={e => setEditFieldValue(e.target.value)}
+                        className="w-full bg-transparent text-center text-sm font-bold text-foreground border-b border-primary outline-none"
+                        autoFocus
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const val = Number(editFieldValue);
+                            if (val > 0) {
+                              setSelectedBuilding(prev => prev ? { ...prev, sqft: val } : prev);
+                              digestEvent('stacking_plan_updated', { action: 'building_sf_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_sqft: val });
+                            }
+                            setEditingField(null);
+                          } else if (e.key === 'Escape') setEditingField(null);
+                        }}
+                        onBlur={() => {
+                          const val = Number(editFieldValue);
+                          if (val > 0) {
+                            setSelectedBuilding(prev => prev ? { ...prev, sqft: val } : prev);
+                            digestEvent('stacking_plan_updated', { action: 'building_sf_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_sqft: val });
+                          }
+                          setEditingField(null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-lg font-bold text-foreground">{selectedBuilding.sqft.toLocaleString()}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">Total SF <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity" /></p>
                 </div>
-                <div className="rounded-md bg-secondary p-2">
-                  <p className={`text-lg font-bold ${selectedBuilding.vacancyRate > 20 ? 'text-destructive' : 'text-foreground'}`}>
-                    {selectedBuilding.vacancyRate}%
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">Vacancy</p>
+                <div
+                  className="rounded-md bg-secondary p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all group"
+                  onClick={() => { setEditingField('vacancy'); setEditFieldValue(String(selectedBuilding.vacancyRate)); }}
+                >
+                  {editingField === 'vacancy' ? (
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="number"
+                        value={editFieldValue}
+                        onChange={e => setEditFieldValue(e.target.value)}
+                        className="w-full bg-transparent text-center text-sm font-bold text-foreground border-b border-primary outline-none"
+                        autoFocus
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            const val = Number(editFieldValue);
+                            setSelectedBuilding(prev => prev ? { ...prev, vacancyRate: val } : prev);
+                            digestEvent('stacking_plan_updated', { action: 'vacancy_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_vacancy: val });
+                            setEditingField(null);
+                          } else if (e.key === 'Escape') setEditingField(null);
+                        }}
+                        onBlur={() => {
+                          const val = Number(editFieldValue);
+                          setSelectedBuilding(prev => prev ? { ...prev, vacancyRate: val } : prev);
+                          digestEvent('stacking_plan_updated', { action: 'vacancy_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_vacancy: val });
+                          setEditingField(null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className={`text-lg font-bold ${selectedBuilding.vacancyRate > 20 ? 'text-destructive' : 'text-foreground'}`}>
+                      {selectedBuilding.vacancyRate}%
+                    </p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">Vacancy <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity" /></p>
                 </div>
-                <div className="rounded-md bg-secondary p-2">
-                  <p className="text-[11px] font-bold text-foreground leading-tight break-words">{selectedBuilding.owner}</p>
-                  <p className="text-[10px] text-muted-foreground">Landlord</p>
+                <div
+                  className="rounded-md bg-secondary p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all group"
+                  onClick={() => { setEditingField('owner'); setEditFieldValue(selectedBuilding.owner); }}
+                >
+                  {editingField === 'owner' ? (
+                    <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <input
+                        value={editFieldValue}
+                        onChange={e => setEditFieldValue(e.target.value)}
+                        className="w-full bg-transparent text-center text-[10px] font-bold text-foreground border-b border-primary outline-none"
+                        autoFocus
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            setSelectedBuilding(prev => prev ? { ...prev, owner: editFieldValue } : prev);
+                            digestEvent('stacking_plan_updated', { action: 'owner_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_owner: editFieldValue });
+                            setEditingField(null);
+                          } else if (e.key === 'Escape') setEditingField(null);
+                        }}
+                        onBlur={() => {
+                          setSelectedBuilding(prev => prev ? { ...prev, owner: editFieldValue } : prev);
+                          digestEvent('stacking_plan_updated', { action: 'owner_updated', building_name: selectedBuilding.name || selectedBuilding.address, new_owner: editFieldValue });
+                          setEditingField(null);
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-[11px] font-bold text-foreground leading-tight break-words">{selectedBuilding.owner}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-0.5">Landlord <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-50 transition-opacity" /></p>
                 </div>
               </div>
 

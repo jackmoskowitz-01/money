@@ -217,8 +217,8 @@ const CustomProspectDetail = () => {
 
   const recipients: EmailRecipient[] = useMemo(() => {
     if (!prospectId) return [];
-    return getContacts(prospectId).map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
-  }, [prospectId, contactsVersion]);
+    return prospectContacts.map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
+  }, [prospectId, prospectContacts]);
 
   if (!prospect) {
     return <div className="flex min-h-screen items-center justify-center pt-14"><p className="text-muted-foreground">Prospect not found</p></div>;

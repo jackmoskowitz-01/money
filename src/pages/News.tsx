@@ -137,7 +137,7 @@ const getAffectedProspects = (news: NewsItem): ProspectMatch[] => {
   return matches;
 };
 
-const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
+const buildRecipients = async (tenant: Tenant): Promise<EmailRecipient[]> => {
   const list: EmailRecipient[] = [{
     id: 'primary',
     name: tenant.contactName,
@@ -145,7 +145,8 @@ const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     title: tenant.contactTitle,
     isPrimary: true,
   }];
-  getContacts(tenant.id).forEach(c => {
+  const contacts = await getContactsAsync(tenant.id);
+  contacts.forEach(c => {
     list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
   });
   return list;

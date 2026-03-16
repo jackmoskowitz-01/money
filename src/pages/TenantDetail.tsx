@@ -603,7 +603,7 @@ const TenantDetail = () => {
                   tenantId={tenantId!}
                   buildingId={buildingId!}
                   outreachReasonTitles={tenant.outreachReasons.map(r => r.title)}
-                  contactsVersion={contactsVersion}
+                  contactsVersion={0}
                 />
               </div>
 

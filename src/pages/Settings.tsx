@@ -103,6 +103,7 @@ const Settings = () => {
         setIntegrations({
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
+          brainEnabled: (s as any).brain_enabled ?? false,
         });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }

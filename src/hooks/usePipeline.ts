@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { buildings } from '@/data/mockData';
+import { digestEvent } from '@/lib/autoDigest';
 import type { PipelineStage, PipelineItem, Touchpoint } from '@/data/pipelineData';
 
 type DbRow = {

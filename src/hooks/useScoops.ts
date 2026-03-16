@@ -102,6 +102,15 @@ export function useScoops() {
       return false;
     }
     await fetchScoops();
+    // Auto-digest: feed scoop to AI brain
+    const { digestEvent } = await import('@/lib/autoDigest');
+    digestEvent('scoop_posted', {
+      content: scoop.content,
+      category: scoop.category,
+      tags: scoop.tags,
+      tenant: scoop.linked_tenant_name || '',
+      building: scoop.linked_building_name || '',
+    });
     return true;
   };
 

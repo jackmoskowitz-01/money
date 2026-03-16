@@ -147,7 +147,21 @@ export function useEmailThreads() {
     };
 
     const { error } = await supabase.from('email_threads').insert(row);
-    if (!error) fetchThreads();
+    if (!error) {
+      fetchThreads();
+      // Auto-digest: feed email send to AI brain
+      const { digestEvent } = await import('@/lib/autoDigest');
+      digestEvent('email_sent', {
+        prospect: data.prospectName,
+        email: data.prospectEmail,
+        subject: data.subject,
+        template: data.templateUsed || 'custom',
+        tone: data.toneUsed || 'professional',
+        reason: data.outreachReason || '',
+        industry: data.industry || '',
+        bodyPreview: data.bodyPreview.substring(0, 200),
+      });
+    }
     return !error;
   }, [user, fetchThreads]);
 

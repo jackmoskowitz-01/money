@@ -26,7 +26,10 @@ export default function CopilotSlashCommands({ input, visible, onSelect }: Props
   if (!visible) return null;
 
   const filter = input.slice(1).toLowerCase();
-  const filtered = COMMANDS.filter(c => c.command.slice(1).startsWith(filter) || !filter);
+  const filtered = COMMANDS.filter(c => {
+    const cmd = c.command.slice(1);
+    return cmd.startsWith(filter) || !filter;
+  });
 
   if (filtered.length === 0) return null;
 

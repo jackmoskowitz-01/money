@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProspectSearch from './ProspectSearch';
+import dealflowLogo from '@/assets/dealflow-logo.jpg';
 import {
   DropdownMenu,
   DropdownMenuContent,

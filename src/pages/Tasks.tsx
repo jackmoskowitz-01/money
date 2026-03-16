@@ -49,6 +49,20 @@ const Tasks = () => {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Listen for task assignment notifications
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      toast({
+        title: '📋 New task assigned to you',
+        description: detail.title,
+      });
+    };
+    window.addEventListener('task-assigned', handler);
+    return () => window.removeEventListener('task-assigned', handler);
+  }, [toast]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);

@@ -295,10 +295,7 @@ const Dashboard = () => {
                 </Card>
               )}
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <CriticalDatesTracker />
-              <BrokerLeaderboard />
-            </div>
+            <BrokerLeaderboard />
             <div className="grid gap-4 lg:grid-cols-2">
               <DealVelocity />
               <RevenueForecast />

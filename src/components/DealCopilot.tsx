@@ -76,6 +76,8 @@ export default function DealCopilot() {
   const [voiceMode, setVoiceMode] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [marketReportSearch, setMarketReportSearch] = useState<{ open: boolean; query: string; results: { content: string; preview: string; date: string; conversationId: string }[]; loading: boolean }>({ open: false, query: '', results: [], loading: false });
+  const [conversationMemory, setConversationMemory] = useState<string | null>(null);
+  const [memoryEnabled, setMemoryEnabled] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoExportRef = useRef(false);

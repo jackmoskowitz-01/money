@@ -104,6 +104,7 @@ export function usePipeline() {
   }, [fetchPipeline]);
 
   const updateStage = useCallback(async (tenantId: string, buildingId: string, stage: PipelineStage) => {
+    const item = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);
     const { error } = await supabase
       .from('pipeline_deals')
       .update({ stage, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -116,8 +117,20 @@ export function usePipeline() {
           ? { ...p, stage, lastActivity: new Date().toISOString() }
           : p
       ));
+      // Auto-digest: feed pipeline move to AI brain
+      const name = item?.prospectName || item?.prospectCompany || tenantId;
+      const prevStage = item?.stage || 'unknown';
+      digestEvent('pipeline_moved', {
+        prospect: name,
+        tenantId,
+        buildingId,
+        previousStage: prevStage,
+        newStage: stage,
+        sqft: item?.prospectSqft || undefined,
+        touchpoints: item?.sentTouchpoints?.length || 0,
+      });
     }
-  }, []);
+  }, [pipeline]);
 
   const addNote = useCallback(async (tenantId: string, buildingId: string, note: string) => {
     const item = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);

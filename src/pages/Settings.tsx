@@ -99,6 +99,10 @@ const Settings = () => {
           defaultMarket: s.default_market || 'dc-metro',
           activityCategories: s.activity_categories || 'Calls, Tours, Emails, Meetings, Proposals',
         });
+        setIntegrations({
+          calendarConnected: s.calendar_connected ?? false,
+          copilotMemory: s.copilot_memory ?? true,
+        });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }
 

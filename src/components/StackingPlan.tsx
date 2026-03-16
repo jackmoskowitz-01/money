@@ -253,6 +253,15 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
       if (error) throw error;
       if (data) setDbTenants(prev => [...prev, ...(data as unknown as DbTenant[])]);
       toast.success(`📋 ${tenants.length} tenants imported from ${file.name}`);
+
+      // Feed to Brain
+      digestEvent('stacking_plan_updated', {
+        action: 'bulk_import',
+        building_name: building.name || building.address,
+        tenant_count: tenants.length,
+        tenants_summary: tenants.slice(0, 5).map((t: any) => `${t.tenant_name || t.name} (${t.sqft || '?'} SF, Fl ${t.floor || '?'})`).join(', '),
+        source: file.name,
+      });
     } catch (err: any) {
       console.error('Upload parse error:', err);
       toast.error(err.message || 'Failed to parse stacking plan');

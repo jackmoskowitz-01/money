@@ -656,6 +656,8 @@ export type Database = {
         Row: {
           activity_categories: string
           brokerage: string
+          calendar_connected: boolean
+          copilot_memory: boolean
           created_at: string
           dark_mode: boolean
           default_market: string
@@ -675,6 +677,8 @@ export type Database = {
         Insert: {
           activity_categories?: string
           brokerage?: string
+          calendar_connected?: boolean
+          copilot_memory?: boolean
           created_at?: string
           dark_mode?: boolean
           default_market?: string
@@ -694,6 +698,8 @@ export type Database = {
         Update: {
           activity_categories?: string
           brokerage?: string
+          calendar_connected?: boolean
+          copilot_memory?: boolean
           created_at?: string
           dark_mode?: boolean
           default_market?: string

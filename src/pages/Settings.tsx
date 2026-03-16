@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -46,6 +46,11 @@ const Settings = () => {
   const [workflow, setWorkflow] = useState({
     defaultMarket: 'dc-metro',
     activityCategories: 'Calls, Tours, Emails, Meetings, Proposals',
+  });
+
+  const [integrations, setIntegrations] = useState({
+    calendarConnected: false,
+    copilotMemory: true,
   });
 
   // Load settings from database
@@ -94,6 +99,10 @@ const Settings = () => {
           defaultMarket: s.default_market || 'dc-metro',
           activityCategories: s.activity_categories || 'Calls, Tours, Emails, Meetings, Proposals',
         });
+        setIntegrations({
+          calendarConnected: s.calendar_connected ?? false,
+          copilotMemory: s.copilot_memory ?? true,
+        });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }
 
@@ -141,6 +150,8 @@ const Settings = () => {
         default_market: workflow.defaultMarket,
         activity_categories: workflow.activityCategories,
         dark_mode: appearance.darkMode,
+        calendar_connected: integrations.calendarConnected,
+        copilot_memory: integrations.copilotMemory,
         updated_at: new Date().toISOString(),
       };
 
@@ -188,7 +199,7 @@ const Settings = () => {
         <p className="text-muted-foreground text-sm mb-6">Manage your preferences and defaults</p>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="text-xs gap-1">
               <User className="h-3.5 w-3.5 hidden sm:block" /> Profile
             </TabsTrigger>
@@ -200,6 +211,9 @@ const Settings = () => {
             </TabsTrigger>
             <TabsTrigger value="workflow" className="text-xs gap-1">
               <Workflow className="h-3.5 w-3.5 hidden sm:block" /> Workflow
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="text-xs gap-1">
+              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI & Integrations
             </TabsTrigger>
             <TabsTrigger value="appearance" className="text-xs gap-1">
               <Palette className="h-3.5 w-3.5 hidden sm:block" /> Display
@@ -417,6 +431,86 @@ const Settings = () => {
                 </div>
               </CardContent>
             </Card>
+            </div>
+          </TabsContent>
+
+          {/* AI & Integrations */}
+          <TabsContent value="integrations">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" /> Calendar Access
+                  </CardTitle>
+                  <CardDescription>Connect your calendar so Copilot can suggest meeting times around your schedule</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Google Calendar</p>
+                      <p className="text-xs text-muted-foreground">
+                        {integrations.calendarConnected
+                          ? 'Connected — Copilot can see your availability and suggest meeting times'
+                          : 'Not connected — Enable to let Copilot schedule around your meetings'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={integrations.calendarConnected}
+                      onCheckedChange={v => {
+                        if (v) {
+                          toast.info('Calendar integration coming soon! This will connect to your Google Calendar.');
+                          return;
+                        }
+                        setIntegrations(i => ({ ...i, calendarConnected: false }));
+                      }}
+                    />
+                  </div>
+                  {integrations.calendarConnected && (
+                    <div className="rounded-md bg-success/5 border border-success/20 p-3">
+                      <p className="text-xs text-success font-medium">✓ Calendar connected</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Copilot will check your calendar before suggesting meeting times</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" /> Conversation Memory
+                  </CardTitle>
+                  <CardDescription>Let Copilot remember past conversations to give personalized responses</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Enable Memory</p>
+                      <p className="text-xs text-muted-foreground">
+                        {integrations.copilotMemory
+                          ? 'Copilot recalls your past conversations, notes, and preferences to tailor responses'
+                          : 'Copilot treats each conversation independently with no recall'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={integrations.copilotMemory}
+                      onCheckedChange={v => setIntegrations(i => ({ ...i, copilotMemory: v }))}
+                    />
+                  </div>
+                  {integrations.copilotMemory && (
+                    <div className="rounded-md bg-primary/5 border border-primary/20 p-3 space-y-2">
+                      <p className="text-xs text-primary font-medium">🧠 Memory is active</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Copilot will reference your past deal notes, outreach patterns, and conversation history. 
+                        It may also crack a joke if you've left something funny in the notes 😄
+                      </p>
+                    </div>
+                  )}
+                  <Button onClick={() => saveAll('AI & Integrations')} className="mt-2" disabled={saving}>
+                    {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Save Settings
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
 

@@ -1761,7 +1761,7 @@ For each line item, also produce a monthly breakdown:
         }
       }
 
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx);
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

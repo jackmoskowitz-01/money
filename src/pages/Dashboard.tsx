@@ -23,6 +23,7 @@ import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
 import CriticalDatesTracker from '@/components/CriticalDatesTracker';
+import CriticalDatesFullView from '@/components/CriticalDatesFullView';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';

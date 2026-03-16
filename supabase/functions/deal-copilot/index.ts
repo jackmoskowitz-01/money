@@ -857,6 +857,17 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // Extract user_id from JWT for tools that need it (e.g. critical_dates)
+    let currentUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        currentUserId = payload.sub || null;
+      } catch { /* not a JWT or can't parse */ }
+    }
+
     const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
 
     // Non-streaming mode for tool calling

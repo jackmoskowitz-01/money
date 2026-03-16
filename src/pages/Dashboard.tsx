@@ -578,6 +578,11 @@ const Dashboard = () => {
               <MeetingsOverview />
             </div>
           </TabsContent>
+
+          {/* ── CRITICAL DATES TAB ── */}
+          <TabsContent value="critical-dates" className="mt-0">
+            <CriticalDatesFullView />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

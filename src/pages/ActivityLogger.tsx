@@ -255,10 +255,36 @@ const ActivityLogger = () => {
                         Topic: {entry.outreachReasonUsed}
                       </Badge>
                     )}
-                    <p className="mt-1 text-[11px] text-muted-foreground/50">
-                      <Calendar className="mr-1 inline h-3 w-3" />
-                      {timeAgo(entry.timestamp)}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-[11px] text-muted-foreground/50">
+                        <Calendar className="mr-1 inline h-3 w-3" />
+                        {timeAgo(entry.timestamp)}
+                      </p>
+                      {entry.type === 'meeting_set' && tenant && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                          onClick={async () => {
+                            const success = await addProspect({
+                              name: tenant.name,
+                              company: tenant.name,
+                              email: '',
+                              phone: '',
+                              sqft: tenant.sqft?.toString() || '',
+                            });
+                            if (success) {
+                              toast.success(`${tenant.name} added to pipeline!`);
+                              navigate('/pipeline');
+                            } else {
+                              toast.error('Failed to add to pipeline');
+                            }
+                          }}
+                        >
+                          <Kanban className="h-3 w-3" /> Convert to Opportunity
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               );

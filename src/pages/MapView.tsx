@@ -104,13 +104,18 @@ const MapView = () => {
   const addGoogleMarkersToMap = async (blds: Building[]) => {
     const L = await import('leaflet');
 
-    googleMarkersRef.current.forEach(m => m.remove());
+    googleMarkersRef.current.forEach(m => {
+      clusterGroupRef.current?.removeLayer(m);
+    });
     googleMarkersRef.current = [];
 
     const log = getVisitLog();
     blds.forEach(b => {
       const marker = createMapMarker(L, b, log, thresholdDays, trackerEnabled);
-      if (marker) googleMarkersRef.current.push(marker);
+      if (marker) {
+        clusterGroupRef.current?.addLayer(marker);
+        googleMarkersRef.current.push(marker);
+      }
     });
   };
 

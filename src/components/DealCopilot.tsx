@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -185,7 +185,27 @@ export default function DealCopilot() {
     loadHistory();
   }, [user, hasLoadedHistory]);
 
-  // Load conversation memory (summaries from past conversations)
+  // Determine current prospect/entity name from URL for scoped memory
+  const currentEntityName = useMemo(() => {
+    const tenantMatch = location.pathname.match(/\/building\/(.+)\/tenant\/(.+)/);
+    if (tenantMatch) {
+      const [, bId, tId] = tenantMatch;
+      const building = buildings.find(b => b.id === bId);
+      const tenant = building?.tenants.find(t => t.id === tId);
+      if (tenant) return tenant.name;
+    }
+    // Custom prospect detail page
+    const prospectMatch = location.pathname.match(/\/prospect\/(.+)/);
+    if (prospectMatch) {
+      // We'll resolve the name from pipeline or custom prospects
+      const pId = decodeURIComponent(prospectMatch[1]);
+      const deal = pipeline.find(p => p.tenantId === pId);
+      if (deal?.prospectName) return deal.prospectName;
+    }
+    return null;
+  }, [location.pathname, pipeline]);
+
+  // Load conversation memory scoped to current prospect
   useEffect(() => {
     if (!user) return;
     const loadMemoryAndSettings = async () => {
@@ -198,7 +218,10 @@ export default function DealCopilot() {
 
       const enabled = (settings as any)?.copilot_memory ?? true;
       setMemoryEnabled(enabled);
-      if (!enabled) return;
+      if (!enabled) { setConversationMemory(null); return; }
+
+      // No prospect in view → no scoped memory
+      if (!currentEntityName) { setConversationMemory(null); return; }
 
       // Load recent conversations for memory context
       const { data: recentMsgs } = await supabase
@@ -206,12 +229,14 @@ export default function DealCopilot() {
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(300);
+        .limit(500);
 
-      if (!recentMsgs || recentMsgs.length === 0) return;
+      if (!recentMsgs || recentMsgs.length === 0) { setConversationMemory(null); return; }
 
-      // Build memory from past conversations (skip current one)
       const msgs = recentMsgs as any[];
+      const entityLower = currentEntityName.toLowerCase();
+
+      // Group by conversation, then filter to only conversations that mention this prospect
       const conversations = new Map<string, any[]>();
       msgs.forEach(m => {
         const list = conversations.get(m.conversation_id) || [];
@@ -219,41 +244,33 @@ export default function DealCopilot() {
         conversations.set(m.conversation_id, list);
       });
 
-      const memoryParts: string[] = [];
-
-      // Extract key patterns: user preferences, deal notes, humor, recurring topics
-      const allUserMsgs = msgs.filter(m => m.role === 'user').map(m => m.content);
-      const allAssistantMsgs = msgs.filter(m => m.role === 'assistant').map(m => m.content);
-
-      // Find frequently mentioned prospects/companies
-      const mentionCounts: Record<string, number> = {};
-      allUserMsgs.forEach(content => {
-        const matches = content.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/g) || [];
-        matches.forEach(m => { mentionCounts[m] = (mentionCounts[m] || 0) + 1; });
-      });
-      const frequentMentions = Object.entries(mentionCounts)
-        .filter(([, count]) => count >= 2)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
-        .map(([name, count]) => `${name} (mentioned ${count}x)`);
-
-      if (frequentMentions.length > 0) {
-        memoryParts.push(`**Frequently discussed:** ${frequentMentions.join(', ')}`);
+      const relevantMsgs: any[] = [];
+      for (const [, convMsgs] of conversations) {
+        const mentionsEntity = convMsgs.some(m => m.content.toLowerCase().includes(entityLower));
+        if (mentionsEntity) relevantMsgs.push(...convMsgs);
       }
 
-      // Extract any notes or funny/personal content
-      const notePatterns = allUserMsgs.filter(m => 
+      if (relevantMsgs.length === 0) { setConversationMemory(null); return; }
+
+      const memoryParts: string[] = [];
+
+      const allUserMsgs = relevantMsgs.filter(m => m.role === 'user').map(m => m.content);
+
+      // Extract notes or funny/personal content about this prospect
+      const notePatterns = allUserMsgs.filter(m =>
         /note|remember|funny|joke|lol|haha|😂|🤣|btw|fyi/i.test(m)
       ).slice(0, 5);
       if (notePatterns.length > 0) {
-        memoryParts.push(`**Personal notes from user:**\n${notePatterns.map(n => `- "${n.slice(0, 150)}"`).join('\n')}`);
+        memoryParts.push(`**Personal notes about ${currentEntityName}:**\n${notePatterns.map(n => `- "${n.slice(0, 150)}"`).join('\n')}`);
       }
 
-      // Summarize recent conversation topics
+      // Recent conversation topics about this prospect
       const recentTopics: string[] = [];
       let convCount = 0;
-      for (const [convId, convMsgs] of conversations) {
+      for (const [, convMsgs] of conversations) {
         if (convCount >= 5) break;
+        const mentionsEntity = convMsgs.some(m => m.content.toLowerCase().includes(entityLower));
+        if (!mentionsEntity) continue;
         const firstUserMsg = convMsgs.find(m => m.role === 'user');
         if (firstUserMsg) {
           const date = new Date(firstUserMsg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -262,21 +279,23 @@ export default function DealCopilot() {
         }
       }
       if (recentTopics.length > 0) {
-        memoryParts.push(`**Recent conversation topics:**\n${recentTopics.join('\n')}`);
+        memoryParts.push(`**Past conversations about ${currentEntityName}:**\n${recentTopics.join('\n')}`);
       }
 
-      // Extract outreach style preferences
+      // Outreach patterns for this prospect
       const draftMsgs = allUserMsgs.filter(m => /draft|email|outreach|tone|write/i.test(m));
       if (draftMsgs.length > 0) {
-        memoryParts.push(`**Outreach patterns:** User has requested ${draftMsgs.length} drafts/emails in past conversations`);
+        memoryParts.push(`**Outreach history:** ${draftMsgs.length} draft/email requests about ${currentEntityName}`);
       }
 
       if (memoryParts.length > 0) {
-        setConversationMemory(`### 🧠 Conversation Memory\nYou have memory of past conversations with this user. Use this to personalize responses, reference past discussions, and if there's anything funny in the notes — feel free to work it in naturally.\n\n${memoryParts.join('\n\n')}`);
+        setConversationMemory(`### 🧠 Memory: ${currentEntityName}\nYou have memory of past conversations about **${currentEntityName}** specifically. Use this to personalize responses, reference prior discussions about this prospect, and if there's anything funny in the notes — work it in naturally.\n\n${memoryParts.join('\n\n')}`);
+      } else {
+        setConversationMemory(null);
       }
     };
     loadMemoryAndSettings();
-  }, [user]);
+  }, [user, currentEntityName]);
 
   // Save message to DB
   const persistMessage = useCallback(async (msg: Msg, convId: string) => {

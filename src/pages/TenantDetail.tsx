@@ -63,7 +63,7 @@ const TenantDetail = () => {
 
   const building = buildings.find(b => b.id === buildingId);
   const tenant = building?.tenants.find(t => t.id === tenantId);
-  const [contactsVersion, setContactsVersion] = useState(0);
+  const { contacts: additionalContacts } = useContacts(tenantId);
 
   const recipients: EmailRecipient[] = useMemo(() => {
     const list: EmailRecipient[] = [];
@@ -76,14 +76,11 @@ const TenantDetail = () => {
         isPrimary: true,
       });
     }
-    if (tenantId) {
-      const additional = getContacts(tenantId);
-      additional.forEach(c => {
-        list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
-      });
-    }
+    additionalContacts.forEach(c => {
+      list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+    });
     return list;
-  }, [tenant, tenantId, contactsVersion]);
+  }, [tenant, additionalContacts]);
 
   useEffect(() => {
     if (tenantId && buildingId) {

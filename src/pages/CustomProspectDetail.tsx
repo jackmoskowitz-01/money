@@ -19,7 +19,7 @@ import ActivityLog from '@/components/ActivityLog';
 import ResearchBrief from '@/components/ResearchBrief';
 import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
 import { addActivity } from '@/data/activityData';

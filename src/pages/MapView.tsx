@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmailDisplay from '@/components/EmailDisplay';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';

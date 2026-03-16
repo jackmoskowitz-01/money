@@ -54,6 +54,26 @@ const Settings = () => {
     brainEnabled: false,
   });
 
+  const [brokerProfile, setBrokerProfile] = useState({
+    specialties: '',
+    yearsExperience: '',
+    dealSizeSweetSpot: '',
+    assetClasses: '',
+    communicationPersonaEnabled: false,
+    writingStyleSample: '',
+    jargonLevel: 'moderate',
+    humorPreference: 'occasional',
+    followupCadence: 'standard',
+    targetSubmarkets: '',
+    keyCompetitors: '',
+    buildingsRepped: '',
+    landlordRelationships: '',
+    quarterlyFocus: '',
+    revenueTarget: '',
+    dealCountGoal: '',
+    personalPitch: '',
+  });
+
   // Load settings from database
   useEffect(() => {
     if (!user) return;

@@ -242,6 +242,57 @@ export type Database = {
         }
         Relationships: []
       }
+      critical_dates: {
+        Row: {
+          acknowledged: boolean
+          building_name: string
+          created_at: string
+          date_type: string
+          date_value: string
+          description: string
+          id: string
+          lease_abstract_id: string | null
+          prospect_id: string | null
+          prospect_name: string
+          remind_days_before: number
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          building_name?: string
+          created_at?: string
+          date_type: string
+          date_value: string
+          description?: string
+          id?: string
+          lease_abstract_id?: string | null
+          prospect_id?: string | null
+          prospect_name?: string
+          remind_days_before?: number
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged?: boolean
+          building_name?: string
+          created_at?: string
+          date_type?: string
+          date_value?: string
+          description?: string
+          id?: string
+          lease_abstract_id?: string | null
+          prospect_id?: string | null
+          prospect_name?: string
+          remind_days_before?: number
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       custom_prospects: {
         Row: {
           address: string

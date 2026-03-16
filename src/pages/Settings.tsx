@@ -790,7 +790,7 @@ const Settings = () => {
                     {
                       key: 'aiAutoBrainExtraction' as const,
                       groupKeys: ['aiAutoBrainExtraction'] as const,
-                      label: 'Auto-Digest (Continuous Learning)',
+                      label: 'Brain (Continuous Learning)',
                       emoji: '🧠',
                       desc: 'The AI automatically learns from EVERYTHING you do — log an activity, move a deal, send an email, post a scoop, complete a task. Every action makes the AI smarter.',
                       activeDesc: 'Active — learning from every action you take across the platform',

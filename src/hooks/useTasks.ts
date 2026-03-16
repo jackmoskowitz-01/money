@@ -133,7 +133,7 @@ export function useTasks() {
       row.assigned_to_name = task.assignedToName || '';
     }
 
-    const { data, error } = await supabase.from('tasks').insert(row).select('*').single();
+    const { data, error } = await supabase.from('tasks').insert(row as any).select('*').single();
     if (!error && data) {
       const newTask = rowToTask(data as unknown as DbRow);
       setTasks(prev => [newTask, ...prev]);

@@ -51,6 +51,7 @@ const Settings = () => {
   const [integrations, setIntegrations] = useState({
     calendarConnected: false,
     copilotMemory: true,
+    brainEnabled: false,
   });
 
   // Load settings from database

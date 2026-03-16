@@ -22,6 +22,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
+import CriticalDatesTracker from '@/components/CriticalDatesTracker';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
@@ -291,7 +292,10 @@ const Dashboard = () => {
                 </Card>
               )}
             </div>
-            <BrokerLeaderboard />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <CriticalDatesTracker />
+              <BrokerLeaderboard />
+            </div>
             <div className="grid gap-4 lg:grid-cols-2">
               <DealVelocity />
               <RevenueForecast />

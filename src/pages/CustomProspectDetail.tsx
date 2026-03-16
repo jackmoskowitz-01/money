@@ -555,7 +555,7 @@ const CustomProspectDetail = () => {
 
             {/* ── ACTIVITY TAB ── */}
             <TabsContent value="activity" className="mt-0">
-              <ActivityLog tenantId={prospectId!} buildingId="" outreachReasonTitles={[]} contactsVersion={contactsVersion} />
+              <ActivityLog tenantId={prospectId!} buildingId="" outreachReasonTitles={[]} />
             </TabsContent>
 
             {/* ── FILES TAB ── */}

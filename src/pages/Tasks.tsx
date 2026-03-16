@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2 } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
 import { Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
@@ -20,6 +20,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import ProspectLists from '@/components/ProspectLists';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useAuth } from '@/contexts/AuthContext';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
   follow_up: MoreHorizontal, call: Phone, meeting: Users, email: Mail, research: Search, other: StickyNote,
@@ -43,12 +45,16 @@ const Tasks = () => {
   const { buildings: allBuildings } = useBuildings();
   const navigate = useNavigate();
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
+  const { members: teamMembers } = useTeamMembers();
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '' });
+  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '', assignedTo: '', assignedToName: '' });
   const [prospectSearch, setProspectSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [assignSearch, setAssignSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'assigned_to_me'>('all');
+  
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({
     title: '', description: '', type: 'call', priority: 'medium', dueDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
@@ -83,6 +89,7 @@ const Tasks = () => {
     let t = [...tasks];
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
+    if (filter === 'assigned_to_me') t = t.filter(x => x.assignedTo === user?.id);
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
     return t.sort((a, b) => {
       const pa = priorityConfig[a.priority || 'medium'].sortOrder;
@@ -90,12 +97,12 @@ const Tasks = () => {
       if (pa !== pb) return pa - pb;
       return a.dueDate.localeCompare(b.dueDate);
     });
-  }, [tasks, filter, selectedDate]);
+  }, [tasks, filter, selectedDate, user?.id]);
 
   const handleAdd = async () => {
     if (!newTask.title.trim() || !newTask.tenantId) return;
     await addTask({ ...newTask, tenantId: newTask.tenantId || undefined, buildingId: newTask.buildingId || undefined, completed: false } as any);
-    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '' });
+    setNewTask({ title: '', description: '', type: 'follow_up', priority: 'medium', dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '', assignedTo: '', assignedToName: '' });
     setProspectSearch('');
     setShowForm(false);
   };
@@ -242,6 +249,47 @@ const Tasks = () => {
               </Popover>
             </div>
 
+            {/* Assign to team member */}
+            <div className="mb-3">
+              <label className="mb-1 block text-xs text-muted-foreground">Assign to (optional)</label>
+              {newTask.assignedTo ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm flex-1">
+                    <UserPlus className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-foreground">{newTask.assignedToName}</span>
+                  </div>
+                  <button onClick={() => setNewTask({ ...newTask, assignedTo: '', assignedToName: '' })} className="rounded-md p-1 text-muted-foreground hover:bg-secondary hover:text-foreground">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <Input placeholder="Search team member..." value={assignSearch} onChange={e => setAssignSearch(e.target.value)} className="border-border bg-secondary/50" />
+                  {assignSearch.length >= 1 && (() => {
+                    const query = assignSearch.toLowerCase();
+                    const matches = teamMembers
+                      .filter(m => m.id !== user?.id)
+                      .filter(m => m.fullName.toLowerCase().includes(query) || m.email.toLowerCase().includes(query))
+                      .slice(0, 8);
+                    return matches.length > 0 ? (
+                      <div className="absolute left-0 right-0 top-full z-20 mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                        {matches.map(m => (
+                          <button key={m.id} onClick={() => { setNewTask({ ...newTask, assignedTo: m.id, assignedToName: m.fullName }); setAssignSearch(''); }} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-secondary">
+                            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{m.avatarInitials}</div>
+                            <div className="min-w-0"><p className="font-medium text-foreground truncate">{m.fullName}</p><p className="text-[10px] text-muted-foreground truncate">{m.email}</p></div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-md border border-border bg-card shadow-lg">
+                        <p className="px-3 py-2 text-xs text-muted-foreground">No matching team members</p>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>Cancel</Button>
               <Button size="sm" onClick={handleAdd} disabled={!newTask.tenantId || !newTask.title.trim()}>Create Task</Button>
@@ -278,6 +326,11 @@ const Tasks = () => {
                   {isOverdue ? '⚠ Overdue: ' : ''}{format(new Date(task.dueDate + 'T12:00:00'), 'EEE, MMM d')}
                 </span>
                 {info && <span className="text-muted-foreground/60">{info.tenant.name} · {info.building!.name}</span>}
+                {task.assignedToName && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <UserPlus className="h-2.5 w-2.5" /> {task.assignedTo === user?.id ? 'Assigned to you' : `→ ${task.assignedToName}`}
+                  </span>
+                )}
               </div>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
@@ -391,8 +444,8 @@ const Tasks = () => {
               {renderTaskForm()}
 
               <div className="mb-4 flex items-center gap-2 flex-wrap">
-                {(['all', 'pending', 'completed'] as const).map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f}</button>
+                {(['all', 'pending', 'completed', 'assigned_to_me'] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f === 'assigned_to_me' ? 'My Assignments' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
                 ))}
                 {selectedDate && (
                   <div className="ml-auto flex items-center gap-2">

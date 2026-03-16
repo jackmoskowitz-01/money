@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -15,6 +16,9 @@ export type Task = {
   dueDate: string;
   completed: boolean;
   createdAt: string;
+  assignedTo?: string;
+  assignedBy?: string;
+  assignedToName?: string;
 };
 
 type DbRow = {
@@ -28,6 +32,9 @@ type DbRow = {
   due_date: string;
   completed: boolean;
   created_at: string;
+  assigned_to: string | null;
+  assigned_by: string | null;
+  assigned_to_name: string | null;
 };
 
 const rowToTask = (r: DbRow): Task => ({
@@ -41,6 +48,9 @@ const rowToTask = (r: DbRow): Task => ({
   dueDate: r.due_date?.split('T')[0] || new Date().toISOString().split('T')[0],
   completed: r.completed,
   createdAt: r.created_at,
+  assignedTo: r.assigned_to || undefined,
+  assignedBy: r.assigned_by || undefined,
+  assignedToName: r.assigned_to_name || undefined,
 });
 
 export function useTasks() {
@@ -48,6 +58,11 @@ export function useTasks() {
   const [loading, setLoading] = useState(true);
 
   const fetchTasks = useCallback(async () => {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    // Fetch tasks: either unassigned (team-wide), assigned to me, or created by me
     const { data, error } = await supabase
       .from('tasks')
       .select('*')
@@ -97,9 +112,11 @@ export function useTasks() {
 
   const addTask = useCallback(async (task: {
     title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string;
-    tenantId?: string; buildingId?: string;
+    tenantId?: string; buildingId?: string; assignedTo?: string; assignedToName?: string;
   }) => {
-    const row = {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const row: Record<string, any> = {
       title: task.title.trim(),
       description: task.description.trim(),
       type: task.type,
@@ -110,7 +127,13 @@ export function useTasks() {
       building_id: task.buildingId || null,
     };
 
-    const { data, error } = await supabase.from('tasks').insert(row).select('*').single();
+    if (task.assignedTo) {
+      row.assigned_to = task.assignedTo;
+      row.assigned_by = user?.id || null;
+      row.assigned_to_name = task.assignedToName || '';
+    }
+
+    const { data, error } = await supabase.from('tasks').insert(row as any).select('*').single();
     if (!error && data) {
       const newTask = rowToTask(data as unknown as DbRow);
       setTasks(prev => [newTask, ...prev]);
@@ -119,13 +142,17 @@ export function useTasks() {
     return null;
   }, []);
 
-  const updateTask = useCallback(async (id: string, updates: Partial<{ completed: boolean; title: string; description: string; priority: TaskPriority; dueDate: string }>) => {
+  const updateTask = useCallback(async (id: string, updates: Partial<{ completed: boolean; title: string; description: string; priority: TaskPriority; dueDate: string; assignedTo: string; assignedToName: string }>) => {
     const dbUpdates: Record<string, any> = {};
     if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
     if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+    if (updates.assignedTo !== undefined) {
+      dbUpdates.assigned_to = updates.assignedTo || null;
+      dbUpdates.assigned_to_name = updates.assignedToName || '';
+    }
 
     const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', id);
     if (!error) {

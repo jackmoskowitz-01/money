@@ -607,9 +607,7 @@ const Tasks = () => {
                     const cp = getCustomProspects().find(p => p.id === t.tenantId);
                     name = cp?.name;
                   }
-                  if (!name) {
-                    name = t.title.match(/(?:with|for|to)\s+(.+)/i)?.[1] || t.title || 'Unknown';
-                  }
+                  if (!name) return; // Skip tasks without a real prospect match
                   const existing = prospectMap.get(t.tenantId!);
                   const isOverdue = t.dueDate < todayDate;
                   if (existing) {

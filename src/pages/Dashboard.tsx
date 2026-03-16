@@ -22,6 +22,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
+import CriticalDatesTracker from '@/components/CriticalDatesTracker';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';

@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useProspectLists } from '@/hooks/useProspectLists';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus, Building2, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
-import { Building2 } from 'lucide-react';
+
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,6 +53,7 @@ const Tasks = () => {
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { lists: prospectLists, loading: listsLoading } = useProspectLists();
 
   // Listen for task assignment notifications
   useEffect(() => {
@@ -467,6 +469,9 @@ const Tasks = () => {
               <TabsTrigger value="lists" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                 <List className="h-3 w-3" /> Prospect Lists
               </TabsTrigger>
+              <TabsTrigger value="prospects" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                <User className="h-3 w-3" /> Prospects
+              </TabsTrigger>
             </TabsList>
 
             {/* ── TASKS TAB ── */}
@@ -581,6 +586,68 @@ const Tasks = () => {
             {/* ── PROSPECT LISTS TAB ── */}
             <TabsContent value="lists" className="mt-0">
               <ProspectLists />
+            </TabsContent>
+
+            {/* ── PROSPECTS TAB ── */}
+            <TabsContent value="prospects" className="mt-0">
+              {listsLoading ? (
+                <div className="space-y-2">
+                  {[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
+                </div>
+              ) : (() => {
+                const allProspects = prospectLists.flatMap(l => l.entries.map(e => ({ ...e, listName: l.name })));
+                const uniqueMap = new Map<string, typeof allProspects[0] & { lists: string[] }>();
+                allProspects.forEach(p => {
+                  const existing = uniqueMap.get(p.tenantId);
+                  if (existing) {
+                    if (!existing.lists.includes(p.listName)) existing.lists.push(p.listName);
+                  } else {
+                    uniqueMap.set(p.tenantId, { ...p, lists: [p.listName] });
+                  }
+                });
+                const prospects = Array.from(uniqueMap.values());
+
+                if (prospects.length === 0) {
+                  return (
+                    <Card className="border-border bg-card p-12 text-center">
+                      <User className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
+                      <p className="text-sm font-medium text-muted-foreground">No prospects yet</p>
+                      <p className="mt-1 text-xs text-muted-foreground/60">Add prospects to your lists to see them here</p>
+                    </Card>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground mb-2">{prospects.length} prospect{prospects.length !== 1 ? 's' : ''} across your lists</p>
+                    {prospects.map((p, i) => (
+                      <motion.div key={p.tenantId} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
+                        <Card
+                          className="border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30"
+                          onClick={() => {
+                            if (p.buildingId) navigate(`/building/${p.buildingId}/tenant/${p.tenantId}`);
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                              <Building2 className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">{p.tenantName}</p>
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                {p.lists.map(l => (
+                                  <Badge key={l} variant="outline" className="text-[10px] bg-secondary/50">{l}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-muted-foreground/40" />
+                          </div>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                );
+              })()}
             </TabsContent>
           </Tabs>
         </motion.div>

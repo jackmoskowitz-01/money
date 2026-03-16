@@ -1,0 +1,18 @@
+ALTER TABLE public.user_settings
+  ADD COLUMN IF NOT EXISTS specialties text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS years_experience text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS deal_size_sweet_spot text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS asset_classes text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS communication_persona_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS writing_style_sample text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS jargon_level text NOT NULL DEFAULT 'moderate',
+  ADD COLUMN IF NOT EXISTS humor_preference text NOT NULL DEFAULT 'occasional',
+  ADD COLUMN IF NOT EXISTS followup_cadence text NOT NULL DEFAULT 'standard',
+  ADD COLUMN IF NOT EXISTS target_submarkets text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS key_competitors text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS buildings_repped text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS landlord_relationships text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS quarterly_focus text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS revenue_target text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS deal_count_goal text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS personal_pitch text NOT NULL DEFAULT '';

@@ -9,7 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain, Target } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -52,6 +53,26 @@ const Settings = () => {
     calendarConnected: false,
     copilotMemory: true,
     brainEnabled: false,
+  });
+
+  const [brokerProfile, setBrokerProfile] = useState({
+    specialties: '',
+    yearsExperience: '',
+    dealSizeSweetSpot: '',
+    assetClasses: '',
+    communicationPersonaEnabled: false,
+    writingStyleSample: '',
+    jargonLevel: 'moderate',
+    humorPreference: 'occasional',
+    followupCadence: 'standard',
+    targetSubmarkets: '',
+    keyCompetitors: '',
+    buildingsRepped: '',
+    landlordRelationships: '',
+    quarterlyFocus: '',
+    revenueTarget: '',
+    dealCountGoal: '',
+    personalPitch: '',
   });
 
   // Load settings from database
@@ -105,6 +126,25 @@ const Settings = () => {
           copilotMemory: s.copilot_memory ?? true,
           brainEnabled: (s as any).brain_enabled ?? false,
         });
+        setBrokerProfile({
+          specialties: s.specialties || '',
+          yearsExperience: s.years_experience || '',
+          dealSizeSweetSpot: s.deal_size_sweet_spot || '',
+          assetClasses: s.asset_classes || '',
+          communicationPersonaEnabled: s.communication_persona_enabled ?? false,
+          writingStyleSample: s.writing_style_sample || '',
+          jargonLevel: s.jargon_level || 'moderate',
+          humorPreference: s.humor_preference || 'occasional',
+          followupCadence: s.followup_cadence || 'standard',
+          targetSubmarkets: s.target_submarkets || '',
+          keyCompetitors: s.key_competitors || '',
+          buildingsRepped: s.buildings_repped || '',
+          landlordRelationships: s.landlord_relationships || '',
+          quarterlyFocus: s.quarterly_focus || '',
+          revenueTarget: s.revenue_target || '',
+          dealCountGoal: s.deal_count_goal || '',
+          personalPitch: s.personal_pitch || '',
+        });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }
 
@@ -155,6 +195,23 @@ const Settings = () => {
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
         brain_enabled: integrations.brainEnabled,
+        specialties: brokerProfile.specialties,
+        years_experience: brokerProfile.yearsExperience,
+        deal_size_sweet_spot: brokerProfile.dealSizeSweetSpot,
+        asset_classes: brokerProfile.assetClasses,
+        communication_persona_enabled: brokerProfile.communicationPersonaEnabled,
+        writing_style_sample: brokerProfile.writingStyleSample,
+        jargon_level: brokerProfile.jargonLevel,
+        humor_preference: brokerProfile.humorPreference,
+        followup_cadence: brokerProfile.followupCadence,
+        target_submarkets: brokerProfile.targetSubmarkets,
+        key_competitors: brokerProfile.keyCompetitors,
+        buildings_repped: brokerProfile.buildingsRepped,
+        landlord_relationships: brokerProfile.landlordRelationships,
+        quarterly_focus: brokerProfile.quarterlyFocus,
+        revenue_target: brokerProfile.revenueTarget,
+        deal_count_goal: brokerProfile.dealCountGoal,
+        personal_pitch: brokerProfile.personalPitch,
         updated_at: new Date().toISOString(),
       };
 
@@ -202,9 +259,12 @@ const Settings = () => {
         <p className="text-muted-foreground text-sm mb-6">Manage your preferences and defaults</p>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="profile" className="text-xs gap-1">
               <User className="h-3.5 w-3.5 hidden sm:block" /> Profile
+            </TabsTrigger>
+            <TabsTrigger value="broker" className="text-xs gap-1">
+              <Target className="h-3.5 w-3.5 hidden sm:block" /> Broker DNA
             </TabsTrigger>
             <TabsTrigger value="email" className="text-xs gap-1">
               <Mail className="h-3.5 w-3.5 hidden sm:block" /> Email
@@ -216,7 +276,7 @@ const Settings = () => {
               <Workflow className="h-3.5 w-3.5 hidden sm:block" /> Workflow
             </TabsTrigger>
             <TabsTrigger value="integrations" className="text-xs gap-1">
-              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI & Integrations
+              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI
             </TabsTrigger>
             <TabsTrigger value="appearance" className="text-xs gap-1">
               <Palette className="h-3.5 w-3.5 hidden sm:block" /> Display
@@ -259,7 +319,184 @@ const Settings = () => {
             </Card>
           </TabsContent>
 
-          {/* Email Defaults */}
+          {/* Broker DNA */}
+          <TabsContent value="broker">
+            <div className="space-y-6">
+              {/* Deal Style & Strengths */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Deal Style & Strengths</CardTitle>
+                  <CardDescription>Help the AI understand your expertise so it pitches and strategizes like you</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Specialties</Label>
+                      <Input placeholder="Tenant rep, landlord rep, investment sales..." value={brokerProfile.specialties} onChange={e => setBrokerProfile(p => ({ ...p, specialties: e.target.value }))} />
+                      <p className="text-[10px] text-muted-foreground">Comma-separated</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Years of Experience</Label>
+                      <Select value={brokerProfile.yearsExperience} onValueChange={v => setBrokerProfile(p => ({ ...p, yearsExperience: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1-3">1–3 years</SelectItem>
+                          <SelectItem value="4-7">4–7 years</SelectItem>
+                          <SelectItem value="8-15">8–15 years</SelectItem>
+                          <SelectItem value="15+">15+ years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Deal Size Sweet Spot</Label>
+                      <Select value={brokerProfile.dealSizeSweetSpot} onValueChange={v => setBrokerProfile(p => ({ ...p, dealSizeSweetSpot: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="<5k SF">Under 5,000 SF</SelectItem>
+                          <SelectItem value="5k-15k SF">5,000–15,000 SF</SelectItem>
+                          <SelectItem value="15k-50k SF">15,000–50,000 SF</SelectItem>
+                          <SelectItem value="50k+ SF">50,000+ SF</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preferred Asset Classes</Label>
+                      <Input placeholder="Office, industrial, retail, mixed-use..." value={brokerProfile.assetClasses} onChange={e => setBrokerProfile(p => ({ ...p, assetClasses: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Your Elevator Pitch</Label>
+                    <Textarea placeholder="What makes you different? E.g. 'I specialize in helping mid-size law firms find Class A space in downtown DC. I've closed 40+ deals in the corridor and know every landlord personally.'" value={brokerProfile.personalPitch} onChange={e => setBrokerProfile(p => ({ ...p, personalPitch: e.target.value }))} rows={3} />
+                    <p className="text-[10px] text-muted-foreground">The AI will channel this when positioning you to prospects</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Communication Persona */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Communication Persona</span>
+                    <Switch
+                      checked={brokerProfile.communicationPersonaEnabled}
+                      onCheckedChange={v => setBrokerProfile(p => ({ ...p, communicationPersonaEnabled: v }))}
+                    />
+                  </CardTitle>
+                  <CardDescription>
+                    {brokerProfile.communicationPersonaEnabled
+                      ? 'Active — AI drafts will mirror your voice and style'
+                      : 'Off — AI uses default professional tone. Enable to make drafts sound like you.'}
+                  </CardDescription>
+                </CardHeader>
+                {brokerProfile.communicationPersonaEnabled && (
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label>Jargon Level</Label>
+                        <Select value={brokerProfile.jargonLevel} onValueChange={v => setBrokerProfile(p => ({ ...p, jargonLevel: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="minimal">Minimal — plain English</SelectItem>
+                            <SelectItem value="moderate">Moderate — some CRE terms</SelectItem>
+                            <SelectItem value="heavy">Heavy — full industry speak</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Humor</Label>
+                        <Select value={brokerProfile.humorPreference} onValueChange={v => setBrokerProfile(p => ({ ...p, humorPreference: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">None — strictly business</SelectItem>
+                            <SelectItem value="occasional">Occasional — light touches</SelectItem>
+                            <SelectItem value="frequent">Frequent — keep it fun</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Follow-Up Cadence</Label>
+                        <Select value={brokerProfile.followupCadence} onValueChange={v => setBrokerProfile(p => ({ ...p, followupCadence: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="aggressive">Aggressive — every 2-3 days</SelectItem>
+                            <SelectItem value="standard">Standard — weekly</SelectItem>
+                            <SelectItem value="patient">Patient — every 2 weeks</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Writing Style Sample</Label>
+                      <Textarea placeholder="Paste a real email you've sent that captures your voice. The AI will learn your cadence, word choices, and sign-off style." value={brokerProfile.writingStyleSample} onChange={e => setBrokerProfile(p => ({ ...p, writingStyleSample: e.target.value }))} rows={4} />
+                      <p className="text-[10px] text-muted-foreground">This is the single most impactful field — paste an email you're proud of</p>
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Market & Territory */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Market & Territory Context</CardTitle>
+                  <CardDescription>Your turf, relationships, and competitive landscape</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Target Submarkets</Label>
+                      <Input placeholder="CBD, East End, Tysons, Bethesda..." value={brokerProfile.targetSubmarkets} onChange={e => setBrokerProfile(p => ({ ...p, targetSubmarkets: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Key Competitors</Label>
+                      <Input placeholder="Broker names or teams you compete against" value={brokerProfile.keyCompetitors} onChange={e => setBrokerProfile(p => ({ ...p, keyCompetitors: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Buildings You Rep</Label>
+                      <Textarea placeholder="List buildings you represent or have exclusive on" value={brokerProfile.buildingsRepped} onChange={e => setBrokerProfile(p => ({ ...p, buildingsRepped: e.target.value }))} rows={2} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Landlord Relationships</Label>
+                      <Textarea placeholder="Key landlord contacts, e.g. 'Boston Properties — strong rapport with leasing team'" value={brokerProfile.landlordRelationships} onChange={e => setBrokerProfile(p => ({ ...p, landlordRelationships: e.target.value }))} rows={2} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Goals & Priorities */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Goals & Current Priorities</CardTitle>
+                  <CardDescription>What matters to you right now — the AI will prioritize accordingly</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Revenue Target</Label>
+                      <Input placeholder="$500K this quarter" value={brokerProfile.revenueTarget} onChange={e => setBrokerProfile(p => ({ ...p, revenueTarget: e.target.value }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Deal Count Goal</Label>
+                      <Input placeholder="Close 8 deals this quarter" value={brokerProfile.dealCountGoal} onChange={e => setBrokerProfile(p => ({ ...p, dealCountGoal: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>This Quarter's Focus</Label>
+                    <Textarea placeholder="E.g. 'Expanding into Tysons market, building law firm pipeline, closing 3 renewals by March'" value={brokerProfile.quarterlyFocus} onChange={e => setBrokerProfile(p => ({ ...p, quarterlyFocus: e.target.value }))} rows={2} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Button onClick={() => saveAll('Broker DNA')} className="w-full" disabled={saving}>
+                {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                Save Broker DNA
+              </Button>
+            </div>
+          </TabsContent>
+
           <TabsContent value="email">
             <Card>
               <CardHeader>

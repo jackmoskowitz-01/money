@@ -1583,10 +1583,53 @@ For each line item, also produce a monthly breakdown:
     let assistantSoFar = '';
 
     try {
-      // Load templates for context
+      // Load templates and broker profile for context
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
       const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
       const brainCtx = brainEnabled && brainContext ? `\n\n${brainContext}` : '';
+
+      // Load broker profile for personalization
+      let brokerProfileCtx = '';
+      if (!voiceModeRef.current && user) {
+        const { data: bp } = await supabase
+          .from('user_settings' as any)
+          .select('specialties, years_experience, deal_size_sweet_spot, asset_classes, communication_persona_enabled, writing_style_sample, jargon_level, humor_preference, followup_cadence, target_submarkets, key_competitors, buildings_repped, landlord_relationships, quarterly_focus, revenue_target, deal_count_goal, personal_pitch, brokerage')
+          .eq('user_id', user.id)
+          .single();
+
+        if (bp) {
+          const s = bp as any;
+          const parts: string[] = [];
+          if (s.specialties) parts.push(`- **Specialties:** ${s.specialties}`);
+          if (s.years_experience) parts.push(`- **Experience:** ${s.years_experience} years`);
+          if (s.deal_size_sweet_spot) parts.push(`- **Deal Size Sweet Spot:** ${s.deal_size_sweet_spot}`);
+          if (s.asset_classes) parts.push(`- **Asset Classes:** ${s.asset_classes}`);
+          if (s.brokerage) parts.push(`- **Brokerage:** ${s.brokerage}`);
+          if (s.personal_pitch) parts.push(`- **Elevator Pitch:** ${s.personal_pitch}`);
+          if (s.target_submarkets) parts.push(`- **Target Submarkets:** ${s.target_submarkets}`);
+          if (s.key_competitors) parts.push(`- **Competitors:** ${s.key_competitors}`);
+          if (s.buildings_repped) parts.push(`- **Buildings Repped:** ${s.buildings_repped}`);
+          if (s.landlord_relationships) parts.push(`- **Landlord Relationships:** ${s.landlord_relationships}`);
+          if (s.quarterly_focus) parts.push(`- **This Quarter's Focus:** ${s.quarterly_focus}`);
+          if (s.revenue_target) parts.push(`- **Revenue Target:** ${s.revenue_target}`);
+          if (s.deal_count_goal) parts.push(`- **Deal Count Goal:** ${s.deal_count_goal}`);
+
+          if (parts.length > 0) {
+            brokerProfileCtx = `\n\n### 🎯 Broker Profile\nThis is who you're working with. Tailor all advice, strategy, and priorities to THIS broker's strengths, market, and goals. Reference their expertise when relevant — they should feel like you truly know them.\n${parts.join('\n')}`;
+          }
+
+          if (s.communication_persona_enabled) {
+            const personaParts: string[] = [];
+            personaParts.push(`- **Jargon Level:** ${s.jargon_level}`);
+            personaParts.push(`- **Humor:** ${s.humor_preference}`);
+            personaParts.push(`- **Follow-Up Cadence:** ${s.followup_cadence}`);
+            if (s.writing_style_sample) {
+              personaParts.push(`- **Writing Style Sample (mirror this voice):**\n> ${s.writing_style_sample.split('\n').join('\n> ')}`);
+            }
+            brokerProfileCtx += `\n\n### 🗣️ Communication Persona — ACTIVE\nMirror this broker's communication style in ALL drafts, emails, and responses. Match their jargon level, humor preference, and writing cadence. If they provided a writing sample, study it and replicate their voice — word choices, sentence length, sign-off style, level of formality.\n${personaParts.join('\n')}`;
+          }
+        }
+      }
 
       // Live data awareness when brain is enabled
       let liveDataCtx = '';
@@ -1718,7 +1761,7 @@ For each line item, also produce a monthly breakdown:
         }
       }
 
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx);
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

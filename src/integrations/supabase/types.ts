@@ -790,69 +790,120 @@ export type Database = {
       user_settings: {
         Row: {
           activity_categories: string
+          asset_classes: string
           brain_enabled: boolean
           brokerage: string
+          buildings_repped: string
           calendar_connected: boolean
+          communication_persona_enabled: boolean
           copilot_memory: boolean
           created_at: string
           dark_mode: boolean
+          deal_count_goal: string
+          deal_size_sweet_spot: string
           default_market: string
           email_greeting: string
           email_signature: string
           email_tone: string
+          followup_cadence: string
+          humor_preference: string
           id: string
+          jargon_level: string
+          key_competitors: string
+          landlord_relationships: string
           meeting_lead_weeks: string
           notify_new_scoops: boolean
           notify_pipeline_changes: boolean
           notify_task_reminders: boolean
           notify_weekly_digest: boolean
+          personal_pitch: string
           phone: string
+          quarterly_focus: string
+          revenue_target: string
+          specialties: string
+          target_submarkets: string
           updated_at: string
           user_id: string
+          writing_style_sample: string
+          years_experience: string
         }
         Insert: {
           activity_categories?: string
+          asset_classes?: string
           brain_enabled?: boolean
           brokerage?: string
+          buildings_repped?: string
           calendar_connected?: boolean
+          communication_persona_enabled?: boolean
           copilot_memory?: boolean
           created_at?: string
           dark_mode?: boolean
+          deal_count_goal?: string
+          deal_size_sweet_spot?: string
           default_market?: string
           email_greeting?: string
           email_signature?: string
           email_tone?: string
+          followup_cadence?: string
+          humor_preference?: string
           id?: string
+          jargon_level?: string
+          key_competitors?: string
+          landlord_relationships?: string
           meeting_lead_weeks?: string
           notify_new_scoops?: boolean
           notify_pipeline_changes?: boolean
           notify_task_reminders?: boolean
           notify_weekly_digest?: boolean
+          personal_pitch?: string
           phone?: string
+          quarterly_focus?: string
+          revenue_target?: string
+          specialties?: string
+          target_submarkets?: string
           updated_at?: string
           user_id: string
+          writing_style_sample?: string
+          years_experience?: string
         }
         Update: {
           activity_categories?: string
+          asset_classes?: string
           brain_enabled?: boolean
           brokerage?: string
+          buildings_repped?: string
           calendar_connected?: boolean
+          communication_persona_enabled?: boolean
           copilot_memory?: boolean
           created_at?: string
           dark_mode?: boolean
+          deal_count_goal?: string
+          deal_size_sweet_spot?: string
           default_market?: string
           email_greeting?: string
           email_signature?: string
           email_tone?: string
+          followup_cadence?: string
+          humor_preference?: string
           id?: string
+          jargon_level?: string
+          key_competitors?: string
+          landlord_relationships?: string
           meeting_lead_weeks?: string
           notify_new_scoops?: boolean
           notify_pipeline_changes?: boolean
           notify_task_reminders?: boolean
           notify_weekly_digest?: boolean
+          personal_pitch?: string
           phone?: string
+          quarterly_focus?: string
+          revenue_target?: string
+          specialties?: string
+          target_submarkets?: string
           updated_at?: string
           user_id?: string
+          writing_style_sample?: string
+          years_experience?: string
         }
         Relationships: []
       }

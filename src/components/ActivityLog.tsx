@@ -21,6 +21,8 @@ const typeOptions: { value: ActivityType; label: string; icon: typeof Mail; defa
   { value: 'call', label: 'Call', icon: Phone, defaultTitle: 'Phone call' },
   { value: 'meeting', label: 'Meeting', icon: Users, defaultTitle: 'Meeting held' },
   { value: 'note', label: 'Note', icon: StickyNote, defaultTitle: 'Note added' },
+  { value: 'do_not_call', label: 'DNC', icon: PhoneOff, defaultTitle: 'Do Not Call' },
+  { value: 'meeting_set', label: 'Meeting Set', icon: CalendarCheck, defaultTitle: 'Meeting scheduled' },
 ];
 
 // Types that require contact selection

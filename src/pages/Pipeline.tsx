@@ -98,10 +98,36 @@ const Pipeline = () => {
   };
 
   const handleStageChange = async (tenantId: string, buildingId: string, newStage: PipelineStage) => {
+    // If moving to won or lost, prompt for outcome reason
+    if (newStage === 'won' || newStage === 'lost') {
+      setOutcomeDialog({ tenantId, buildingId, stage: newStage });
+      return;
+    }
     await updateStage(tenantId, buildingId, newStage);
     if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
       setSelectedItem({ ...selectedItem, stage: newStage });
     }
+  };
+
+  const handleOutcomeConfirm = async () => {
+    if (!outcomeDialog) return;
+    const { tenantId, buildingId, stage } = outcomeDialog;
+    await updateStage(tenantId, buildingId, stage);
+    // Save outcome and reason
+    await supabase
+      .from('pipeline_deals')
+      .update({
+        outcome: stage === 'won' ? 'won' : 'lost',
+        outcome_reason: outcomeReason.trim(),
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq('tenant_id', tenantId)
+      .eq('building_id', buildingId);
+    if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
+      setSelectedItem({ ...selectedItem, stage });
+    }
+    setOutcomeDialog(null);
+    setOutcomeReason('');
   };
 
   const handleAddNote = async () => {

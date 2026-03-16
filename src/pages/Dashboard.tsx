@@ -240,6 +240,9 @@ const Dashboard = () => {
             <TabsTrigger value="market" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
               <MapPin className="h-3 w-3" /> Market
             </TabsTrigger>
+            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Calendar className="h-3 w-3" /> Critical Dates
+            </TabsTrigger>
           </TabsList>
 
           {/* ── PERFORMANCE TAB ── */}

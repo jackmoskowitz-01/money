@@ -626,7 +626,7 @@ const Tasks = () => {
                   } else {
                     prospectMap.set(t.tenantId!, {
                       tenantId: t.tenantId!,
-                      buildingId: t.buildingId || '',
+                      buildingId: resolvedBuildingId,
                       tenantName: name,
                       taskCount: 1,
                       overdueCount: isOverdue ? 1 : 0,

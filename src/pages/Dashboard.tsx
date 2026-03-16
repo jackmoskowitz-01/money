@@ -393,6 +393,99 @@ const Dashboard = () => {
 
           {/* ── ACTIVITY TAB ── */}
           <TabsContent value="activity" className="mt-0">
+            {/* Activity Stats Row */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              {/* Activities This Week */}
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-info/10 text-info">
+                    <Zap className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {activities.filter(a => now - new Date(a.timestamp).getTime() < 7 * 24 * 3600000).length}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Activities (7d)</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Emails sent</span>
+                    <span className="font-semibold text-foreground">
+                      {activities.filter(a => a.type === 'email_sent').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Calls made</span>
+                    <span className="font-semibold text-foreground">
+                      {activities.filter(a => a.type === 'call_made').length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-muted-foreground">Meetings</span>
+                    <span className="font-semibold text-foreground">
+                      {activities.filter(a => a.type === 'meeting_held').length}
+                    </span>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Top Activity Type */}
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Activity className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {activities.length > 0 ? Math.max(
+                        activities.filter(a => a.type === 'email_sent').length,
+                        activities.filter(a => a.type === 'call_made').length,
+                        activities.filter(a => a.type === 'meeting_held').length
+                      ) : 0}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Top Activity</p>
+                  </div>
+                </div>
+                <p className="text-xs font-medium text-foreground">
+                  {activities.length > 0 ? (
+                    activities.filter(a => a.type === 'email_sent').length >= activities.filter(a => a.type === 'call_made').length && 
+                    activities.filter(a => a.type === 'email_sent').length >= activities.filter(a => a.type === 'meeting_held').length
+                      ? '📧 Email Outreach'
+                      : activities.filter(a => a.type === 'call_made').length >= activities.filter(a => a.type === 'meeting_held').length
+                        ? '📞 Phone Calls'
+                        : '🤝 Meetings'
+                  ) : 'No activity yet'}
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 mt-1">Most used touchpoint</p>
+              </Card>
+
+              {/* Activity Streak */}
+              <Card className="border-border bg-card p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-success/10 text-success">
+                    <Flame className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">
+                      {activities.filter(a => {
+                        const daysSince = Math.floor((now - new Date(a.timestamp).getTime()) / (24 * 3600000));
+                        return daysSince === 0;
+                      }).length}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Today's Activities</p>
+                  </div>
+                </div>
+                <p className="text-xs font-medium text-foreground">
+                  {activities.filter(a => {
+                    const daysSince = Math.floor((now - new Date(a.timestamp).getTime()) / (24 * 3600000));
+                    return daysSince === 0;
+                  }).length > 0 ? '🔥 Active today!' : '📊 Start logging'}
+                </p>
+                <p className="text-[10px] text-muted-foreground/70 mt-1">Keep the momentum going</p>
+              </Card>
+            </div>
+
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Recent Activities */}
               <Card className="border-border bg-card p-5">

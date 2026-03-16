@@ -443,8 +443,8 @@ const Tasks = () => {
               {renderTaskForm()}
 
               <div className="mb-4 flex items-center gap-2 flex-wrap">
-                {(['all', 'pending', 'completed'] as const).map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f}</button>
+                {(['all', 'pending', 'completed', 'assigned_to_me'] as const).map(f => (
+                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f === 'assigned_to_me' ? 'My Assignments' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
                 ))}
                 {selectedDate && (
                   <div className="ml-auto flex items-center gap-2">

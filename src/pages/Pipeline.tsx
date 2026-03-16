@@ -5,6 +5,7 @@ import {
   GripVertical, Plus, StickyNote, ChevronRight, X, UserPlus,
   Mail, Phone, Building2, MessageSquare, Sparkles, Send,
   Check, Clock, Loader2, Copy, AlertTriangle, Trash2,
+  BarChart3, Users, Ruler, TrendingUp,
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import {

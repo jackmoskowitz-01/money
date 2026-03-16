@@ -32,12 +32,7 @@ const Navbar = () => {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 outline-none">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <Building2 className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-display text-lg font-bold tracking-tight text-foreground">
-              DealFlow
-            </span>
+            <img src={dealflowLogo} alt="DealFlow" className="h-8 rounded-md" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48">
             <DropdownMenuItem asChild>

@@ -43,7 +43,6 @@ const MapView = () => {
   const [activityOverlay, setActivityOverlay] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
-  const clusterGroupRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
   const mockMarkersRef = useRef<any[]>([]);
   const activityCirclesRef = useRef<any[]>([]);
@@ -105,18 +104,13 @@ const MapView = () => {
   const addGoogleMarkersToMap = async (blds: Building[]) => {
     const L = await import('leaflet');
 
-    googleMarkersRef.current.forEach(m => {
-      clusterGroupRef.current?.removeLayer(m);
-    });
+    googleMarkersRef.current.forEach(m => m.remove());
     googleMarkersRef.current = [];
 
     const log = getVisitLog();
     blds.forEach(b => {
       const marker = createMapMarker(L, b, log, thresholdDays, trackerEnabled);
-      if (marker) {
-        clusterGroupRef.current?.addLayer(marker);
-        googleMarkersRef.current.push(marker);
-      }
+      if (marker) googleMarkersRef.current.push(marker);
     });
   };
 
@@ -164,19 +158,36 @@ const MapView = () => {
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
 
-  // Helper to create a dot-style circle marker
-  const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean) => {
+  // Helper to create a map marker — uses red icon when tracker is on and building is stale
+  const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean, mapInstance?: any) => {
+    const targetMap = mapInstance || mapInstanceRef.current;
+    if (!targetMap) return null;
+
     const stale = isTrackerOn && (!log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000);
 
-    const color = stale ? '#ef4444' : '#60a5fa'; // red vs blue
-    const marker = L.circleMarker([building.lat, building.lng], {
-      radius: 6,
-      color: stale ? '#dc2626' : '#3b82f6',
-      fillColor: color,
-      fillOpacity: 0.85,
-      weight: 2,
-      opacity: 1,
+    const defaultIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
     });
+
+    const redIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    });
+
+    const marker = L.marker([building.lat, building.lng], {
+      icon: stale ? redIcon : defaultIcon,
+    }).addTo(targetMap);
 
     const lastViewedText = !log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`;
     marker.bindPopup(`
@@ -189,20 +200,19 @@ const MapView = () => {
     `);
     marker.on('click', () => setSelectedBuilding(building));
     (marker as any)._buildingId = building.id;
-    (marker as any)._staleColor = '#ef4444';
-    (marker as any)._defaultColor = '#60a5fa';
+    (marker as any)._defaultIcon = defaultIcon;
+    (marker as any)._redIcon = redIcon;
     return marker;
   }, []);
 
-  // Refresh marker colors when visitLog, threshold, or tracker toggle changes
+  // Refresh marker icons when visitLog, threshold, or tracker toggle changes
   const refreshMarkerIcons = useCallback(() => {
     const log = getVisitLog();
     [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
       const bid = marker._buildingId;
-      if (!bid) return;
+      if (!bid || !marker._defaultIcon || !marker._redIcon) return;
       const stale = trackerEnabled && (!log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000);
-      const color = stale ? marker._staleColor || '#ef4444' : marker._defaultColor || '#60a5fa';
-      marker.setStyle({ color: stale ? '#dc2626' : '#3b82f6', fillColor: color });
+      marker.setIcon(stale ? marker._redIcon : marker._defaultIcon);
     });
   }, [thresholdDays, trackerEnabled]);
 
@@ -395,55 +405,12 @@ const MapView = () => {
         attribution: '&copy; CARTO',
       }).addTo(map);
 
-      // Import markercluster
-      await import('leaflet.markercluster');
-      await import('leaflet.markercluster/dist/MarkerCluster.css');
-      await import('leaflet.markercluster/dist/MarkerCluster.Default.css');
-
-      const clusterGroup = (L as any).markerClusterGroup({
-        maxClusterRadius: 40,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        iconCreateFunction: (cluster: any) => {
-          const count = cluster.getChildCount();
-          let size = 'small';
-          let px = 32;
-          if (count > 20) { size = 'large'; px = 44; }
-          else if (count > 5) { size = 'medium'; px = 38; }
-          return L.divIcon({
-            html: `<div style="
-              background: hsl(217, 91%, 60%);
-              color: white;
-              border-radius: 50%;
-              width: ${px}px;
-              height: ${px}px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 12px;
-              font-weight: 700;
-              border: 2px solid rgba(255,255,255,0.3);
-              box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-            ">${count}</div>`,
-            className: '',
-            iconSize: L.point(px, px),
-          });
-        },
-      });
-
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled);
-        if (marker) {
-          clusterGroup.addLayer(marker);
-          mockMarkersRef.current.push(marker);
-        }
+        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled, map);
+        if (marker) mockMarkersRef.current.push(marker);
       });
-
-      map.addLayer(clusterGroup);
-      clusterGroupRef.current = clusterGroup;
 
       mapInstanceRef.current = map;
       fetchGoogleBuildings();

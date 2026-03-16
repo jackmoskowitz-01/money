@@ -851,7 +851,7 @@ const Prospects = () => {
                   </Button>
                   {showListPicker && (
                     <div className="absolute bottom-full left-0 mb-2 w-56 rounded-md border border-border bg-card p-2 shadow-lg space-y-1">
-                      {getProspectLists().map(list => (
+                      {prospectLists.map(list => (
                         <button
                           key={list.id}
                           onClick={() => bulkAddToList(list.id)}

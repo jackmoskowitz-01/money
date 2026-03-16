@@ -21,6 +21,7 @@ import ActivityLogger from "./pages/ActivityLogger";
 import Settings from "./pages/Settings";
 import LoopNetSearch from "./pages/LoopNetSearch";
 import LoopNetDetail from "./pages/LoopNetDetail";
+import EmailAnalytics from "./pages/EmailAnalytics";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 

@@ -1391,7 +1391,7 @@ For each line item, also produce a monthly breakdown:
                 source: 'abstract',
                 lease_abstract_id: null,
                 acknowledged: false,
-              });
+              }));
               await supabase.from('critical_dates' as any).insert(rows as any);
               toast.success(`📅 ${extractData.dates.length} critical dates extracted and tracked`, {
                 description: 'View them on your Dashboard',

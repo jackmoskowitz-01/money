@@ -1,11 +1,12 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, X, UserPlus, Upload, Download, Loader2 } from 'lucide-react';
+import { ChevronDown, Plus, X, UserPlus, Upload, Download, Loader2, Pencil, Check } from 'lucide-react';
 import { type Building, type Tenant } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { digestEvent } from '@/lib/autoDigest';
 
 type StackingPlanProps = {
   building: Building;

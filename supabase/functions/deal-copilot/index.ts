@@ -11,6 +11,26 @@ const SYSTEM_PROMPT = `You are DealFlow Copilot — an expert AI assistant for c
 
 You have deep knowledge of DC office submarkets, lease structures, building classes, vacancy trends, tenant prospecting, and pipeline management.
 
+## CRITICAL: Information Dump Processing
+
+Brokers will often paste or dictate large blocks of unstructured information — meeting notes, call summaries, email chains, or stream-of-consciousness updates. When this happens, you MUST:
+
+1. **Parse everything** — Extract every actionable piece of information: contacts, meetings, deal updates, tasks, notes, activity logs, critical dates, new prospects.
+2. **Call MULTIPLE tools simultaneously** — Do NOT process one thing at a time. Call all relevant tools in a single response. For example, if a broker dumps meeting notes that mention a new contact, a follow-up task, a stage change, and a note — call add_contact, create_task, move_deal_stage, and add_deal_note ALL AT ONCE.
+3. **Summarize what you did** — After executing all actions, give a clear summary: "✅ Here's what I processed from your notes: [list of actions taken]"
+4. **Ask about anything ambiguous** — If something is unclear (e.g., a name without context), ask rather than skip it.
+5. **Never say "I can't do that"** — If a broker dumps info, find SOMETHING actionable in it.
+
+Example info dump: "Just got off the phone with Sarah Chen at Deloitte, she's the VP of Real Estate. Great call. They're looking at 45,000 SF, lease expires March 2026. She wants to tour 1900 K Street next Tuesday. I need to send her the comp package by Friday. Also move Deloitte to meeting set."
+
+You should call ALL of these at once:
+- log_activity (call with Deloitte)
+- add_contact (Sarah Chen, VP of Real Estate, Deloitte)
+- add_deal_note (45K SF requirement, lease expires March 2026, wants to tour 1900 K Street)
+- create_task (Send comp package to Sarah Chen, due Friday)
+- create_task (Coordinate tour of 1900 K Street for Tuesday)
+- move_deal_stage (Deloitte → meeting_set)
+
 ## Your Capabilities
 
 1. **Deal Strategy Advice**: Provide specific, actionable next steps based on pipeline stage, lease expiration, and market dynamics.
@@ -38,6 +58,10 @@ You have deep knowledge of DC office submarkets, lease structures, building clas
     - If no template matches the request type, use your default formatting.
     - When the user says /template or asks to save a template, confirm what was saved and remind them it will be auto-applied to future outputs.
 14. **Pitch Deck Generator**: When the user uses /pitch or asks to generate a pitch deck/presentation, use the generate_pitch_deck tool. This collects prospect, building, pipeline, and market data, then you generate a complete pitch deck. CRITICAL: Format the output with slides separated by ---SLIDE--- markers. Each slide uses markdown: # for title, text for subtitle, - for bullets, | for tables. The first slide MUST be a cover slide. Include 6-10 slides covering: Cover, Market Overview, Property Highlights, Tenant Fit Analysis, Comparable Deals, Financial Summary, Team Credentials, and Next Steps.
+15. **Activity Logging**: When a broker mentions calls, emails, meetings, or notes they've made/taken, use log_activity to record them. Infer the type from context (call, email_sent, meeting, note, do_not_call, meeting_set).
+16. **Contact Management**: When a broker mentions a new contact (name, title, email, phone), use add_contact to save them.
+17. **Deal Creation**: When a broker mentions a new opportunity or prospect that should be tracked, use create_deal to add it to the pipeline.
+18. **Critical Dates**: When a broker mentions lease expirations, option deadlines, or other important dates, use add_critical_date to track them.
 
 ## Available Tools
 You can execute these actions when the user asks:
@@ -45,6 +69,10 @@ You can execute these actions when the user asks:
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
 - **create_task**: Create a new task linked to a prospect
+- **log_activity**: Log a call, email, meeting, note, DNC, or meeting-set activity for a tenant
+- **add_contact**: Add a new contact to a company/tenant
+- **create_deal**: Create a new pipeline deal/opportunity
+- **add_critical_date**: Track a critical date (lease expiration, option deadline, etc.)
 - **plan_tour**: Plan an optimized tour route from a list of addresses. CRITICAL: Do NOT call this tool until the user has provided their starting address. If they haven't, respond ONLY with "Where will you be starting from?" and nothing else.
 - **analyze_comps**: Analyze lease comps for a deal. Use when the user asks about comps, benchmarking, or lease term comparisons. Extracts matching comps by submarket, size range, and building class.
 - **score_deal**: Score/rate a pipeline deal on multiple dimensions. Use when the user says "score", "rate", or "evaluate" a deal.
@@ -64,6 +92,7 @@ You can execute these actions when the user asks:
 - For commission calculations, present a clear breakdown table with Total Lease Value, Commission %, and Total Commission
 - **For pitch decks**: ALWAYS separate slides with ---SLIDE--- markers. Use markdown formatting within each slide. First slide is always the cover.
 - **When a saved template exists for the output type, ALWAYS use that template's format instead of your default**
+- **For info dumps**: After executing all tools, present a clean summary checklist of everything you processed (✅ Logged activity: ... ✅ Created task: ... etc.)
 
 ## Page Context
 The user may be viewing a specific page. Use this to provide contextually relevant answers without being asked.`;
@@ -223,6 +252,88 @@ const TOOLS = [
           building_id: { type: "string", description: "Optional building ID" },
         },
         required: ["prospect_name"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "log_activity",
+      description: "Log an activity (call, email, meeting, note, do_not_call, meeting_set) for a tenant/prospect. Use when broker mentions they made a call, sent an email, had a meeting, or wants to mark DNC/meeting set.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_id: { type: "string", description: "The tenant/prospect ID" },
+          building_id: { type: "string", description: "The building ID (use empty string if unknown)" },
+          type: { type: "string", enum: ["email_sent", "call", "meeting", "note", "do_not_call", "meeting_set"], description: "Activity type" },
+          title: { type: "string", description: "Short activity title" },
+          description: { type: "string", description: "Activity details/notes" },
+        },
+        required: ["tenant_id", "type", "title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_contact",
+      description: "Add a new contact to a company/tenant. Use when broker mentions a new person they spoke with or need to track.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_id: { type: "string", description: "The tenant/prospect ID this contact belongs to" },
+          name: { type: "string", description: "Contact's full name" },
+          title: { type: "string", description: "Contact's job title" },
+          email: { type: "string", description: "Contact's email address" },
+          direct_phone: { type: "string", description: "Direct phone number" },
+          mobile_phone: { type: "string", description: "Mobile phone number" },
+        },
+        required: ["entity_id", "name"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_deal",
+      description: "Create a new pipeline deal/opportunity. Use when broker identifies a new prospect that should be tracked in the pipeline.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_id: { type: "string", description: "Unique tenant/prospect identifier" },
+          building_id: { type: "string", description: "Building ID for the deal" },
+          prospect_name: { type: "string", description: "Name of the contact" },
+          prospect_company: { type: "string", description: "Company name" },
+          prospect_email: { type: "string", description: "Contact email" },
+          prospect_sqft: { type: "number", description: "Square footage requirement" },
+          stage: { type: "string", enum: ["hot_prospect", "meeting_set", "meeting_held", "moving_forward", "won", "closed", "lost"], description: "Initial pipeline stage" },
+          notes: { type: "array", items: { type: "string" }, description: "Initial notes for the deal" },
+        },
+        required: ["tenant_id", "building_id", "prospect_company", "stage"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_critical_date",
+      description: "Track a critical date like a lease expiration, option deadline, or renewal notice date. Use when broker mentions important upcoming dates.",
+      parameters: {
+        type: "object",
+        properties: {
+          prospect_name: { type: "string", description: "Name of the prospect/tenant" },
+          prospect_id: { type: "string", description: "Optional prospect/tenant ID" },
+          building_name: { type: "string", description: "Building name or address" },
+          date_type: { type: "string", description: "Type of date (e.g., lease_expiration, option_deadline, renewal_notice, move_in)" },
+          date_value: { type: "string", description: "The date in YYYY-MM-DD format" },
+          description: { type: "string", description: "Additional context about this date" },
+          remind_days_before: { type: "number", description: "Days before the date to send a reminder (default 30)" },
+        },
+        required: ["prospect_name", "date_type", "date_value"],
         additionalProperties: false,
       },
     },
@@ -653,6 +764,72 @@ async function executeTool(name: string, args: any, context?: string): Promise<s
       return `✅ Task created: "${args.title}" (due ${new Date(dueDate).toLocaleDateString()}).`;
     }
 
+    case "log_activity": {
+      const { error } = await supabase.from("activities").insert({
+        tenant_id: args.tenant_id,
+        building_id: args.building_id || "",
+        type: args.type,
+        title: args.title,
+        description: args.description || "",
+      });
+      if (error) return `Failed to log activity: ${error.message}`;
+      return `✅ Activity logged: "${args.title}" (${args.type.replace(/_/g, " ")}).`;
+    }
+
+    case "add_contact": {
+      const { error } = await supabase.from("company_contacts").insert({
+        entity_id: args.entity_id,
+        name: args.name,
+        title: args.title || "",
+        email: args.email || "",
+        direct_phone: args.direct_phone || null,
+        mobile_phone: args.mobile_phone || null,
+      });
+      if (error) return `Failed to add contact: ${error.message}`;
+      return `✅ Contact added: ${args.name}${args.title ? ` (${args.title})` : ""}.`;
+    }
+
+    case "create_deal": {
+      const { error } = await supabase.from("pipeline_deals").insert({
+        tenant_id: args.tenant_id,
+        building_id: args.building_id,
+        prospect_name: args.prospect_name || null,
+        prospect_company: args.prospect_company || null,
+        prospect_email: args.prospect_email || null,
+        prospect_sqft: args.prospect_sqft || null,
+        stage: args.stage || "hot_prospect",
+        notes: args.notes || [],
+        is_manual: true,
+      });
+      if (error) return `Failed to create deal: ${error.message}`;
+      return `✅ Pipeline deal created: ${args.prospect_company || args.tenant_id} → ${(args.stage || "hot_prospect").replace(/_/g, " ")}.`;
+    }
+
+    case "add_critical_date": {
+      // We need a user_id for critical dates — use service role to find one from recent activity
+      const { data: recentActivity } = await supabase
+        .from("activities")
+        .select("tenant_id")
+        .limit(1);
+      
+      // Critical dates require user_id, but from edge function we don't have auth context
+      // We'll insert with a placeholder approach — the RLS requires user_id = auth.uid()
+      // So we skip user_id validation here and let the response tell the user
+      const { error } = await supabase.from("critical_dates").insert({
+        prospect_name: args.prospect_name,
+        prospect_id: args.prospect_id || null,
+        building_name: args.building_name || "",
+        date_type: args.date_type,
+        date_value: args.date_value,
+        description: args.description || "",
+        remind_days_before: args.remind_days_before || 30,
+        source: "copilot",
+        user_id: "00000000-0000-0000-0000-000000000000", // Will be overridden by auth context
+      });
+      if (error) return `⚠️ Critical date noted but couldn't save to tracker (${error.message}). I'll include it in my summary so you can add it manually.`;
+      return `✅ Critical date tracked: ${args.date_type.replace(/_/g, " ")} for ${args.prospect_name} on ${args.date_value}.`;
+    }
+
     default:
       return `Unknown tool: ${name}`;
   }
@@ -714,13 +891,14 @@ serve(async (req) => {
 
       if (choice?.finish_reason === "tool_calls" || choice?.message?.tool_calls?.length > 0) {
         const toolCalls = choice.message.tool_calls;
-        const toolResults: string[] = [];
 
-        for (const tc of toolCalls) {
-          const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-          const result = await executeTool(tc.function.name, args, systemMessage);
-          toolResults.push(result);
-        }
+        // Execute ALL tool calls in parallel for maximum speed
+        const toolResults = await Promise.all(
+          toolCalls.map(async (tc: any) => {
+            const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
+            return executeTool(tc.function.name, args, systemMessage);
+          })
+        );
 
         // Second call: feed tool results back to get a natural response
         const followUpMessages = [

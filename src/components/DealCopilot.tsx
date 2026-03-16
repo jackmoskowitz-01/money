@@ -1609,16 +1609,31 @@ For each line item, also produce a monthly breakdown:
           liveDataCtx += `\n\n### 📅 Live Critical Dates\n${dateLines.join('\n')}`;
         }
 
-        // Inject recent activities
+        // Inject recent activities (last 30 for time allocation analysis)
         const { data: recentActs } = await supabase
           .from('activities')
           .select('*')
           .order('timestamp', { ascending: false })
-          .limit(10);
+          .limit(50);
 
         if (recentActs && recentActs.length > 0) {
-          const actLines = recentActs.map(a => `- ${a.type}: ${a.title} (${new Date(a.timestamp).toLocaleDateString()})`);
+          const actLines = recentActs.slice(0, 10).map(a => `- ${a.type}: ${a.title} (${new Date(a.timestamp).toLocaleDateString()})`);
           liveDataCtx += `\n\n### 📊 Recent Activities\n${actLines.join('\n')}`;
+
+          // ⏱️ Time Allocation Analysis
+          const now = new Date();
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+          const last30 = recentActs.filter(a => new Date(a.timestamp) >= thirtyDaysAgo);
+          const typeCounts: Record<string, number> = {};
+          last30.forEach(a => { typeCounts[a.type] = (typeCounts[a.type] || 0) + 1; });
+          const total = last30.length;
+          if (total > 0) {
+            const breakdown = Object.entries(typeCounts)
+              .sort((a, b) => b[1] - a[1])
+              .map(([type, count]) => `- ${type}: ${count} (${Math.round(count / total * 100)}%)`)
+              .join('\n');
+            liveDataCtx += `\n\n### ⏱️ Time Allocation (Last 30 Days)\nTotal activities: ${total}\n${breakdown}\nUse this to coach the user on how they spend their time. If they're heavy on emails but light on tours, suggest rebalancing. If they haven't made calls in a while, flag it. Be specific and actionable.`;
+          }
         }
 
         // Inject pending tasks
@@ -1632,6 +1647,74 @@ For each line item, also produce a monthly breakdown:
         if (pendingTasks && pendingTasks.length > 0) {
           const taskLines = pendingTasks.map(t => `- ${t.title} (due: ${new Date(t.due_date).toLocaleDateString()}, priority: ${t.priority})`);
           liveDataCtx += `\n\n### ✅ Pending Tasks\n${taskLines.join('\n')}`;
+        }
+
+        // 🎯 Trigger Stacking — combine multiple signals into prioritized "Strike Now" alerts
+        const triggerAlerts: string[] = [];
+        const pipelineDeals = pipeline || [];
+
+        for (const deal of pipelineDeals) {
+          const signals: string[] = [];
+          let urgency = 0;
+
+          // Signal 1: Lease expiring soon (from critical dates)
+          if (critDates && (critDates as any[]).length > 0) {
+            const matchingDates = (critDates as any[]).filter(d =>
+              (d.prospect_name && deal.prospectName && d.prospect_name.toLowerCase().includes(deal.prospectName.toLowerCase())) ||
+              (d.prospect_id && d.prospect_id === deal.tenantId)
+            );
+            matchingDates.forEach(d => {
+              const days = Math.ceil((new Date(d.date_value + 'T00:00:00').getTime() - Date.now()) / 86400000);
+              if (days <= 90) {
+                signals.push(`lease ${d.date_type.replace(/_/g, ' ')} in ${days}d`);
+                urgency += days <= 30 ? 3 : days <= 60 ? 2 : 1;
+              }
+            });
+          }
+
+          // Signal 2: Stale deal — no activity in 7+ days
+          const daysSinceActivity = Math.floor((Date.now() - new Date(deal.lastActivity).getTime()) / 86400000);
+          if (daysSinceActivity >= 7 && !['won', 'closed', 'lost'].includes(deal.stage)) {
+            signals.push(`${daysSinceActivity}d since last touch`);
+            urgency += daysSinceActivity >= 14 ? 2 : 1;
+          }
+
+          // Signal 3: Deal in advanced stage (proposal/negotiation) — high value, don't let it slip
+          if (['proposal', 'negotiation', 'loi'].includes(deal.stage)) {
+            signals.push(`in ${deal.stage} stage`);
+            urgency += 1;
+          }
+
+          // Signal 4: Overdue follow-ups on touchpoints
+          const overdueTP = (deal.sentTouchpoints || []).filter(
+            (tp: any) => tp.followUpDate && tp.followUpDate < new Date().toISOString()
+          );
+          if (overdueTP.length > 0) {
+            signals.push(`${overdueTP.length} overdue follow-up(s)`);
+            urgency += overdueTP.length;
+          }
+
+          // Signal 5: Large prospect (high SF = high commission potential)
+          if (deal.prospectSqft && deal.prospectSqft >= 10000) {
+            signals.push(`${deal.prospectSqft.toLocaleString()} SF prospect`);
+            urgency += 1;
+          }
+
+          // Only surface deals with 2+ stacked signals
+          if (signals.length >= 2) {
+            const name = deal.prospectName || deal.prospectCompany || deal.tenantId;
+            triggerAlerts.push(`- **${name}** (urgency: ${urgency}) — ${signals.join(' + ')}`);
+          }
+        }
+
+        if (triggerAlerts.length > 0) {
+          // Sort by urgency (highest first)
+          triggerAlerts.sort((a, b) => {
+            const aUrg = parseInt(a.match(/urgency: (\d+)/)?.[1] || '0');
+            const bUrg = parseInt(b.match(/urgency: (\d+)/)?.[1] || '0');
+            return bUrg - aUrg;
+          });
+          liveDataCtx += `\n\n### 🎯 Trigger Stacking — Strike Now Alerts\nThese deals have MULTIPLE converging signals. Prioritize them aggressively. When the user asks "what should I do" or "who should I call", lead with these. Be specific about WHY each deal is hot.\n${triggerAlerts.slice(0, 8).join('\n')}`;
         }
       }
 

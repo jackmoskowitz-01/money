@@ -544,12 +544,20 @@ const Settings = () => {
                           <span className="text-primary text-xs mt-0.5">•</span>
                           <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Live Data Awareness</strong> — Always knows the current state of your pipeline, recent activities, critical dates, and tasks without you telling it.</p>
                         </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">🎯 Trigger Stacking</strong> — Combines multiple converging signals (lease expirations + stale deals + overdue follow-ups + large SF) into prioritized "Strike Now" alerts. When 2+ signals stack on a single deal, it surfaces that deal as urgent and tells you exactly why.</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">⏱️ Time Allocation</strong> — Analyzes how you spend your time across calls, tours, emails, meetings, and proposals over the last 30 days. Proactively coaches you on rebalancing — if you're heavy on emails but light on tours, it'll flag it and suggest who to visit.</p>
+                        </div>
                       </div>
                     </div>
                   ) : (
                     <div className="rounded-md bg-muted/30 border border-border p-3">
                       <p className="text-[11px] text-muted-foreground">
-                        When enabled, your Copilot becomes an adaptive AI partner that learns your deal style, remembers prospect details across conversations, tracks real-time pipeline changes, and proactively improves its strategy recommendations over time. Think of it as giving your Copilot a permanent brain.
+                        When enabled, your Copilot becomes an adaptive AI partner that learns your deal style, remembers prospect details across conversations, tracks real-time pipeline changes, stacks multiple deal signals into "Strike Now" alerts, coaches you on time allocation, and proactively improves its strategy recommendations over time. Think of it as giving your Copilot a permanent brain.
                       </p>
                     </div>
                   )}

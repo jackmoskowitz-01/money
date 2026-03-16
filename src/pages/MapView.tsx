@@ -127,6 +127,17 @@ const MapView = () => {
     return result;
   }, [googleBuildings]);
 
+  // Build a tenant→building lookup for search
+  const tenantBuildingMap = useMemo(() => {
+    const map = new Map<string, Building>();
+    for (const b of allBuildingsList) {
+      for (const t of b.tenants) {
+        map.set(`${t.name.toLowerCase()}::${b.id}`, b);
+      }
+    }
+    return map;
+  }, [allBuildingsList]);
+
   const filteredBuildings = useMemo(() => {
     let list = allBuildingsList;
     
@@ -137,13 +148,28 @@ const MapView = () => {
       list = list.filter(b => !log[b.id] || (Date.now() - log[b.id]) > thresholdMs);
     }
     
-    // Then apply search
+    // Then apply search — match buildings OR tenants
     if (!searchQuery.trim()) return list;
     const q = searchQuery.toLowerCase();
     return list.filter(b =>
-      b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
+      b.name.toLowerCase().includes(q) ||
+      b.address.toLowerCase().includes(q) ||
+      b.tenants.some(t => t.name.toLowerCase().includes(q) || t.industry.toLowerCase().includes(q))
     );
   }, [searchQuery, allBuildingsList, trackerEnabled, thresholdDays]);
+
+  // Track which tenant matched to highlight in the list
+  const matchedTenantName = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase();
+    // Check if the query matches a tenant rather than a building name/address
+    for (const b of allBuildingsList) {
+      if (b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)) continue;
+      const tenant = b.tenants.find(t => t.name.toLowerCase().includes(q));
+      if (tenant) return tenant.name;
+    }
+    return null;
+  }, [searchQuery, allBuildingsList]);
 
   // Record visit + clear state when building changes
   useEffect(() => {

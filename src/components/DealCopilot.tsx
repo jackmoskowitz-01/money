@@ -218,9 +218,9 @@ export default function DealCopilot() {
     return null;
   }, [location.pathname, pipeline]);
 
-  // Load conversation memory scoped to current prospect
+  // Reload settings every time copilot is opened or entity changes
   useEffect(() => {
-    if (!user) return;
+    if (!user || !open) return;
     const loadMemoryAndSettings = async () => {
       // Check if memory is enabled in settings
       const { data: settings } = await supabase

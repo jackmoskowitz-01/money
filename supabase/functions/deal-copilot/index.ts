@@ -899,7 +899,7 @@ serve(async (req) => {
         const toolResults = await Promise.all(
           toolCalls.map(async (tc: any) => {
             const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-            return executeTool(tc.function.name, args, systemMessage);
+            return executeTool(tc.function.name, args, systemMessage, currentUserId);
           })
         );
 

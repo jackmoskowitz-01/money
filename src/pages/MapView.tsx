@@ -483,12 +483,29 @@ const MapView = () => {
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
-                      placeholder="Search buildings..."
+                      placeholder="Search buildings or tenants..."
                       value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
+                      onChange={e => {
+                        setSearchQuery(e.target.value);
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && filteredBuildings.length === 1) {
+                          const b = filteredBuildings[0];
+                          setSelectedBuilding(b);
+                          if (mapInstanceRef.current && b.lat && b.lng) {
+                            mapInstanceRef.current.setView([b.lat, b.lng], 17, { animate: true });
+                          }
+                        }
+                      }}
                       className="h-8 pl-8 text-xs"
                     />
                   </div>
+                  {/* Tenant search hint */}
+                  {matchedTenantName && filteredBuildings.length > 0 && (
+                    <p className="text-[10px] text-primary px-1">
+                      🔍 Found tenant "<span className="font-semibold">{matchedTenantName}</span>" — {filteredBuildings.length === 1 ? 'press Enter to jump' : `in ${filteredBuildings.length} buildings`}
+                    </p>
+                  )}
                   {loadingGoogle && loadingProgress && (
                     <p className="text-[11px] text-muted-foreground text-center py-1">
                       <Loader2 className="inline h-3 w-3 animate-spin mr-1" />

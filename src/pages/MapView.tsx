@@ -395,12 +395,55 @@ const MapView = () => {
         attribution: '&copy; CARTO',
       }).addTo(map);
 
+      // Import markercluster
+      await import('leaflet.markercluster');
+      await import('leaflet.markercluster/dist/MarkerCluster.css');
+      await import('leaflet.markercluster/dist/MarkerCluster.Default.css');
+
+      const clusterGroup = (L as any).markerClusterGroup({
+        maxClusterRadius: 40,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          let size = 'small';
+          let px = 32;
+          if (count > 20) { size = 'large'; px = 44; }
+          else if (count > 5) { size = 'medium'; px = 38; }
+          return L.divIcon({
+            html: `<div style="
+              background: hsl(217, 91%, 60%);
+              color: white;
+              border-radius: 50%;
+              width: ${px}px;
+              height: ${px}px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 12px;
+              font-weight: 700;
+              border: 2px solid rgba(255,255,255,0.3);
+              box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            ">${count}</div>`,
+            className: '',
+            iconSize: L.point(px, px),
+          });
+        },
+      });
+
       const log = getVisitLog();
       mockMarkersRef.current = [];
       [...mockBuildings, ...costarBuildings].forEach(building => {
-        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled, map);
-        if (marker) mockMarkersRef.current.push(marker);
+        const marker = createMapMarker(L, building, log, thresholdDays, trackerEnabled);
+        if (marker) {
+          clusterGroup.addLayer(marker);
+          mockMarkersRef.current.push(marker);
+        }
       });
+
+      map.addLayer(clusterGroup);
+      clusterGroupRef.current = clusterGroup;
 
       mapInstanceRef.current = map;
       fetchGoogleBuildings();

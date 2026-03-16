@@ -456,6 +456,8 @@ export const activityTypeLabels: Record<ActivityType, string> = {
   stage_change: 'Stage Change',
   ai_email: 'AI Email Generated',
   task_created: 'Task Created',
+  do_not_call: 'Do Not Call',
+  meeting_set: 'Meeting Set',
 };
 
 export const activityTypeIcons: Record<ActivityType, string> = {
@@ -466,4 +468,6 @@ export const activityTypeIcons: Record<ActivityType, string> = {
   stage_change: '🔄',
   ai_email: '✨',
   task_created: '📋',
+  do_not_call: '🚫',
+  meeting_set: '📅',
 };

@@ -22,6 +22,8 @@ const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] =
   { value: 'email_sent', label: 'Email Sent', icon: Mail },
   { value: 'call', label: 'Phone Call', icon: Phone },
   { value: 'meeting', label: 'Meeting', icon: Users },
+  { value: 'meeting_set', label: 'Meeting Set', icon: CalendarCheck },
+  { value: 'do_not_call', label: 'Do Not Call', icon: Ban },
   { value: 'note', label: 'Note', icon: StickyNote },
   { value: 'ai_email', label: 'AI Email', icon: Sparkles },
   { value: 'stage_change', label: 'Stage Change', icon: RotateCcw },

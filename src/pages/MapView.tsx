@@ -171,11 +171,13 @@ const MapView = () => {
     return null;
   }, [searchQuery, allBuildingsList]);
 
-  // Record visit + clear state when building changes
+  // Record visit + clear state + preload contacts when building changes
   useEffect(() => {
     if (selectedBuilding) {
       const updated = recordVisit(selectedBuilding.id);
       setVisitLog(updated);
+      // Preload contacts for all tenants in this building
+      selectedBuilding.tenants.forEach(t => subscribeContacts(t.id));
     }
     setSelectedTenants(new Set());
     setOutreachReason('');

@@ -660,22 +660,7 @@ const Tasks = () => {
                               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOverdue ? 'bg-destructive/10' : 'bg-primary/10'}`}>
                                 <Building2 className={`h-4 w-4 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-foreground truncate">{p.tenantName}</p>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <Badge variant="outline" className="text-[10px] bg-secondary/50">
-                                    {p.taskCount} task{p.taskCount !== 1 ? 's' : ''}
-                                  </Badge>
-                                  {isOverdue && (
-                                    <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
-                                      {p.overdueCount} overdue
-                                    </Badge>
-                                  )}
-                                  <span className="text-[11px] text-muted-foreground">
-                                    Next: {format(new Date(p.nextDue + 'T12:00:00'), 'MMM d')}
-                                  </span>
-                                </div>
-                              </div>
+                              <p className="text-sm font-medium text-foreground truncate">{p.tenantName}</p>
                               <ArrowRight className="h-4 w-4 text-muted-foreground/40" />
                             </div>
                           </Card>

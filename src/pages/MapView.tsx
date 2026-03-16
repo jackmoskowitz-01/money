@@ -309,7 +309,7 @@ const MapView = () => {
     renderActivityCircles();
   }, [renderActivityCircles]);
 
-  const buildRecipients = async (tenant: Tenant): Promise<EmailRecipient[]> => {
+  const buildRecipients = (tenant: Tenant): EmailRecipient[] => {
     const list: EmailRecipient[] = [{
       id: 'primary',
       name: tenant.contactName,
@@ -317,9 +317,7 @@ const MapView = () => {
       title: tenant.contactTitle,
       isPrimary: true,
     }];
-    const { getContactsAsync } = await import('@/data/companyContacts');
-    const contacts = await getContactsAsync(tenant.id);
-    contacts.forEach(c => {
+    getContacts(tenant.id).forEach(c => {
       list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
     });
     return list;

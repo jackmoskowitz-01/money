@@ -247,9 +247,9 @@ const Settings = () => {
         .single();
 
       if (existing) {
-        await supabase.from('user_settings' as any).update(settingsRow).eq('user_id', user.id);
+        await supabase.from('user_settings' as any).update(settingsRow as any).eq('user_id', user.id);
       } else {
-        await supabase.from('user_settings' as any).insert(settingsRow);
+        await supabase.from('user_settings' as any).insert(settingsRow as any);
       }
 
       toast.success(`${section} settings saved`);

@@ -463,6 +463,8 @@ export type Database = {
           is_manual: boolean
           last_activity: string
           notes: string[]
+          outcome: string | null
+          outcome_reason: string | null
           prospect_company: string | null
           prospect_email: string | null
           prospect_name: string | null
@@ -481,6 +483,8 @@ export type Database = {
           is_manual?: boolean
           last_activity?: string
           notes?: string[]
+          outcome?: string | null
+          outcome_reason?: string | null
           prospect_company?: string | null
           prospect_email?: string | null
           prospect_name?: string | null
@@ -499,6 +503,8 @@ export type Database = {
           is_manual?: boolean
           last_activity?: string
           notes?: string[]
+          outcome?: string | null
+          outcome_reason?: string | null
           prospect_company?: string | null
           prospect_email?: string | null
           prospect_name?: string | null

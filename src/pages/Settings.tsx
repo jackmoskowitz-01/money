@@ -199,7 +199,7 @@ const Settings = () => {
         <p className="text-muted-foreground text-sm mb-6">Manage your preferences and defaults</p>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="profile" className="text-xs gap-1">
               <User className="h-3.5 w-3.5 hidden sm:block" /> Profile
             </TabsTrigger>
@@ -211,6 +211,9 @@ const Settings = () => {
             </TabsTrigger>
             <TabsTrigger value="workflow" className="text-xs gap-1">
               <Workflow className="h-3.5 w-3.5 hidden sm:block" /> Workflow
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="text-xs gap-1">
+              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI & Integrations
             </TabsTrigger>
             <TabsTrigger value="appearance" className="text-xs gap-1">
               <Palette className="h-3.5 w-3.5 hidden sm:block" /> Display

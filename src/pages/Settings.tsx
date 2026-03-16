@@ -434,6 +434,86 @@ const Settings = () => {
             </div>
           </TabsContent>
 
+          {/* AI & Integrations */}
+          <TabsContent value="integrations">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-primary" /> Calendar Access
+                  </CardTitle>
+                  <CardDescription>Connect your calendar so Copilot can suggest meeting times around your schedule</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Google Calendar</p>
+                      <p className="text-xs text-muted-foreground">
+                        {integrations.calendarConnected
+                          ? 'Connected — Copilot can see your availability and suggest meeting times'
+                          : 'Not connected — Enable to let Copilot schedule around your meetings'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={integrations.calendarConnected}
+                      onCheckedChange={v => {
+                        if (v) {
+                          toast.info('Calendar integration coming soon! This will connect to your Google Calendar.');
+                          return;
+                        }
+                        setIntegrations(i => ({ ...i, calendarConnected: false }));
+                      }}
+                    />
+                  </div>
+                  {integrations.calendarConnected && (
+                    <div className="rounded-md bg-success/5 border border-success/20 p-3">
+                      <p className="text-xs text-success font-medium">✓ Calendar connected</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">Copilot will check your calendar before suggesting meeting times</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-primary" /> Conversation Memory
+                  </CardTitle>
+                  <CardDescription>Let Copilot remember past conversations to give personalized responses</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Enable Memory</p>
+                      <p className="text-xs text-muted-foreground">
+                        {integrations.copilotMemory
+                          ? 'Copilot recalls your past conversations, notes, and preferences to tailor responses'
+                          : 'Copilot treats each conversation independently with no recall'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={integrations.copilotMemory}
+                      onCheckedChange={v => setIntegrations(i => ({ ...i, copilotMemory: v }))}
+                    />
+                  </div>
+                  {integrations.copilotMemory && (
+                    <div className="rounded-md bg-primary/5 border border-primary/20 p-3 space-y-2">
+                      <p className="text-xs text-primary font-medium">🧠 Memory is active</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Copilot will reference your past deal notes, outreach patterns, and conversation history. 
+                        It may also crack a joke if you've left something funny in the notes 😄
+                      </p>
+                    </div>
+                  )}
+                  <Button onClick={() => saveAll('AI & Integrations')} className="mt-2" disabled={saving}>
+                    {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                    Save Settings
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
           {/* Appearance & Data */}
           <TabsContent value="appearance">
             <Card>

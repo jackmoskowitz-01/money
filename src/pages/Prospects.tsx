@@ -136,23 +136,23 @@ const Prospects = () => {
     clearSelection();
   };
 
-  const bulkAddToList = (listId: string) => {
+  const bulkAddToList = async (listId: string) => {
     const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
     const prospects = selected.map(p => ({
       tenantId: p.tenant.id,
       buildingId: p.building.id,
       tenantName: p.tenant.name,
     }));
-    const added = addProspectsToList(listId, prospects);
+    const added = await addProspectsToList(listId, prospects);
     toast.success(`Added ${added} prospects to list`);
     setShowListPicker(false);
     clearSelection();
   };
 
-  const bulkCreateListAndAdd = () => {
+  const bulkCreateListAndAdd = async () => {
     if (!newListName.trim()) return;
-    const list = createProspectList(newListName.trim());
-    bulkAddToList(list.id);
+    const list = await createList(newListName.trim());
+    if (list) await bulkAddToList(list.id);
     setNewListName('');
   };
 

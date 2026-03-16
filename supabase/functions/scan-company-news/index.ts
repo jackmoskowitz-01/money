@@ -132,7 +132,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You structure raw company news into JSON. Today is ${today}.
+            content: `You structure raw company news into JSON with CRE signal detection. Today is ${today}.
 
 Return ONLY a valid JSON array. No markdown, no code blocks.
 
@@ -148,15 +148,19 @@ Each item must have:
 - matchedCompanyName: the company name
 - matchedBuildingId: the building id from the lookup if available
 - relevanceScore: 1-100 how actionable this is for a CRE broker
+- signals: array of detected CRE trigger signals. Use ONLY these values: "expansion", "relocation", "downsizing", "lease_expiring", "ma_activity", "funding_round", "leadership_change", "rto_policy", "sublease", "govt_contract", "layoffs", "hiring_surge". Include ALL that apply.
+- outreach_reason: ONE concise sentence (max 120 chars) a broker could use as the hook when reaching out. Frame it as a reason to call/email. Examples: "Recent HQ expansion signals need for satellite space", "Post-merger integration may trigger sublease of excess floors", "Series C funding = headcount growth = space needs". Be specific to the company.
+- urgency: "hot" (act within days), "warm" (act within 2 weeks), or "watch" (monitor)
 
 Company lookup:
 ${companyLookup}
 
-Only include news items where you found REAL news. Do not fabricate. If no news was found for a company, do not include it.`,
+Only include news items where you found REAL news. Do not fabricate. If no news was found for a company, do not include it.
+Be aggressive about signal detection — even subtle mentions of hiring, new contracts, or leadership changes are CRE signals.`,
           },
           {
             role: "user",
-            content: `Raw news content:\n\n${rawContent}\n\nCitations:\n${citations.map((c: string, i: number) => `[${i + 1}] ${c}`).join("\n")}\n\nStructure into JSON array of company news items.`,
+            content: `Raw news content:\n\n${rawContent}\n\nCitations:\n${citations.map((c: string, i: number) => `[${i + 1}] ${c}`).join("\n")}\n\nStructure into JSON array of company news items with CRE signal detection.`,
           },
         ],
       }),

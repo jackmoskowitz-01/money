@@ -1740,6 +1740,58 @@ For each line item, also produce a monthly breakdown:
         }
       }
 
+      // Brain learning: extract facts from the conversation asynchronously
+      if (brainEnabled && assistantSoFar && user) {
+        (async () => {
+          try {
+            const userText = text.trim();
+            // Only learn from substantive exchanges
+            if (userText.length < 15 && assistantSoFar.length < 100) return;
+
+            const learnResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({
+                messages: [
+                  { role: 'user', content: userText },
+                  { role: 'assistant', content: assistantSoFar.slice(0, 3000) },
+                ],
+                context: `Extract any new learnable facts from this exchange. Categories: deal_pattern, user_preference, prospect_insight, strategy, market_knowledge, personal_note. Only extract genuinely new, useful facts — not generic observations. Return JSON array of objects with {category, fact, prospect_name?} or empty array [] if nothing worth learning.`,
+                mode: 'brain_extract',
+              }),
+            });
+
+            if (learnResp.ok) {
+              const learnData = await learnResp.json();
+              const content = learnData.content || '';
+              // Try to parse JSON from the response
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                const facts = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(facts) && facts.length > 0) {
+                  const rows = facts.slice(0, 5).map((f: any) => ({
+                    user_id: user.id,
+                    category: f.category || 'general',
+                    fact: f.fact,
+                    prospect_name: f.prospect_name || null,
+                    prospect_id: null,
+                    context: userText.slice(0, 200),
+                    source: 'conversation',
+                    confidence: 0.8,
+                  }));
+                  await supabase.from('copilot_brain' as any).insert(rows as any);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Brain learning error:', err);
+          }
+        })();
+      }
+
       // Refresh pipeline after any response (in case tools were called)
       refetchPipeline();
     } catch (e: any) {

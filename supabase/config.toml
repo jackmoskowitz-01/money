@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.zoominfo-webhook]
 verify_jwt = false
+
+[functions.extract-critical-dates]
+verify_jwt = false

@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import EmailDisplay from '@/components/EmailDisplay';
-import { getContactsAsync, type CompanyContact } from '@/data/companyContacts';
+import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;

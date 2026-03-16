@@ -182,6 +182,48 @@ export type Database = {
         }
         Relationships: []
       }
+      copilot_brain: {
+        Row: {
+          category: string
+          confidence: number
+          context: string
+          created_at: string
+          fact: string
+          id: string
+          prospect_id: string | null
+          prospect_name: string | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          confidence?: number
+          context?: string
+          created_at?: string
+          fact: string
+          id?: string
+          prospect_id?: string | null
+          prospect_name?: string | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          confidence?: number
+          context?: string
+          created_at?: string
+          fact?: string
+          id?: string
+          prospect_id?: string | null
+          prospect_name?: string | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       copilot_messages: {
         Row: {
           content: string
@@ -706,6 +748,7 @@ export type Database = {
       user_settings: {
         Row: {
           activity_categories: string
+          brain_enabled: boolean
           brokerage: string
           calendar_connected: boolean
           copilot_memory: boolean
@@ -727,6 +770,7 @@ export type Database = {
         }
         Insert: {
           activity_categories?: string
+          brain_enabled?: boolean
           brokerage?: string
           calendar_connected?: boolean
           copilot_memory?: boolean
@@ -748,6 +792,7 @@ export type Database = {
         }
         Update: {
           activity_categories?: string
+          brain_enabled?: boolean
           brokerage?: string
           calendar_connected?: boolean
           copilot_memory?: boolean

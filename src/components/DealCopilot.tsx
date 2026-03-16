@@ -78,6 +78,8 @@ export default function DealCopilot() {
   const [marketReportSearch, setMarketReportSearch] = useState<{ open: boolean; query: string; results: { content: string; preview: string; date: string; conversationId: string }[]; loading: boolean }>({ open: false, query: '', results: [], loading: false });
   const [conversationMemory, setConversationMemory] = useState<string | null>(null);
   const [memoryEnabled, setMemoryEnabled] = useState(true);
+  const [brainEnabled, setBrainEnabled] = useState(false);
+  const [brainContext, setBrainContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoExportRef = useRef(false);
@@ -217,7 +219,42 @@ export default function DealCopilot() {
         .single();
 
       const enabled = (settings as any)?.copilot_memory ?? true;
+      const brainOn = (settings as any)?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
+      setBrainEnabled(brainOn);
+
+      // Load brain context if enabled
+      if (brainOn) {
+        const { data: brainFacts } = await supabase
+          .from('copilot_brain' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(100);
+
+        if (brainFacts && (brainFacts as any[]).length > 0) {
+          const facts = brainFacts as any[];
+          const categories = new Map<string, string[]>();
+          facts.forEach(f => {
+            const list = categories.get(f.category) || [];
+            list.push(`- ${f.fact}${f.prospect_name ? ` (re: ${f.prospect_name})` : ''}`);
+            categories.set(f.category, list);
+          });
+
+          const brainParts: string[] = [];
+          for (const [cat, items] of categories) {
+            const label = cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            brainParts.push(`**${label}:**\n${items.slice(0, 10).join('\n')}`);
+          }
+
+          setBrainContext(`### 🧠 Brain — Persistent Knowledge\nYou have a persistent brain that stores learned facts about this user and their deals. Reference this knowledge naturally. When you learn NEW facts from the conversation (preferences, deal outcomes, strategies that worked, prospect details), remember them for future use.\n\n${brainParts.join('\n\n')}`);
+        } else {
+          setBrainContext(`### 🧠 Brain — Active\nYour brain is active but empty. As you converse, learn and store facts about the user's preferences, deal patterns, prospect details, and strategies that work.`);
+        }
+      } else {
+        setBrainContext(null);
+      }
+
       if (!enabled) { setConversationMemory(null); return; }
 
       // No prospect in view → no scoped memory
@@ -1549,7 +1586,56 @@ For each line item, also produce a monthly breakdown:
       // Load templates for context
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
       const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx);
+      const brainCtx = brainEnabled && brainContext ? `\n\n${brainContext}` : '';
+
+      // Live data awareness when brain is enabled
+      let liveDataCtx = '';
+      if (brainEnabled && !voiceModeRef.current) {
+        // Inject critical dates
+        const { data: critDates } = await supabase
+          .from('critical_dates' as any)
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('acknowledged', false)
+          .order('date_value', { ascending: true })
+          .limit(20);
+
+        if (critDates && (critDates as any[]).length > 0) {
+          const dateLines = (critDates as any[]).map(d => {
+            const target = new Date(d.date_value + 'T00:00:00');
+            const days = Math.ceil((target.getTime() - Date.now()) / 86400000);
+            return `- ${d.prospect_name}: ${d.date_type.replace(/_/g, ' ')} in ${days}d (${d.date_value}) — ${d.description}`;
+          });
+          liveDataCtx += `\n\n### 📅 Live Critical Dates\n${dateLines.join('\n')}`;
+        }
+
+        // Inject recent activities
+        const { data: recentActs } = await supabase
+          .from('activities')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(10);
+
+        if (recentActs && recentActs.length > 0) {
+          const actLines = recentActs.map(a => `- ${a.type}: ${a.title} (${new Date(a.timestamp).toLocaleDateString()})`);
+          liveDataCtx += `\n\n### 📊 Recent Activities\n${actLines.join('\n')}`;
+        }
+
+        // Inject pending tasks
+        const { data: pendingTasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('completed', false)
+          .order('due_date', { ascending: true })
+          .limit(10);
+
+        if (pendingTasks && pendingTasks.length > 0) {
+          const taskLines = pendingTasks.map(t => `- ${t.title} (due: ${new Date(t.due_date).toLocaleDateString()}, priority: ${t.priority})`);
+          liveDataCtx += `\n\n### ✅ Pending Tasks\n${taskLines.join('\n')}`;
+        }
+      }
+
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
@@ -1652,6 +1738,58 @@ For each line item, also produce a monthly breakdown:
           pendingAutoExportRef.current = false;
           setTimeout(() => handleExportWord(assistantSoFar), 500);
         }
+      }
+
+      // Brain learning: extract facts from the conversation asynchronously
+      if (brainEnabled && assistantSoFar && user) {
+        (async () => {
+          try {
+            const userText = text.trim();
+            // Only learn from substantive exchanges
+            if (userText.length < 15 && assistantSoFar.length < 100) return;
+
+            const learnResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              },
+              body: JSON.stringify({
+                messages: [
+                  { role: 'user', content: userText },
+                  { role: 'assistant', content: assistantSoFar.slice(0, 3000) },
+                ],
+                context: `Extract any new learnable facts from this exchange. Categories: deal_pattern, user_preference, prospect_insight, strategy, market_knowledge, personal_note. Only extract genuinely new, useful facts — not generic observations. Return JSON array of objects with {category, fact, prospect_name?} or empty array [] if nothing worth learning.`,
+                mode: 'brain_extract',
+              }),
+            });
+
+            if (learnResp.ok) {
+              const learnData = await learnResp.json();
+              const content = learnData.content || '';
+              // Try to parse JSON from the response
+              const jsonMatch = content.match(/\[[\s\S]*\]/);
+              if (jsonMatch) {
+                const facts = JSON.parse(jsonMatch[0]);
+                if (Array.isArray(facts) && facts.length > 0) {
+                  const rows = facts.slice(0, 5).map((f: any) => ({
+                    user_id: user.id,
+                    category: f.category || 'general',
+                    fact: f.fact,
+                    prospect_name: f.prospect_name || null,
+                    prospect_id: null,
+                    context: userText.slice(0, 200),
+                    source: 'conversation',
+                    confidence: 0.8,
+                  }));
+                  await supabase.from('copilot_brain' as any).insert(rows as any);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Brain learning error:', err);
+          }
+        })();
       }
 
       // Refresh pipeline after any response (in case tools were called)

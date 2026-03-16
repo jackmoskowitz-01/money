@@ -51,6 +51,7 @@ const Settings = () => {
   const [integrations, setIntegrations] = useState({
     calendarConnected: false,
     copilotMemory: true,
+    brainEnabled: false,
   });
 
   // Load settings from database
@@ -102,6 +103,7 @@ const Settings = () => {
         setIntegrations({
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
+          brainEnabled: (s as any).brain_enabled ?? false,
         });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }
@@ -152,6 +154,7 @@ const Settings = () => {
         dark_mode: appearance.darkMode,
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
+        brain_enabled: integrations.brainEnabled,
         updated_at: new Date().toISOString(),
       };
 
@@ -505,6 +508,52 @@ const Settings = () => {
                       </p>
                     </div>
                   )}
+
+                  {/* Brain */}
+                  <div className="flex items-center justify-between py-3 border-t border-border mt-4 pt-4">
+                    <div>
+                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5">🧠 Brain</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+                        {integrations.brainEnabled
+                          ? 'Brain is active — your Copilot learns from every interaction and gets smarter over time'
+                          : 'Brain is off — enable to give your Copilot persistent memory, pattern recognition, and adaptive intelligence'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={integrations.brainEnabled}
+                      onCheckedChange={v => setIntegrations(i => ({ ...i, brainEnabled: v }))}
+                    />
+                  </div>
+                  {integrations.brainEnabled ? (
+                    <div className="rounded-md bg-primary/5 border border-primary/20 p-4 space-y-3">
+                      <p className="text-xs text-primary font-semibold">🧠 Brain is learning</p>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Persistent Memory</strong> — Learns facts, preferences, and deal patterns permanently across sessions. Remembers what worked with specific prospects weeks later.</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Multi-Step Reasoning</strong> — Chains together market research, pipeline analysis, and outreach drafting autonomously before responding with a complete strategy.</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Learning Loop</strong> — After every deal outcome, analyzes what worked and updates its internal playbook so it gets smarter with every deal you close.</p>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-primary text-xs mt-0.5">•</span>
+                          <p className="text-[11px] text-muted-foreground"><strong className="text-foreground">Live Data Awareness</strong> — Always knows the current state of your pipeline, recent activities, critical dates, and tasks without you telling it.</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-md bg-muted/30 border border-border p-3">
+                      <p className="text-[11px] text-muted-foreground">
+                        When enabled, your Copilot becomes an adaptive AI partner that learns your deal style, remembers prospect details across conversations, tracks real-time pipeline changes, and proactively improves its strategy recommendations over time. Think of it as giving your Copilot a permanent brain.
+                      </p>
+                    </div>
+                  )}
+
                   <Button onClick={() => saveAll('AI & Integrations')} className="mt-2" disabled={saving}>
                     {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                     Save Settings

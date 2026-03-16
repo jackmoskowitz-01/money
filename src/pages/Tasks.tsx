@@ -596,18 +596,27 @@ const Tasks = () => {
                 const prospectMap = new Map<string, { tenantId: string; buildingId: string; tenantName: string; taskCount: number; overdueCount: number; nextDue: string }>();
                 activeTasks.forEach(t => {
                   const info = getTenantInfo(t);
-                  // Try building tenant name, then mock buildings, then custom prospects, then parse from title
                   let name = info?.tenant?.name;
+                  let resolvedBuildingId = t.buildingId || '';
                   if (!name) {
-                    const mockBuilding = buildings.find(b => b.id === t.buildingId);
-                    const mockTenant = mockBuilding?.tenants.find(tn => tn.id === t.tenantId);
-                    name = mockTenant?.name;
+                    // Search all mock buildings for this tenant ID
+                    for (const b of buildings) {
+                      const tenant = b.tenants.find(tn => tn.id === t.tenantId);
+                      if (tenant) { name = tenant.name; resolvedBuildingId = resolvedBuildingId || b.id; break; }
+                    }
+                  }
+                  if (!name) {
+                    // Search DB-loaded buildings
+                    for (const b of allBuildings) {
+                      const tenant = b.tenants.find(tn => tn.id === t.tenantId);
+                      if (tenant) { name = tenant.name; resolvedBuildingId = resolvedBuildingId || b.id; break; }
+                    }
                   }
                   if (!name) {
                     const cp = getCustomProspects().find(p => p.id === t.tenantId);
                     name = cp?.name;
                   }
-                  if (!name) return; // Skip tasks without a real prospect match
+                  if (!name) return;
                   const existing = prospectMap.get(t.tenantId!);
                   const isOverdue = t.dueDate < todayDate;
                   if (existing) {
@@ -617,7 +626,7 @@ const Tasks = () => {
                   } else {
                     prospectMap.set(t.tenantId!, {
                       tenantId: t.tenantId!,
-                      buildingId: t.buildingId || '',
+                      buildingId: resolvedBuildingId,
                       tenantName: name,
                       taskCount: 1,
                       overdueCount: isOverdue ? 1 : 0,

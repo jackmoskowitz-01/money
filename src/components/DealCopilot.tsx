@@ -1862,7 +1862,8 @@ For each line item, also produce a monthly breakdown:
         }
       }
 
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx);
+      const intelligenceCtx = intelligenceContext ? `\n\n${intelligenceContext}` : '';
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

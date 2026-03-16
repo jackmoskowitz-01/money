@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Mail, Phone, Users, StickyNote, Sparkles, RotateCcw, Building2, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ArrowLeft, Plus, Mail, Phone, Users, StickyNote, Sparkles, RotateCcw, Building2, Calendar, Ban, CalendarCheck, Kanban } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,15 @@ import {
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
 import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
+import { usePipeline } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
 
 const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] = [
   { value: 'email_sent', label: 'Email Sent', icon: Mail },
   { value: 'call', label: 'Phone Call', icon: Phone },
   { value: 'meeting', label: 'Meeting', icon: Users },
+  { value: 'meeting_set', label: 'Meeting Set', icon: CalendarCheck },
+  { value: 'do_not_call', label: 'Do Not Call', icon: Ban },
   { value: 'note', label: 'Note', icon: StickyNote },
   { value: 'ai_email', label: 'AI Email', icon: Sparkles },
   { value: 'stage_change', label: 'Stage Change', icon: RotateCcw },
@@ -31,6 +34,8 @@ const tenantOptions = buildings.flatMap(b =>
 );
 
 const ActivityLogger = () => {
+  const navigate = useNavigate();
+  const { addProspect } = usePipeline();
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities());
   const [showForm, setShowForm] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
@@ -250,10 +255,36 @@ const ActivityLogger = () => {
                         Topic: {entry.outreachReasonUsed}
                       </Badge>
                     )}
-                    <p className="mt-1 text-[11px] text-muted-foreground/50">
-                      <Calendar className="mr-1 inline h-3 w-3" />
-                      {timeAgo(entry.timestamp)}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-[11px] text-muted-foreground/50">
+                        <Calendar className="mr-1 inline h-3 w-3" />
+                        {timeAgo(entry.timestamp)}
+                      </p>
+                      {entry.type === 'meeting_set' && tenant && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-[10px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                          onClick={async () => {
+                            const success = await addProspect({
+                              name: tenant.name,
+                              company: tenant.name,
+                              email: '',
+                              phone: '',
+                              sqft: tenant.sqft?.toString() || '',
+                            });
+                            if (success) {
+                              toast.success(`${tenant.name} added to pipeline!`);
+                              navigate('/pipeline');
+                            } else {
+                              toast.error('Failed to add to pipeline');
+                            }
+                          }}
+                        >
+                          <Kanban className="h-3 w-3" /> Convert to Opportunity
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </motion.div>
               );

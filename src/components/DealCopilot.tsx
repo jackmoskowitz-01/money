@@ -357,9 +357,9 @@ export default function DealCopilot() {
             brainParts.push(`**${label}:**\n${items.slice(0, 10).join('\n')}`);
           }
 
-          setBrainContext(`### 🧠 Brain — Persistent Knowledge\nYou have a persistent brain that stores learned facts about this user and their deals. Reference this knowledge naturally. When you learn NEW facts from the conversation (preferences, deal outcomes, strategies that worked, prospect details), remember them for future use.\n\n${brainParts.join('\n\n')}`);
+          setBrainContext(`### 🧠 Smart Memory — Persistent Knowledge\nYou have a persistent smart memory that stores learned facts about this user and their deals. Reference this knowledge naturally. When you learn NEW facts from the conversation (preferences, deal outcomes, strategies that worked, prospect details), remember them for future use.\n\n${brainParts.join('\n\n')}`);
         } else {
-          setBrainContext(`### 🧠 Brain — Active\nYour brain is active but empty. As you converse, learn and store facts about the user's preferences, deal patterns, prospect details, and strategies that work.`);
+          setBrainContext(`### 🧠 Smart Memory — Active\nYour smart memory is active but empty. As you converse, learn and store facts about the user's preferences, deal patterns, prospect details, and strategies that work.`);
         }
       } else {
         setBrainContext(null);

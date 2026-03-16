@@ -15,6 +15,7 @@ import {
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
 import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
+import { digestEvent } from '@/lib/autoDigest';
 import { usePipeline } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
 

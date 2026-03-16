@@ -125,6 +125,25 @@ const Settings = () => {
           copilotMemory: s.copilot_memory ?? true,
           brainEnabled: (s as any).brain_enabled ?? false,
         });
+        setBrokerProfile({
+          specialties: s.specialties || '',
+          yearsExperience: s.years_experience || '',
+          dealSizeSweetSpot: s.deal_size_sweet_spot || '',
+          assetClasses: s.asset_classes || '',
+          communicationPersonaEnabled: s.communication_persona_enabled ?? false,
+          writingStyleSample: s.writing_style_sample || '',
+          jargonLevel: s.jargon_level || 'moderate',
+          humorPreference: s.humor_preference || 'occasional',
+          followupCadence: s.followup_cadence || 'standard',
+          targetSubmarkets: s.target_submarkets || '',
+          keyCompetitors: s.key_competitors || '',
+          buildingsRepped: s.buildings_repped || '',
+          landlordRelationships: s.landlord_relationships || '',
+          quarterlyFocus: s.quarterly_focus || '',
+          revenueTarget: s.revenue_target || '',
+          dealCountGoal: s.deal_count_goal || '',
+          personalPitch: s.personal_pitch || '',
+        });
         setAppearance({ darkMode: s.dark_mode ?? true });
       }
 

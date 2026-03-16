@@ -435,12 +435,20 @@ const News = () => {
   }, [companyNews]);
 
   // ───── Stats ─────
+  const signalCount = useMemo(() => {
+    return companyNews.filter(cn => cn.signals && cn.signals.length > 0).length;
+  }, [companyNews]);
+
+  const hotSignalCount = useMemo(() => {
+    return companyNews.filter(cn => cn.urgency === 'hot').length;
+  }, [companyNews]);
+
   const stats = useMemo(() => [
     { label: 'Total Articles', value: currentNews.length, icon: Newspaper, color: 'text-primary bg-primary/10' },
-    { label: 'Unread', value: unreadCount, icon: Eye, color: 'text-info bg-info/10' },
+    { label: 'Signals Detected', value: signalCount, icon: Zap, color: hotSignalCount > 0 ? 'text-destructive bg-destructive/10' : 'text-warning bg-warning/10' },
     { label: 'Companies Scanned', value: companiesScanned, icon: Building2, color: 'text-success bg-success/10' },
     { label: 'Bookmarked', value: bookmarkedIds.size, icon: Bookmark, color: 'text-warning bg-warning/10' },
-  ], [currentNews.length, unreadCount, companiesScanned, bookmarkedIds.size]);
+  ], [currentNews.length, signalCount, hotSignalCount, companiesScanned, bookmarkedIds.size]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];

@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { getProspectLists, addProspectsToList, createProspectList, type ProspectList } from '@/data/prospectLists';
+import { useProspectLists } from '@/hooks/useProspectLists';
 
 type ProspectEntry = {
   tenant: Tenant;

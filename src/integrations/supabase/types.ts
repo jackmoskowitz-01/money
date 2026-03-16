@@ -659,6 +659,48 @@ export type Database = {
         }
         Relationships: []
       }
+      stacking_plans: {
+        Row: {
+          building_id: string
+          created_at: string
+          floor: string
+          id: string
+          industry: string
+          lease_expiration: string
+          notes: string | null
+          source: string
+          sqft: number
+          tenant_name: string
+          updated_at: string
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          floor?: string
+          id?: string
+          industry?: string
+          lease_expiration?: string
+          notes?: string | null
+          source?: string
+          sqft?: number
+          tenant_name: string
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          floor?: string
+          id?: string
+          industry?: string
+          lease_expiration?: string
+          notes?: string | null
+          source?: string
+          sqft?: number
+          tenant_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       task_comments: {
         Row: {
           author_initials: string

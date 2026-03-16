@@ -779,16 +779,17 @@ const Settings = () => {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence Flywheels
+                    <Zap className="h-4 w-4 text-primary" /> AI Intelligence
                   </CardTitle>
                   <CardDescription>
-                    Each flywheel makes your AI smarter as you use the platform. Turn them on individually — the more you enable, the more powerful your Copilot becomes.
+                    Three toggles that control how your AI learns and what it knows. The more you turn on, the smarter your Copilot gets.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-1">
                   {[
                     {
                       key: 'aiAutoBrainExtraction' as const,
+                      groupKeys: ['aiAutoBrainExtraction'] as const,
                       label: 'Auto-Digest (Continuous Learning)',
                       emoji: '🧠',
                       desc: 'The AI automatically learns from EVERYTHING you do — log an activity, move a deal, send an email, post a scoop, complete a task. Every action makes the AI smarter.',
@@ -796,45 +797,19 @@ const Settings = () => {
                     },
                     {
                       key: 'aiEmailPerformanceLoop' as const,
-                      label: 'Email Performance Loop',
-                      emoji: '📧',
-                      desc: 'Analyze your email reply rates, best templates, and tone effectiveness. The Copilot references actual performance data when drafting new outreach.',
-                      activeDesc: 'Active — learning from your email performance',
-                    },
-                    {
-                      key: 'aiDealPatternLearning' as const,
-                      label: 'Deal Pattern Learning',
+                      groupKeys: ['aiEmailPerformanceLoop', 'aiStyleTraining', 'aiDealPatternLearning', 'aiActivityInsights'] as const,
+                      label: 'Performance Intelligence',
                       emoji: '📊',
-                      desc: 'Track win/loss outcomes and reasons. The AI learns what closes deals vs what stalls — avg touchpoints to win, pipeline velocity patterns, and more.',
-                      activeDesc: 'Active — learning from deal outcomes',
-                    },
-                    {
-                      key: 'aiActivityInsights' as const,
-                      label: 'Activity Pattern Insights',
-                      emoji: '⚡',
-                      desc: 'Analyze your activity patterns — peak hours, most productive days, optimal outreach timing — and coach you on improving your workflow.',
-                      activeDesc: 'Active — analyzing your activity patterns',
-                    },
-                    {
-                      key: 'aiStyleTraining' as const,
-                      label: 'Communication Style Training',
-                      emoji: '✍️',
-                      desc: 'Learn your writing style from actual sent emails. The AI matches your email length, tone, and word choices more precisely over time.',
-                      activeDesc: 'Active — learning your communication style',
+                      desc: 'Analyzes your email reply rates, best templates, writing style, deal win/loss patterns, activity timing, and pipeline velocity — coaching you on what works.',
+                      activeDesc: 'Active — analyzing emails, deals, activities & communication style',
                     },
                     {
                       key: 'aiScoopSynthesis' as const,
-                      label: 'Market Intel Synthesis',
+                      groupKeys: ['aiScoopSynthesis', 'aiContactMemory'] as const,
+                      label: 'Market & Relationship Intelligence',
                       emoji: '🔍',
-                      desc: 'Aggregate scoops into trend summaries — "3 law firms expanding in NoMa this quarter" — so the Copilot spots patterns across market intel.',
-                      activeDesc: 'Active — synthesizing market intelligence',
-                    },
-                    {
-                      key: 'aiContactMemory' as const,
-                      label: 'Contact Relationship Memory',
-                      emoji: '👥',
-                      desc: 'Build unified interaction timelines per contact across emails, calls, and meetings. The AI knows your full history with every person.',
-                      activeDesc: 'Active — tracking contact relationships',
+                      desc: 'Aggregates scoops into market trend summaries and builds contact interaction timelines — so the AI knows what\'s happening in the market and your history with every person.',
+                      activeDesc: 'Active — synthesizing market intel & tracking relationships',
                     },
                   ].map((item, idx) => (
                     <div key={item.key} className={`flex items-center justify-between py-3.5 ${idx > 0 ? 'border-t border-border' : ''}`}>
@@ -848,7 +823,11 @@ const Settings = () => {
                       </div>
                       <Switch
                         checked={integrations[item.key]}
-                        onCheckedChange={v => setIntegrations(i => ({ ...i, [item.key]: v }))}
+                        onCheckedChange={v => setIntegrations(i => {
+                          const update: any = { ...i };
+                          item.groupKeys.forEach(k => { update[k] = v; });
+                          return update;
+                        })}
                       />
                     </div>
                   ))}

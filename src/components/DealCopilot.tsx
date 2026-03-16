@@ -1437,7 +1437,8 @@ For each line item, also produce a monthly breakdown:
     try {
       // Load templates for context
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx);
+      const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

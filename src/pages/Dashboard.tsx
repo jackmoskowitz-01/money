@@ -179,9 +179,9 @@ const Dashboard = () => {
     <div className="min-h-screen pt-14">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-end justify-between">
-            <div>
+            <div className="page-header-accent">
               <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
               <p className="mt-1 text-sm text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
             </div>
@@ -189,21 +189,21 @@ const Dashboard = () => {
         </motion.div>
 
         {/* ═══ Stat Cards ═══ */}
-        <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats.map((stat, i) => {
             const trendUp = stat.trend > 0;
             const inner = (
-              <Card className={`border-border bg-card p-4 transition-all ${stat.link ? 'hover:border-primary/30 hover:shadow-sm cursor-pointer' : ''}`}>
+              <div className={`stat-card gradient-border p-5 ${stat.link ? 'cursor-pointer' : ''}`}>
                 <div className="flex items-start justify-between">
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.color}`}>
-                    <stat.icon className="h-4.5 w-4.5" />
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.color} transition-transform`}>
+                    <stat.icon className="h-5 w-5" />
                   </div>
                 </div>
-                <div className="mt-3">
+                <div className="mt-4">
                   <div className="flex items-end gap-2">
-                    <p className="text-2xl font-bold text-foreground tabular-nums">{stat.value}</p>
+                    <p className="text-3xl font-bold text-foreground tabular-nums tracking-tight">{stat.value}</p>
                     {stat.trend !== 0 && (
-                      <span className={`mb-0.5 flex items-center gap-0.5 text-[10px] font-semibold ${
+                      <span className={`mb-1 flex items-center gap-0.5 text-[11px] font-semibold ${
                         stat.label === 'Pending Tasks'
                           ? (stat.trend < 0 ? 'text-destructive' : 'text-success')
                           : (trendUp ? 'text-success' : 'text-destructive')
@@ -213,13 +213,13 @@ const Dashboard = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{stat.label}</p>
+                  <p className="text-xs font-medium text-muted-foreground mt-1">{stat.label}</p>
                 </div>
-                <p className="mt-1.5 text-[10px] text-muted-foreground/70">{stat.detail}</p>
-              </Card>
+                <p className="mt-2 text-[11px] text-muted-foreground/60">{stat.detail}</p>
+              </div>
             );
             return (
-              <motion.div key={stat.label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
+              <motion.div key={stat.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06, ease: [0.4, 0, 0.2, 1] }}>
                 {stat.link ? <Link to={stat.link}>{inner}</Link> : inner}
               </motion.div>
             );
@@ -228,20 +228,20 @@ const Dashboard = () => {
 
         {/* ═══ Tabbed Sections ═══ */}
         <Tabs defaultValue="performance" className="w-full">
-          <TabsList className="w-full justify-start bg-secondary/30 border border-border rounded-lg p-1 mb-6">
-            <TabsTrigger value="performance" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+          <TabsList className="w-full justify-start glass border-0 rounded-xl p-1.5 mb-8 gap-0.5">
+            <TabsTrigger value="performance" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
               <TrendingUp className="h-3 w-3" /> Performance
             </TabsTrigger>
-            <TabsTrigger value="pipeline" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            <TabsTrigger value="pipeline" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
               <PieChartIcon className="h-3 w-3" /> Pipeline
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            <TabsTrigger value="activity" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
               <Activity className="h-3 w-3" /> Activity
             </TabsTrigger>
-            <TabsTrigger value="market" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            <TabsTrigger value="market" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
               <MapPin className="h-3 w-3" /> Market
             </TabsTrigger>
-            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
               <Calendar className="h-3 w-3" /> Critical Dates
             </TabsTrigger>
           </TabsList>

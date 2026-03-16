@@ -132,6 +132,13 @@ const Settings = () => {
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
           brainEnabled: (s as any).brain_enabled ?? false,
+          aiAutoBrainExtraction: (s as any).ai_auto_brain_extraction ?? false,
+          aiEmailPerformanceLoop: (s as any).ai_email_performance_loop ?? false,
+          aiDealPatternLearning: (s as any).ai_deal_pattern_learning ?? false,
+          aiActivityInsights: (s as any).ai_activity_insights ?? false,
+          aiStyleTraining: (s as any).ai_style_training ?? false,
+          aiScoopSynthesis: (s as any).ai_scoop_synthesis ?? false,
+          aiContactMemory: (s as any).ai_contact_memory ?? false,
         });
         setBrokerProfile({
           specialties: s.specialties || '',

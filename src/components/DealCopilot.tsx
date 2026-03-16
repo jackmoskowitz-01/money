@@ -218,9 +218,9 @@ export default function DealCopilot() {
     return null;
   }, [location.pathname, pipeline]);
 
-  // Load conversation memory scoped to current prospect
+  // Reload settings every time copilot is opened or entity changes
   useEffect(() => {
-    if (!user) return;
+    if (!user || !open) return;
     const loadMemoryAndSettings = async () => {
       // Check if memory is enabled in settings
       const { data: settings } = await supabase
@@ -322,6 +322,9 @@ export default function DealCopilot() {
         } catch (err) {
           console.error('Intelligence fetch error:', err);
         }
+      } else {
+        // All flywheels off — clear any stale intelligence context
+        setIntelligenceContext(null);
       }
 
       // Load brain context if enabled
@@ -433,7 +436,7 @@ export default function DealCopilot() {
       }
     };
     loadMemoryAndSettings();
-  }, [user, currentEntityName]);
+  }, [user, currentEntityName, open]);
 
   // Save message to DB
   const persistMessage = useCallback(async (msg: Msg, convId: string) => {

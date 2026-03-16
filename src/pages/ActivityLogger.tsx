@@ -74,6 +74,15 @@ const ActivityLogger = () => {
     setShowForm(false);
     toast.success('Activity logged');
 
+    // Auto-digest: feed this activity to the AI brain
+    digestEvent('activity_logged', {
+      type: formType,
+      title: formTitle.trim(),
+      description: formNotes.trim(),
+      tenant: selected?.label || '',
+      tenantId,
+    });
+
     // Auto-complete matching pending tasks
     if (tenantId) {
       const { completedCount, taskTitles } = await autoCompleteTasks(tenantId, formType);

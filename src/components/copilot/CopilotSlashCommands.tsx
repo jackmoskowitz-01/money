@@ -10,7 +10,7 @@ const COMMANDS = [
   { command: '/comp', description: 'Financial Analysis', icon: BarChart3, template: 'Compare these lease offers: ' },
   { command: '/matrix', description: 'Deal terms matrix', icon: LayoutGrid, template: 'Create a deal terms matrix for ' },
   { command: '/commission', description: 'Calculate broker commission from a lease', icon: Calculator, template: 'Calculate the commission on the attached lease' },
-  { command: '/template', description: 'Save or use an output template', icon: FileBox, template: 'Save the attached file as a template called ' },
+  
   { command: '/abstract', description: 'Run a full lease abstract from an attached lease', icon: FileSearch, template: 'Run a full lease abstract on the attached document' },
   { command: '/cashflow', description: 'Generate a lease cash flow analysis', icon: TrendingUp, template: 'Run a cash flow analysis on the attached lease' },
   { command: '/market report', description: 'Pull up a past market report', icon: FileBarChart, template: '/market report ' },

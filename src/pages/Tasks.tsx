@@ -326,7 +326,11 @@ const Tasks = () => {
                   {isOverdue ? '⚠ Overdue: ' : ''}{format(new Date(task.dueDate + 'T12:00:00'), 'EEE, MMM d')}
                 </span>
                 {info && <span className="text-muted-foreground/60">{info.tenant.name} · {info.building!.name}</span>}
-              </div>
+                {task.assignedToName && (
+                  <span className="flex items-center gap-1 text-primary">
+                    <UserPlus className="h-2.5 w-2.5" /> {task.assignedTo === user?.id ? 'Assigned to you' : `→ ${task.assignedToName}`}
+                  </span>
+                )}
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />

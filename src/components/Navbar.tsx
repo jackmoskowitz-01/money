@@ -28,13 +28,16 @@ const Navbar = () => {
   const { signOut } = useAuth();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-card/80 backdrop-blur-xl">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
         <DropdownMenu>
-          <DropdownMenuTrigger className="flex items-center gap-2 outline-none">
-            <img src={dealflowLogo} alt="DealFlow" className="h-8 rounded-md" />
+          <DropdownMenuTrigger className="flex items-center gap-2 outline-none group">
+            <div className="relative">
+              <img src={dealflowLogo} alt="DealFlow" className="h-8 rounded-md transition-transform group-hover:scale-105" />
+              <div className="absolute -inset-1 rounded-lg bg-primary/0 group-hover:bg-primary/5 transition-colors" />
+            </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuContent align="start" className="w-48 glass-card">
             <DropdownMenuItem asChild>
               <Link to="/" className="flex items-center gap-2 cursor-pointer" onClick={() => setMobileOpen(false)}>
                 <Newspaper className="h-4 w-4" />
@@ -57,21 +60,24 @@ const Navbar = () => {
         </DropdownMenu>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-1">
+        <div className="hidden md:flex items-center gap-0.5">
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
             return (
               <Link
                 key={path}
                 to={path}
-                className={`relative flex items-center gap-1.5 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+                className={`nav-indicator ${isActive ? 'active' : ''} relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className={`h-4 w-4 transition-colors ${isActive ? 'text-primary' : ''}`} />
                 <span>{label}</span>
+                {isActive && (
+                  <span className="absolute inset-0 rounded-lg bg-primary/8 pointer-events-none" />
+                )}
               </Link>
             );
           })}
@@ -83,7 +89,7 @@ const Navbar = () => {
           </div>
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden rounded-md p-2 text-muted-foreground hover:bg-secondary"
+            className="md:hidden rounded-lg p-2 text-muted-foreground hover:bg-secondary/50 transition-colors"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -92,8 +98,8 @@ const Navbar = () => {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden border-t border-border bg-card/95 backdrop-blur-xl">
-          <div className="px-4 py-2 space-y-1">
+        <div className="md:hidden border-t border-border/50 glass">
+          <div className="px-4 py-2 space-y-0.5">
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive = location.pathname === path;
               return (
@@ -101,19 +107,22 @@ const Navbar = () => {
                   key={path}
                   to={path}
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
                   }`}
                 >
                   <Icon className="h-4 w-4" />
                   <span>{label}</span>
+                  {isActive && (
+                    <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                  )}
                 </Link>
               );
             })}
           </div>
-          <div className="px-4 py-3 border-t border-border sm:hidden">
+          <div className="px-4 py-3 border-t border-border/50 sm:hidden">
             <ProspectSearch />
           </div>
         </div>

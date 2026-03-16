@@ -44,12 +44,53 @@ const MapView = () => {
   const [activityOverlay, setActivityOverlay] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
+  const [stackingPlanTenants, setStackingPlanTenants] = useState<Record<string, Tenant[]>>({});
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
   const mockMarkersRef = useRef<any[]>([]);
   const activityCirclesRef = useRef<any[]>([]);
   const fetchedRef = useRef(false);
+
+  // Load all stacking plan tenants and merge into buildings
+  useEffect(() => {
+    const loadStackingTenants = async () => {
+      const { data } = await supabase
+        .from('stacking_plans' as any)
+        .select('*')
+        .limit(1000);
+      if (!data) return;
+      const grouped: Record<string, Tenant[]> = {};
+      (data as any[]).forEach(dt => {
+        if (!grouped[dt.building_id]) grouped[dt.building_id] = [];
+        grouped[dt.building_id].push({
+          id: dt.id,
+          name: dt.tenant_name,
+          industry: dt.industry || 'Unknown',
+          sqft: dt.sqft || 0,
+          floor: dt.floor || '1',
+          leaseExpiration: dt.lease_expiration || 'N/A',
+          contactName: '',
+          contactTitle: '',
+          contactEmail: '',
+          headcount: 0,
+          outreachReasons: [],
+        });
+      });
+      setStackingPlanTenants(grouped);
+    };
+    loadStackingTenants();
+
+    // Listen for realtime stacking plan changes
+    const channel = supabase
+      .channel('stacking-plans-global')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stacking_plans' }, () => {
+        loadStackingTenants();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const fetchGoogleBuildings = useCallback(async () => {
     if (fetchedRef.current) return;
@@ -124,11 +165,15 @@ const MapView = () => {
       const key = b.name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        result.push(b);
+        // Merge stacking plan tenants into the building's tenant list
+        const dbTenants = stackingPlanTenants[b.id] || [];
+        const existingNames = new Set(b.tenants.map(t => t.name.toLowerCase()));
+        const newTenants = dbTenants.filter(dt => !existingNames.has(dt.name.toLowerCase()));
+        result.push(newTenants.length > 0 ? { ...b, tenants: [...b.tenants, ...newTenants] } : b);
       }
     }
     return result;
-  }, [googleBuildings]);
+  }, [googleBuildings, stackingPlanTenants]);
 
   // Build a tenant→building lookup for search
   const tenantBuildingMap = useMemo(() => {
@@ -173,6 +218,16 @@ const MapView = () => {
     }
     return null;
   }, [searchQuery, allBuildingsList]);
+
+  // Keep selectedBuilding in sync with merged stacking plan tenants
+  useEffect(() => {
+    if (selectedBuilding) {
+      const updated = allBuildingsList.find(b => b.id === selectedBuilding.id);
+      if (updated && updated.tenants.length !== selectedBuilding.tenants.length) {
+        setSelectedBuilding(updated);
+      }
+    }
+  }, [allBuildingsList, selectedBuilding]);
 
   // Record visit + clear state + preload contacts when building changes
   useEffect(() => {

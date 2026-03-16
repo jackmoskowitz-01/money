@@ -522,23 +522,46 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
         </button>
       )}
 
-      {/* DB tenants list for removal */}
+      {/* DB tenants list for editing/removal */}
       {dbTenants.length > 0 && (
         <div className="mt-2 space-y-0.5">
           <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
             Added ({dbTenants.length})
           </p>
           {dbTenants.map(dt => (
-            <div key={dt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px]">
-              <span className="text-foreground font-medium truncate">
-                {dt.tenant_name}
-                <span className="text-muted-foreground"> · Fl {dt.floor}</span>
-                {dt.source === 'upload' && <span className="text-primary/60 ml-1">📄</span>}
-              </span>
-              <button onClick={() => handleRemoveDb(dt.id)} className="text-muted-foreground hover:text-destructive ml-1">
-                <X className="h-3 w-3" />
-              </button>
-            </div>
+            editingTenant === dt.id ? (
+              <div key={dt.id} className="rounded border border-accent/30 bg-accent/5 p-1.5 space-y-1">
+                <div className="flex gap-1">
+                  <Input placeholder="Name" value={editValues.tenant_name || ''} onChange={e => setEditValues(v => ({ ...v, tenant_name: e.target.value }))} className="h-6 text-[10px]" />
+                  <Input placeholder="Industry" value={editValues.industry || ''} onChange={e => setEditValues(v => ({ ...v, industry: e.target.value }))} className="h-6 text-[10px] w-20" />
+                </div>
+                <div className="flex gap-1">
+                  <Input placeholder="Floor" value={editValues.floor || ''} onChange={e => setEditValues(v => ({ ...v, floor: e.target.value }))} className="h-6 text-[10px] w-14" />
+                  <Input placeholder="SF" type="number" value={editValues.sqft || ''} onChange={e => setEditValues(v => ({ ...v, sqft: Number(e.target.value) }))} className="h-6 text-[10px] w-16" />
+                  <Input placeholder="Lease exp" value={editValues.lease_expiration || ''} onChange={e => setEditValues(v => ({ ...v, lease_expiration: e.target.value }))} className="h-6 text-[10px] flex-1" />
+                  <Button size="sm" className="h-6 w-6 p-0" onClick={() => saveEdit(dt.id)}><Check className="h-3 w-3" /></Button>
+                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setEditingTenant(null)}><X className="h-3 w-3" /></Button>
+                </div>
+              </div>
+            ) : (
+              <div key={dt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px] group">
+                <span className="text-foreground font-medium truncate">
+                  {dt.tenant_name}
+                  <span className="text-muted-foreground"> · Fl {dt.floor}</span>
+                  {dt.sqft > 0 && <span className="text-muted-foreground"> · {(dt.sqft / 1000).toFixed(0)}k SF</span>}
+                  {dt.lease_expiration && dt.lease_expiration !== 'N/A' && <span className="text-muted-foreground"> · {dt.lease_expiration}</span>}
+                  {dt.source === 'upload' && <span className="text-primary/60 ml-1">📄</span>}
+                </span>
+                <div className="flex items-center gap-0.5">
+                  <button onClick={() => startEdit(dt)} className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button onClick={() => handleRemoveDb(dt.id)} className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              </div>
+            )
           ))}
         </div>
       )}

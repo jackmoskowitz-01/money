@@ -406,7 +406,7 @@ const Pipeline = () => {
             ];
 
             return (
-              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
                 {stats.map(s => (
                   <Card key={s.label} className="border-border bg-card p-3 flex items-center gap-3">
                     <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary ${s.color}`}>

@@ -150,6 +150,8 @@ const Settings = () => {
         default_market: workflow.defaultMarket,
         activity_categories: workflow.activityCategories,
         dark_mode: appearance.darkMode,
+        calendar_connected: integrations.calendarConnected,
+        copilot_memory: integrations.copilotMemory,
         updated_at: new Date().toISOString(),
       };
 

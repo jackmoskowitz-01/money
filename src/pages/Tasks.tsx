@@ -469,6 +469,9 @@ const Tasks = () => {
               <TabsTrigger value="lists" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
                 <List className="h-3 w-3" /> Prospect Lists
               </TabsTrigger>
+              <TabsTrigger value="prospects" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                <User className="h-3 w-3" /> Prospects
+              </TabsTrigger>
             </TabsList>
 
             {/* ── TASKS TAB ── */}

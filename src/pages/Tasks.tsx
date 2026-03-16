@@ -359,6 +359,22 @@ const Tasks = () => {
                 <p className={`text-sm font-medium ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                 <Badge variant="outline" className={`text-[10px] ${taskTypeColors[task.type]}`}><Icon className="mr-1 h-2.5 w-2.5" />{task.type.replace('_', ' ')}</Badge>
                 {(() => { const p = priorityConfig[task.priority || 'medium']; const PIcon = p.icon; return <Badge variant="outline" className={`text-[10px] ${p.class}`}><PIcon className="mr-1 h-2.5 w-2.5" />{p.label}</Badge>; })()}
+                {task.assignedToName && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger onClick={(e) => e.stopPropagation()}>
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-[9px] bg-primary/10 text-primary">
+                            {task.assignedToName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">{task.assignedTo === user?.id ? 'Assigned to you' : `Assigned to ${task.assignedToName}`}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
               {task.description && <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>}
               <div className="mt-1.5 flex items-center gap-3 text-[11px]">
@@ -366,11 +382,6 @@ const Tasks = () => {
                   {isOverdue ? '⚠ Overdue: ' : ''}{format(new Date(task.dueDate + 'T12:00:00'), 'EEE, MMM d')}
                 </span>
                 {info && <span className="text-muted-foreground/60">{info.tenant.name} · {info.building!.name}</span>}
-                {task.assignedToName && (
-                  <span className="flex items-center gap-1 text-primary">
-                    <UserPlus className="h-2.5 w-2.5" /> {task.assignedTo === user?.id ? 'Assigned to you' : `→ ${task.assignedToName}`}
-                  </span>
-                )}
               </div>
               <TaskComments taskId={task.id} />
             </div>

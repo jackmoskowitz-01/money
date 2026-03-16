@@ -331,6 +331,7 @@ const Tasks = () => {
                     <UserPlus className="h-2.5 w-2.5" /> {task.assignedTo === user?.id ? 'Assigned to you' : `→ ${task.assignedToName}`}
                   </span>
                 )}
+              </div>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />

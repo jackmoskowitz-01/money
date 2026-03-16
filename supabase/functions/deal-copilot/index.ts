@@ -857,7 +857,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const selectedModel = voiceMode ? "google/gemini-2.5-flash-lite" : "google/gemini-3-flash-preview";
+    const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
 
     // Non-streaming mode for tool calling
     if (mode === "tools") {

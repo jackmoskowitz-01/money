@@ -23,7 +23,7 @@ import SequenceBuilder from '@/components/SequenceBuilder';
 import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];

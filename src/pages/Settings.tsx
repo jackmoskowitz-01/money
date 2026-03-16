@@ -52,6 +52,7 @@ const Settings = () => {
   const [integrations, setIntegrations] = useState({
     calendarConnected: false,
     copilotMemory: true,
+    copilotName: 'DealFlow Copilot',
     brainEnabled: false,
     aiAutoBrainExtraction: false,
     aiEmailPerformanceLoop: false,

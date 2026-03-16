@@ -152,6 +152,53 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
     setNewTenant({ name: '', industry: '', sqft: '', floor: '', leaseExpiration: '' });
     setShowAddForm(false);
     onTenantsChange?.(allTenants);
+
+    // Feed to Brain
+    digestEvent('stacking_plan_updated', {
+      action: 'tenant_added',
+      building_name: building.name || building.address,
+      tenant_name: row.tenant_name,
+      industry: row.industry,
+      sqft: row.sqft,
+      floor: row.floor,
+      lease_expiration: row.lease_expiration,
+    });
+  };
+
+  // Inline edit for DB tenants
+  const [editingTenant, setEditingTenant] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Partial<DbTenant>>({});
+
+  const startEdit = (dt: DbTenant) => {
+    setEditingTenant(dt.id);
+    setEditValues({ tenant_name: dt.tenant_name, industry: dt.industry, sqft: dt.sqft, floor: dt.floor, lease_expiration: dt.lease_expiration });
+  };
+
+  const saveEdit = async (id: string) => {
+    const { error } = await supabase.from('stacking_plans' as any).update({
+      tenant_name: editValues.tenant_name,
+      industry: editValues.industry,
+      sqft: Number(editValues.sqft) || 0,
+      floor: editValues.floor,
+      lease_expiration: editValues.lease_expiration,
+    } as any).eq('id', id);
+    if (error) {
+      toast.error('Failed to update tenant');
+      return;
+    }
+    setDbTenants(prev => prev.map(t => t.id === id ? { ...t, ...editValues, sqft: Number(editValues.sqft) || 0 } as DbTenant : t));
+    setEditingTenant(null);
+    toast.success('Tenant updated');
+
+    digestEvent('stacking_plan_updated', {
+      action: 'tenant_updated',
+      building_name: building.name || building.address,
+      tenant_name: editValues.tenant_name,
+      industry: editValues.industry,
+      sqft: editValues.sqft,
+      floor: editValues.floor,
+      lease_expiration: editValues.lease_expiration,
+    });
   };
 
   const handleRemoveDb = async (id: string) => {

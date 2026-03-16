@@ -102,7 +102,19 @@ export function useTasks() {
 
     const channel = supabase
       .channel('tasks-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
+        // Check if a new task was just assigned to current user
+        if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+          const row = payload.new as DbRow;
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user && row.assigned_to === user.id && row.assigned_by !== user.id) {
+              // Dispatch custom event for notification
+              window.dispatchEvent(new CustomEvent('task-assigned', {
+                detail: { title: row.title, assignedToName: row.assigned_to_name }
+              }));
+            }
+          });
+        }
         fetchTasks();
       })
       .subscribe();

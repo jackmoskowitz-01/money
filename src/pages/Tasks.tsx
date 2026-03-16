@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus } from 'lucide-react';
@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import ProspectLists from '@/components/ProspectLists';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
+import TaskComments from '@/components/TaskComments';
+import { useToast } from '@/hooks/use-toast';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
   follow_up: MoreHorizontal, call: Phone, meeting: Users, email: Mail, research: Search, other: StickyNote,
@@ -47,6 +49,20 @@ const Tasks = () => {
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Listen for task assignment notifications
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      toast({
+        title: '📋 New task assigned to you',
+        description: detail.title,
+      });
+    };
+    window.addEventListener('task-assigned', handler);
+    return () => window.removeEventListener('task-assigned', handler);
+  }, [toast]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -332,6 +348,7 @@ const Tasks = () => {
                   </span>
                 )}
               </div>
+              <TaskComments taskId={task.id} />
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />

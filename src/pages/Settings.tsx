@@ -821,7 +821,7 @@ const Settings = () => {
                    {/* Smart Memory */}
                   <div className="flex items-center justify-between py-3 border-t border-border mt-4 pt-4">
                     <div>
-                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5">🧠 Smart Memory</p>
+                      <p className="text-sm font-medium text-foreground flex items-center gap-1.5">Smart Memory</p>
                       <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
                         {integrations.brainEnabled
                           ? 'Smart Memory is active — persistent memory, trigger stacking, live data awareness'

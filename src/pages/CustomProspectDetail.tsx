@@ -407,7 +407,7 @@ const CustomProspectDetail = () => {
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                       <Phone className="h-3 w-3" /> Contacts
                     </h2>
-                    <CompanyContacts entityId={prospectId!} onContactsChange={() => setContactsVersion(v => v + 1)} />
+                    <CompanyContacts entityId={prospectId!} onContactsChange={() => {}} />
                   </section>
 
                   {/* Company Intel */}

@@ -164,36 +164,19 @@ const MapView = () => {
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
 
-  // Helper to create a map marker — uses red icon when tracker is on and building is stale
-  const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean, mapInstance?: any) => {
-    const targetMap = mapInstance || mapInstanceRef.current;
-    if (!targetMap) return null;
-
+  // Helper to create a dot-style circle marker
+  const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean) => {
     const stale = isTrackerOn && (!log[building.id] || (Date.now() - log[building.id]) > threshold * 24 * 60 * 60 * 1000);
 
-    const defaultIcon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
+    const color = stale ? '#ef4444' : '#60a5fa'; // red vs blue
+    const marker = L.circleMarker([building.lat, building.lng], {
+      radius: 6,
+      color: stale ? '#dc2626' : '#3b82f6',
+      fillColor: color,
+      fillOpacity: 0.85,
+      weight: 2,
+      opacity: 1,
     });
-
-    const redIcon = L.icon({
-      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-      iconRetinaUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    });
-
-    const marker = L.marker([building.lat, building.lng], {
-      icon: stale ? redIcon : defaultIcon,
-    }).addTo(targetMap);
 
     const lastViewedText = !log[building.id] ? 'Never viewed' : `Last viewed ${Math.floor((Date.now() - log[building.id]) / 86400000)}d ago`;
     marker.bindPopup(`
@@ -206,8 +189,8 @@ const MapView = () => {
     `);
     marker.on('click', () => setSelectedBuilding(building));
     (marker as any)._buildingId = building.id;
-    (marker as any)._defaultIcon = defaultIcon;
-    (marker as any)._redIcon = redIcon;
+    (marker as any)._staleColor = '#ef4444';
+    (marker as any)._defaultColor = '#60a5fa';
     return marker;
   }, []);
 

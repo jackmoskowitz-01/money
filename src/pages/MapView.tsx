@@ -43,6 +43,7 @@ const MapView = () => {
   const [activityOverlay, setActivityOverlay] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const clusterGroupRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
   const mockMarkersRef = useRef<any[]>([]);
   const activityCirclesRef = useRef<any[]>([]);

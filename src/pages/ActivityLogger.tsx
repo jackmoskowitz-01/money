@@ -34,6 +34,8 @@ const tenantOptions = buildings.flatMap(b =>
 );
 
 const ActivityLogger = () => {
+  const navigate = useNavigate();
+  const { addProspect } = usePipeline();
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities());
   const [showForm, setShowForm] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');

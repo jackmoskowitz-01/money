@@ -53,6 +53,13 @@ const Settings = () => {
     calendarConnected: false,
     copilotMemory: true,
     brainEnabled: false,
+    aiAutoBrainExtraction: false,
+    aiEmailPerformanceLoop: false,
+    aiDealPatternLearning: false,
+    aiActivityInsights: false,
+    aiStyleTraining: false,
+    aiScoopSynthesis: false,
+    aiContactMemory: false,
   });
 
   const [brokerProfile, setBrokerProfile] = useState({

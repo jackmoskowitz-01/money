@@ -572,6 +572,65 @@ export type Database = {
         }
         Relationships: []
       }
+      prospect_list_items: {
+        Row: {
+          added_at: string
+          building_id: string
+          id: string
+          list_id: string
+          tenant_id: string
+          tenant_name: string
+        }
+        Insert: {
+          added_at?: string
+          building_id?: string
+          id?: string
+          list_id: string
+          tenant_id: string
+          tenant_name?: string
+        }
+        Update: {
+          added_at?: string
+          building_id?: string
+          id?: string
+          list_id?: string
+          tenant_id?: string
+          tenant_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospect_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "prospect_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospect_lists: {
+        Row: {
+          created_at: string
+          id: string
+          industry: string | null
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          industry?: string | null
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          industry?: string | null
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prospect_owners: {
         Row: {
           claimed_at: string

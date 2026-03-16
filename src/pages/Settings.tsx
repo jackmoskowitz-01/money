@@ -154,6 +154,7 @@ const Settings = () => {
         dark_mode: appearance.darkMode,
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
+        brain_enabled: integrations.brainEnabled,
         updated_at: new Date().toISOString(),
       };
 

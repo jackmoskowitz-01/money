@@ -956,6 +956,7 @@ export type Database = {
           calendar_connected: boolean
           communication_persona_enabled: boolean
           copilot_memory: boolean
+          copilot_name: string
           created_at: string
           dark_mode: boolean
           deal_count_goal: string
@@ -1002,6 +1003,7 @@ export type Database = {
           calendar_connected?: boolean
           communication_persona_enabled?: boolean
           copilot_memory?: boolean
+          copilot_name?: string
           created_at?: string
           dark_mode?: boolean
           deal_count_goal?: string
@@ -1048,6 +1050,7 @@ export type Database = {
           calendar_connected?: boolean
           communication_persona_enabled?: boolean
           copilot_memory?: boolean
+          copilot_name?: string
           created_at?: string
           dark_mode?: boolean
           deal_count_goal?: string

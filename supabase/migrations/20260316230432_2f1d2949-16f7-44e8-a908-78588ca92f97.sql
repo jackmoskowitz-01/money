@@ -1,0 +1,1 @@
+ALTER TABLE public.user_settings ADD COLUMN copilot_name text NOT NULL DEFAULT 'DealFlow Copilot';

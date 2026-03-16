@@ -256,6 +256,88 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "log_activity",
+      description: "Log an activity (call, email, meeting, note, do_not_call, meeting_set) for a tenant/prospect. Use when broker mentions they made a call, sent an email, had a meeting, or wants to mark DNC/meeting set.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_id: { type: "string", description: "The tenant/prospect ID" },
+          building_id: { type: "string", description: "The building ID (use empty string if unknown)" },
+          type: { type: "string", enum: ["email_sent", "call", "meeting", "note", "do_not_call", "meeting_set"], description: "Activity type" },
+          title: { type: "string", description: "Short activity title" },
+          description: { type: "string", description: "Activity details/notes" },
+        },
+        required: ["tenant_id", "type", "title"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_contact",
+      description: "Add a new contact to a company/tenant. Use when broker mentions a new person they spoke with or need to track.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_id: { type: "string", description: "The tenant/prospect ID this contact belongs to" },
+          name: { type: "string", description: "Contact's full name" },
+          title: { type: "string", description: "Contact's job title" },
+          email: { type: "string", description: "Contact's email address" },
+          direct_phone: { type: "string", description: "Direct phone number" },
+          mobile_phone: { type: "string", description: "Mobile phone number" },
+        },
+        required: ["entity_id", "name"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_deal",
+      description: "Create a new pipeline deal/opportunity. Use when broker identifies a new prospect that should be tracked in the pipeline.",
+      parameters: {
+        type: "object",
+        properties: {
+          tenant_id: { type: "string", description: "Unique tenant/prospect identifier" },
+          building_id: { type: "string", description: "Building ID for the deal" },
+          prospect_name: { type: "string", description: "Name of the contact" },
+          prospect_company: { type: "string", description: "Company name" },
+          prospect_email: { type: "string", description: "Contact email" },
+          prospect_sqft: { type: "number", description: "Square footage requirement" },
+          stage: { type: "string", enum: ["hot_prospect", "meeting_set", "meeting_held", "moving_forward", "won", "closed", "lost"], description: "Initial pipeline stage" },
+          notes: { type: "array", items: { type: "string" }, description: "Initial notes for the deal" },
+        },
+        required: ["tenant_id", "building_id", "prospect_company", "stage"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_critical_date",
+      description: "Track a critical date like a lease expiration, option deadline, or renewal notice date. Use when broker mentions important upcoming dates.",
+      parameters: {
+        type: "object",
+        properties: {
+          prospect_name: { type: "string", description: "Name of the prospect/tenant" },
+          prospect_id: { type: "string", description: "Optional prospect/tenant ID" },
+          building_name: { type: "string", description: "Building name or address" },
+          date_type: { type: "string", description: "Type of date (e.g., lease_expiration, option_deadline, renewal_notice, move_in)" },
+          date_value: { type: "string", description: "The date in YYYY-MM-DD format" },
+          description: { type: "string", description: "Additional context about this date" },
+          remind_days_before: { type: "number", description: "Days before the date to send a reminder (default 30)" },
+        },
+        required: ["prospect_name", "date_type", "date_value"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 async function searchMarket(query: string): Promise<string> {

@@ -196,7 +196,24 @@ export function useEmailThreads() {
       } as any)
       .eq('id', threadId);
 
-    if (!error) fetchThreads();
+    if (!error) {
+      fetchThreads();
+      // Auto-digest: feed email reply to AI brain
+      if (classification.is_relevant) {
+        const { digestEvent } = await import('@/lib/autoDigest');
+        digestEvent('email_reply', {
+          prospect: thread.prospectName,
+          email: thread.prospectEmail,
+          originalSubject: thread.subject,
+          templateUsed: thread.templateUsed,
+          toneUsed: thread.toneUsed,
+          sentiment: classification.sentiment,
+          responseTimeHours: Math.round(responseTimeHours * 10) / 10,
+          replyPreview: replyContent.substring(0, 200),
+          industry: thread.industry,
+        });
+      }
+    }
   }, [threads, fetchThreads]);
 
   const getAnalytics = useCallback((): ResponseAnalytics => {

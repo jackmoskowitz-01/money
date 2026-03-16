@@ -168,9 +168,22 @@ export function useTasks() {
 
     const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', id);
     if (!error) {
+      const task = tasks.find(t => t.id === id);
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+      // Auto-digest: feed task completion to AI brain
+      if (updates.completed === true && task) {
+        const { digestEvent } = await import('@/lib/autoDigest');
+        digestEvent('task_completed', {
+          title: task.title,
+          description: task.description,
+          type: task.type,
+          priority: task.priority,
+          tenantId: task.tenantId || '',
+          daysToComplete: Math.round((Date.now() - new Date(task.createdAt).getTime()) / 86400000),
+        });
+      }
     }
-  }, []);
+  }, [tasks]);
 
   const deleteTask = useCallback(async (id: string) => {
     const { error } = await supabase.from('tasks').delete().eq('id', id);

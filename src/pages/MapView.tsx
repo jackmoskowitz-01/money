@@ -42,6 +42,8 @@ const MapView = () => {
   const [visitLog, setVisitLog] = useState(getVisitLog());
   const [trackerEnabled, setTrackerEnabled] = useState(false);
   const [activityOverlay, setActivityOverlay] = useState(false);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editFieldValue, setEditFieldValue] = useState('');
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);

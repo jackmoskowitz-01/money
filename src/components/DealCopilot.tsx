@@ -2112,7 +2112,7 @@ For each line item, also produce a monthly breakdown:
                   <Sparkles className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">DealFlow Copilot</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{copilotName}</h3>
                   <p className="text-[10px] text-muted-foreground">Strategy · Actions · Market Intel</p>
                 </div>
               </div>

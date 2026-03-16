@@ -23,6 +23,7 @@ import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
 import CriticalDatesTracker from '@/components/CriticalDatesTracker';
+import CriticalDatesFullView from '@/components/CriticalDatesFullView';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
@@ -240,6 +241,9 @@ const Dashboard = () => {
             <TabsTrigger value="market" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
               <MapPin className="h-3 w-3" /> Market
             </TabsTrigger>
+            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
+              <Calendar className="h-3 w-3" /> Critical Dates
+            </TabsTrigger>
           </TabsList>
 
           {/* ── PERFORMANCE TAB ── */}
@@ -292,10 +296,7 @@ const Dashboard = () => {
                 </Card>
               )}
             </div>
-            <div className="grid gap-4 lg:grid-cols-2">
-              <CriticalDatesTracker />
-              <BrokerLeaderboard />
-            </div>
+            <BrokerLeaderboard />
             <div className="grid gap-4 lg:grid-cols-2">
               <DealVelocity />
               <RevenueForecast />
@@ -577,6 +578,11 @@ const Dashboard = () => {
               <SubmarketTrends />
               <MeetingsOverview />
             </div>
+          </TabsContent>
+
+          {/* ── CRITICAL DATES TAB ── */}
+          <TabsContent value="critical-dates" className="mt-0">
+            <CriticalDatesFullView />
           </TabsContent>
         </Tabs>
       </div>

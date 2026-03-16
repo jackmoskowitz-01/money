@@ -1586,7 +1586,56 @@ For each line item, also produce a monthly breakdown:
       // Load templates for context
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
       const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx);
+      const brainCtx = brainEnabled && brainContext ? `\n\n${brainContext}` : '';
+
+      // Live data awareness when brain is enabled
+      let liveDataCtx = '';
+      if (brainEnabled && !voiceModeRef.current) {
+        // Inject critical dates
+        const { data: critDates } = await supabase
+          .from('critical_dates' as any)
+          .select('*')
+          .eq('user_id', user!.id)
+          .eq('acknowledged', false)
+          .order('date_value', { ascending: true })
+          .limit(20);
+
+        if (critDates && (critDates as any[]).length > 0) {
+          const dateLines = (critDates as any[]).map(d => {
+            const target = new Date(d.date_value + 'T00:00:00');
+            const days = Math.ceil((target.getTime() - Date.now()) / 86400000);
+            return `- ${d.prospect_name}: ${d.date_type.replace(/_/g, ' ')} in ${days}d (${d.date_value}) — ${d.description}`;
+          });
+          liveDataCtx += `\n\n### 📅 Live Critical Dates\n${dateLines.join('\n')}`;
+        }
+
+        // Inject recent activities
+        const { data: recentActs } = await supabase
+          .from('activities')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(10);
+
+        if (recentActs && recentActs.length > 0) {
+          const actLines = recentActs.map(a => `- ${a.type}: ${a.title} (${new Date(a.timestamp).toLocaleDateString()})`);
+          liveDataCtx += `\n\n### 📊 Recent Activities\n${actLines.join('\n')}`;
+        }
+
+        // Inject pending tasks
+        const { data: pendingTasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('completed', false)
+          .order('due_date', { ascending: true })
+          .limit(10);
+
+        if (pendingTasks && pendingTasks.length > 0) {
+          const taskLines = pendingTasks.map(t => `- ${t.title} (due: ${new Date(t.due_date).toLocaleDateString()}, priority: ${t.priority})`);
+          liveDataCtx += `\n\n### ✅ Pending Tasks\n${taskLines.join('\n')}`;
+        }
+      }
+
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx);
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

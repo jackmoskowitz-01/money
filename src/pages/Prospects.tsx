@@ -48,6 +48,7 @@ const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate
 const Prospects = () => {
   const { buildings, loading: buildingsLoading } = useBuildings();
   const brokers = useBrokers();
+  const { lists: prospectLists, createList, addProspects: addProspectsToList } = useProspectLists();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');

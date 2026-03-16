@@ -789,10 +789,10 @@ const Settings = () => {
                   {[
                     {
                       key: 'aiAutoBrainExtraction' as const,
-                      label: 'Auto Brain Extraction',
+                      label: 'Auto-Digest (Continuous Learning)',
                       emoji: '🧠',
-                      desc: 'Automatically extract and remember key facts from every Copilot conversation — prospect preferences, deal details, relationships — without you doing anything.',
-                      activeDesc: 'Active — extracting facts from every conversation',
+                      desc: 'The AI automatically learns from EVERYTHING you do — log an activity, move a deal, send an email, post a scoop, complete a task. Every action makes the AI smarter.',
+                      activeDesc: 'Active — learning from every action you take across the platform',
                     },
                     {
                       key: 'aiEmailPerformanceLoop' as const,

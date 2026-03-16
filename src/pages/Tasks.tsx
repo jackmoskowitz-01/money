@@ -22,6 +22,8 @@ import { cn } from '@/lib/utils';
 import ProspectLists from '@/components/ProspectLists';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
+import TaskComments from '@/components/TaskComments';
+import { useToast } from '@/hooks/use-toast';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
   follow_up: MoreHorizontal, call: Phone, meeting: Users, email: Mail, research: Search, other: StickyNote,

@@ -68,7 +68,7 @@ serve(async (req) => {
     const systemPrompt = `You are a CRE document analyst. Extract and analyze commercial real estate documents (leases, LOIs, proposals, abstracts, offer comparisons). Focus on: parties, property address, square footage, rent/SF, TI allowance, free rent, lease term, commencement date, escalations, options, and any notable clauses. When multiple documents are provided, analyze them together and cross-reference data between them. Format your response with clear headers and bullet points.${context ? "\n\nAdditional context:\n" + context : ""}`;
 
     // Use multimodal if there are binary files, otherwise text-only
-    const model = hasBinaryFiles ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview";
+    const model = "google/gemini-2.5-flash";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

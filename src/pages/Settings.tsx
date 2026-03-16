@@ -131,6 +131,7 @@ const Settings = () => {
         setIntegrations({
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
+          copilotName: (s as any).copilot_name || 'DealFlow Copilot',
           brainEnabled: (s as any).brain_enabled ?? false,
           aiAutoBrainExtraction: (s as any).ai_auto_brain_extraction ?? false,
           aiEmailPerformanceLoop: (s as any).ai_email_performance_loop ?? false,

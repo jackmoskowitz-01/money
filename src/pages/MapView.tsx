@@ -194,14 +194,15 @@ const MapView = () => {
     return marker;
   }, []);
 
-  // Refresh marker icons when visitLog, threshold, or tracker toggle changes
+  // Refresh marker colors when visitLog, threshold, or tracker toggle changes
   const refreshMarkerIcons = useCallback(() => {
     const log = getVisitLog();
     [...mockMarkersRef.current, ...googleMarkersRef.current].forEach((marker: any) => {
       const bid = marker._buildingId;
-      if (!bid || !marker._defaultIcon || !marker._redIcon) return;
+      if (!bid) return;
       const stale = trackerEnabled && (!log[bid] || (Date.now() - log[bid]) > thresholdDays * 24 * 60 * 60 * 1000);
-      marker.setIcon(stale ? marker._redIcon : marker._defaultIcon);
+      const color = stale ? marker._staleColor || '#ef4444' : marker._defaultColor || '#60a5fa';
+      marker.setStyle({ color: stale ? '#dc2626' : '#3b82f6', fillColor: color });
     });
   }, [thresholdDays, trackerEnabled]);
 

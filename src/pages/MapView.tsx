@@ -165,11 +165,15 @@ const MapView = () => {
       const key = b.name.toLowerCase();
       if (!seen.has(key)) {
         seen.add(key);
-        result.push(b);
+        // Merge stacking plan tenants into the building's tenant list
+        const dbTenants = stackingPlanTenants[b.id] || [];
+        const existingNames = new Set(b.tenants.map(t => t.name.toLowerCase()));
+        const newTenants = dbTenants.filter(dt => !existingNames.has(dt.name.toLowerCase()));
+        result.push(newTenants.length > 0 ? { ...b, tenants: [...b.tenants, ...newTenants] } : b);
       }
     }
     return result;
-  }, [googleBuildings]);
+  }, [googleBuildings, stackingPlanTenants]);
 
   // Build a tenant→building lookup for search
   const tenantBuildingMap = useMemo(() => {

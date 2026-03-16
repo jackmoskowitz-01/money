@@ -53,6 +53,7 @@ const Tasks = () => {
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { lists: prospectLists, loading: listsLoading } = useProspectLists();
 
   // Listen for task assignment notifications
   useEffect(() => {

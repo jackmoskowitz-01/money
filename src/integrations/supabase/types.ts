@@ -368,6 +368,93 @@ export type Database = {
         }
         Relationships: []
       }
+      email_threads: {
+        Row: {
+          activity_id: string | null
+          ai_suggested_replies: Json
+          body_preview: string
+          building_id: string | null
+          created_at: string
+          id: string
+          industry: string
+          is_relevant: boolean
+          outreach_reason: string
+          prospect_email: string
+          prospect_name: string
+          relevance_score: number
+          reply_at: string | null
+          reply_content: string | null
+          reply_detected: boolean
+          reply_sentiment: string | null
+          response_time_hours: number | null
+          sent_at: string
+          spam_reason: string | null
+          subject: string
+          template_used: string
+          tenant_id: string | null
+          thread_status: string
+          tone_used: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_id?: string | null
+          ai_suggested_replies?: Json
+          body_preview?: string
+          building_id?: string | null
+          created_at?: string
+          id?: string
+          industry?: string
+          is_relevant?: boolean
+          outreach_reason?: string
+          prospect_email?: string
+          prospect_name?: string
+          relevance_score?: number
+          reply_at?: string | null
+          reply_content?: string | null
+          reply_detected?: boolean
+          reply_sentiment?: string | null
+          response_time_hours?: number | null
+          sent_at?: string
+          spam_reason?: string | null
+          subject?: string
+          template_used?: string
+          tenant_id?: string | null
+          thread_status?: string
+          tone_used?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_id?: string | null
+          ai_suggested_replies?: Json
+          body_preview?: string
+          building_id?: string | null
+          created_at?: string
+          id?: string
+          industry?: string
+          is_relevant?: boolean
+          outreach_reason?: string
+          prospect_email?: string
+          prospect_name?: string
+          relevance_score?: number
+          reply_at?: string | null
+          reply_content?: string | null
+          reply_detected?: boolean
+          reply_sentiment?: string | null
+          response_time_hours?: number | null
+          sent_at?: string
+          spam_reason?: string | null
+          subject?: string
+          template_used?: string
+          tenant_id?: string | null
+          thread_status?: string
+          tone_used?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pipeline_deals: {
         Row: {
           building_id: string

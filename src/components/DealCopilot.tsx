@@ -1244,7 +1244,70 @@ For each line item, also produce a monthly breakdown:
     setIsLoading(false);
   };
 
+  // Market report search
+  const searchMarketReports = useCallback(async (query: string) => {
+    if (!user) return;
+    setMarketReportSearch(prev => ({ ...prev, open: true, query, loading: true, results: [] }));
+
+    const { data } = await supabase
+      .from('copilot_messages')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('role', 'assistant')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (!data) {
+      setMarketReportSearch(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    const reportKeywords = ['market', 'report', 'analysis', 'comp', 'submarket', 'vacancy', 'lease', 'trend', 'forecast', 'overview', 'summary', 'abstract', 'cash flow', 'matrix'];
+    const searchLower = query.toLowerCase();
+
+    const reports = (data as any[])
+      .filter(m => {
+        const content = m.content.toLowerCase();
+        // Must look like a report (has headers/structure and is substantial)
+        const isReport = content.length > 300 && (content.includes('##') || content.includes('**') || content.includes('| '));
+        const matchesSearch = !searchLower || reportKeywords.some(k => content.includes(k)) || content.includes(searchLower);
+        return isReport && matchesSearch;
+      })
+      .map(m => {
+        // Extract a title/preview from the first heading or bold text
+        const headingMatch = m.content.match(/^#{1,3}\s+(.+)/m) || m.content.match(/\*\*(.+?)\*\*/);
+        const preview = headingMatch ? headingMatch[1].slice(0, 80) : m.content.slice(0, 80);
+        return {
+          content: m.content,
+          preview,
+          date: new Date(m.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          conversationId: m.conversation_id,
+        };
+      })
+      .slice(0, 20);
+
+    setMarketReportSearch(prev => ({ ...prev, loading: false, results: reports }));
+  }, [user]);
+
+  const handleSelectReport = (report: { content: string; preview: string; date: string }) => {
+    setMarketReportSearch({ open: false, query: '', results: [], loading: false });
+    setMessages(prev => [
+      ...prev,
+      { role: 'user', content: `Pull up this market report: "${report.preview}"` },
+      { role: 'assistant', content: `📄 **Market Report** (${report.date})\n\n${report.content}` },
+    ]);
+  };
+
   const sendMessage = async (text: string) => {
+    // Intercept /market report command
+    if (/^\/?market\s+report/i.test(text.trim())) {
+      const query = text.trim().replace(/^\/?market\s+report\s*/i, '');
+      setInput('');
+      setShowSlashCommands(false);
+      searchMarketReports(query);
+      return;
+    }
+
     // If files are attached, route to file handler
     if (attachedFiles.length > 0) {
       return sendFileMessage(text);

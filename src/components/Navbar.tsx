@@ -19,6 +19,7 @@ const navItems = [
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
   { path: '/loopnet', label: 'LoopNet', icon: Search },
+  { path: '/email-analytics', label: 'Emails', icon: BarChart3 },
 ];
 
 const Navbar = () => {

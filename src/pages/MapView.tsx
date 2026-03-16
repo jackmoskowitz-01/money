@@ -19,6 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
 import { getActivities, type ActivityEntry } from '@/data/activityData';
+import { digestEvent } from '@/lib/autoDigest';
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 

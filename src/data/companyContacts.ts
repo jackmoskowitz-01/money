@@ -44,10 +44,37 @@ export const getContactsAsync = async (entityId: string): Promise<CompanyContact
   return (data as DbContact[]).map(toContact);
 };
 
-/** Synchronous fallback for non-async contexts — returns empty, use async version when possible */
-export const getContacts = (_entityId: string): CompanyContact[] => {
-  // Deprecated sync fallback — callers should migrate to getContactsAsync
-  return [];
+// In-memory cache for sync access — populated by subscriptions and async loads
+const contactsCache = new Map<string, CompanyContact[]>();
+
+/** Synchronous access using cache — returns cached contacts or empty if not yet loaded */
+export const getContacts = (entityId: string): CompanyContact[] => {
+  return contactsCache.get(entityId) || [];
+};
+
+/** Pre-load contacts into cache for sync access */
+export const preloadContacts = async (entityId: string): Promise<CompanyContact[]> => {
+  const contacts = await getContactsAsync(entityId);
+  contactsCache.set(entityId, contacts);
+  return contacts;
+};
+
+/** Subscribe to realtime changes for an entity and keep cache fresh */
+export const subscribeContacts = (entityId: string) => {
+  // Initial load
+  preloadContacts(entityId);
+  
+  const channel = supabase
+    .channel(`contacts-cache-${entityId}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'company_contacts',
+      filter: `entity_id=eq.${entityId}`,
+    }, () => { preloadContacts(entityId); })
+    .subscribe();
+  
+  return () => { supabase.removeChannel(channel); };
 };
 
 /** Add a contact to an entity */

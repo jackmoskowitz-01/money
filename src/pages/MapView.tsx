@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import EmailDisplay from '@/components/EmailDisplay';
-import { getContacts } from '@/data/companyContacts';
+import { getContacts, subscribeContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -171,11 +171,13 @@ const MapView = () => {
     return null;
   }, [searchQuery, allBuildingsList]);
 
-  // Record visit + clear state when building changes
+  // Record visit + clear state + preload contacts when building changes
   useEffect(() => {
     if (selectedBuilding) {
       const updated = recordVisit(selectedBuilding.id);
       setVisitLog(updated);
+      // Preload contacts for all tenants in this building
+      selectedBuilding.tenants.forEach(t => subscribeContacts(t.id));
     }
     setSelectedTenants(new Set());
     setOutreachReason('');

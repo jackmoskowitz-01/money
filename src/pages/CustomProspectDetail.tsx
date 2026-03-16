@@ -19,7 +19,7 @@ import ActivityLog from '@/components/ActivityLog';
 import ResearchBrief from '@/components/ResearchBrief';
 import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
 import { addActivity } from '@/data/activityData';
@@ -109,7 +109,7 @@ const CustomProspectDetail = () => {
     setOwnerActing(false);
   };
 
-  const [contactsVersion, setContactsVersion] = useState(0);
+  const { contacts: prospectContacts } = useContacts(prospectId);
   const [customReasonOpen, setCustomReasonOpen] = useState(false);
   const [customReasonText, setCustomReasonText] = useState('');
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);
@@ -217,8 +217,8 @@ const CustomProspectDetail = () => {
 
   const recipients: EmailRecipient[] = useMemo(() => {
     if (!prospectId) return [];
-    return getContacts(prospectId).map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
-  }, [prospectId, contactsVersion]);
+    return prospectContacts.map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
+  }, [prospectId, prospectContacts]);
 
   if (!prospect) {
     return <div className="flex min-h-screen items-center justify-center pt-14"><p className="text-muted-foreground">Prospect not found</p></div>;
@@ -407,7 +407,7 @@ const CustomProspectDetail = () => {
                     <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
                       <Phone className="h-3 w-3" /> Contacts
                     </h2>
-                    <CompanyContacts entityId={prospectId!} onContactsChange={() => setContactsVersion(v => v + 1)} />
+                    <CompanyContacts entityId={prospectId!} onContactsChange={() => {}} />
                   </section>
 
                   {/* Company Intel */}
@@ -555,7 +555,7 @@ const CustomProspectDetail = () => {
 
             {/* ── ACTIVITY TAB ── */}
             <TabsContent value="activity" className="mt-0">
-              <ActivityLog tenantId={prospectId!} buildingId="" outreachReasonTitles={[]} contactsVersion={contactsVersion} />
+              <ActivityLog tenantId={prospectId!} buildingId="" outreachReasonTitles={[]} />
             </TabsContent>
 
             {/* ── FILES TAB ── */}

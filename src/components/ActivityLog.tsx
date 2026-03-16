@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { Plus, Mail, Phone, Users, StickyNote, AlertTriangle, ChevronRight, User, PhoneOff, CalendarCheck } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +44,7 @@ type Contact = {
   isPrimary: boolean;
 };
 
-const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersion = 0 }: Props) => {
+const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles }: Props) => {
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities(tenantId));
   const [showForm, setShowForm] = useState(false);
   const [formStep, setFormStep] = useState<'details' | 'contacts'>('details');
@@ -55,7 +55,9 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
 
   const usedReasons = getUsedOutreachReasons(tenantId);
 
-  // Build contacts list: only contacts from THIS company/tenant
+  const { contacts: additionalContacts } = useContacts(tenantId);
+
+  // Build contacts list: primary + additional from DB
   const contacts = useMemo<Contact[]>(() => {
     const building = buildings.find(b => b.id === buildingId);
     const tenant = building?.tenants.find(t => t.id === tenantId);
@@ -73,9 +75,8 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
       isPrimary: true,
     });
 
-    // Additional contacts added via CompanyContacts manager
-    const customContacts = getContacts(tenantId);
-    customContacts.forEach(cc => {
+    // Additional contacts from DB (realtime)
+    additionalContacts.forEach(cc => {
       list.push({
         id: cc.id,
         name: cc.name,
@@ -87,7 +88,7 @@ const ActivityLog = ({ tenantId, buildingId, outreachReasonTitles, contactsVersi
     });
 
     return list;
-  }, [buildingId, tenantId, contactsVersion]);
+  }, [buildingId, tenantId, additionalContacts]);
 
   const needsContacts = contactRequiredTypes.includes(newType);
 

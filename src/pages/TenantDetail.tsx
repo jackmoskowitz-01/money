@@ -23,7 +23,7 @@ import SequenceBuilder from '@/components/SequenceBuilder';
 import AddToListButton from '@/components/AddToListButton';
 import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
-import { getContacts } from '@/data/companyContacts';
+import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
@@ -63,7 +63,7 @@ const TenantDetail = () => {
 
   const building = buildings.find(b => b.id === buildingId);
   const tenant = building?.tenants.find(t => t.id === tenantId);
-  const [contactsVersion, setContactsVersion] = useState(0);
+  const { contacts: additionalContacts } = useContacts(tenantId);
 
   const recipients: EmailRecipient[] = useMemo(() => {
     const list: EmailRecipient[] = [];
@@ -76,14 +76,11 @@ const TenantDetail = () => {
         isPrimary: true,
       });
     }
-    if (tenantId) {
-      const additional = getContacts(tenantId);
-      additional.forEach(c => {
-        list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
-      });
-    }
+    additionalContacts.forEach(c => {
+      list.push({ id: c.id, name: c.name, email: c.email, title: c.title });
+    });
     return list;
-  }, [tenant, tenantId, contactsVersion]);
+  }, [tenant, additionalContacts]);
 
   useEffect(() => {
     if (tenantId && buildingId) {
@@ -316,7 +313,7 @@ const TenantDetail = () => {
                 title: tenant.contactTitle,
                 email: tenant.contactEmail,
               }}
-              onContactsChange={() => setContactsVersion(v => v + 1)}
+              onContactsChange={() => {}}
             />
           </div>
 
@@ -606,7 +603,7 @@ const TenantDetail = () => {
                   tenantId={tenantId!}
                   buildingId={buildingId!}
                   outreachReasonTitles={tenant.outreachReasons.map(r => r.title)}
-                  contactsVersion={contactsVersion}
+                  contactsVersion={0}
                 />
               </div>
 

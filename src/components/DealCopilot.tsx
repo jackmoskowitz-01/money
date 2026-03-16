@@ -268,7 +268,10 @@ export default function DealCopilot() {
               // Build filtered context based on which flywheels are enabled
               const parts: string[] = ['## 🧠 Intelligence Insights (auto-computed from your data)\n'];
 
-              if (newAiSettings.aiEmailPerformanceLoop && intelData.emailStats.totalSent > 0) {
+              // Performance Intelligence (email + style + deals + activity)
+              const perfOn = newAiSettings.aiEmailPerformanceLoop;
+
+              if (perfOn && intelData.emailStats.totalSent > 0) {
                 const es = intelData.emailStats;
                 parts.push(`### Email Performance (${es.totalSent} emails)`);
                 parts.push(`- Reply rate: ${es.replyRate}% | Avg response: ${es.avgResponseHours}h`);
@@ -279,16 +282,13 @@ export default function DealCopilot() {
                 parts.push(`- IMPORTANT: Reference these stats when drafting emails. Use the best-performing templates and tones.`);
               }
 
-              if (newAiSettings.aiActivityInsights && intelData.activityPatterns.totalActivities > 0) {
-                const ap = intelData.activityPatterns;
-                parts.push(`\n### Activity Patterns (${ap.totalActivities} activities)`);
-                const topDay = Object.entries(ap.byDayOfWeek).sort(([,a],[,b]) => b - a);
-                if (topDay.length > 0) parts.push(`- Most active: ${topDay.slice(0, 3).map(([d,c]) => `${d} (${c})`).join(', ')}`);
-                const topHour = Object.entries(ap.byHour).sort(([,a],[,b]) => b - a);
-                if (topHour.length > 0) parts.push(`- Peak hours: ${topHour.slice(0, 3).map(([h,c]) => `${h} (${c})`).join(', ')}`);
+              if (perfOn && intelData.styleFingerprint.avgWordCount > 0) {
+                parts.push(`\n### Your Communication Style`);
+                parts.push(`- Avg email: ${intelData.styleFingerprint.avgWordCount} words | Dominant tone: ${intelData.styleFingerprint.dominantTone}`);
+                parts.push(`- IMPORTANT: Match this style when drafting emails unless told otherwise.`);
               }
 
-              if (newAiSettings.aiDealPatternLearning && intelData.dealPatterns.totalDeals > 0) {
+              if (perfOn && intelData.dealPatterns.totalDeals > 0) {
                 const dp = intelData.dealPatterns;
                 parts.push(`\n### Deal Patterns (${dp.totalDeals} deals)`);
                 parts.push(`- Win rate: ${dp.winRate}%`);
@@ -297,20 +297,26 @@ export default function DealCopilot() {
                 if (dp.outcomeReasons.length > 0) parts.push(`- Win/loss reasons: ${dp.outcomeReasons.slice(0, 5).map(r => `"${r.reason}" (${r.count}x)`).join(', ')}`);
               }
 
-              if (newAiSettings.aiScoopSynthesis && intelData.scoopTrends.totalScoops > 0) {
+              if (perfOn && intelData.activityPatterns.totalActivities > 0) {
+                const ap = intelData.activityPatterns;
+                parts.push(`\n### Activity Patterns (${ap.totalActivities} activities)`);
+                const topDay = Object.entries(ap.byDayOfWeek).sort(([,a],[,b]) => b - a);
+                if (topDay.length > 0) parts.push(`- Most active: ${topDay.slice(0, 3).map(([d,c]) => `${d} (${c})`).join(', ')}`);
+                const topHour = Object.entries(ap.byHour).sort(([,a],[,b]) => b - a);
+                if (topHour.length > 0) parts.push(`- Peak hours: ${topHour.slice(0, 3).map(([h,c]) => `${h} (${c})`).join(', ')}`);
+              }
+
+              // Market & Relationship Intelligence (scoops + contacts)
+              const marketOn = newAiSettings.aiScoopSynthesis;
+
+              if (marketOn && intelData.scoopTrends.totalScoops > 0) {
                 const st = intelData.scoopTrends;
                 parts.push(`\n### Market Intel Trends (${st.totalScoops} scoops)`);
                 if (st.topTags.length > 0) parts.push(`- Trending: ${st.topTags.slice(0, 5).map(t => `#${t.tag} (${t.count})`).join(', ')}`);
                 if (st.recentHighlights.length > 0) parts.push(`- Recent: ${st.recentHighlights.slice(0, 3).join(' | ')}`);
               }
 
-              if (newAiSettings.aiStyleTraining && intelData.styleFingerprint.avgWordCount > 0) {
-                parts.push(`\n### Your Communication Style`);
-                parts.push(`- Avg email: ${intelData.styleFingerprint.avgWordCount} words | Dominant tone: ${intelData.styleFingerprint.dominantTone}`);
-                parts.push(`- IMPORTANT: Match this style when drafting emails unless told otherwise.`);
-              }
-
-              if (newAiSettings.aiContactMemory && intelData.contactDensity.totalContacts > 0) {
+              if (marketOn && intelData.contactDensity.totalContacts > 0) {
                 parts.push(`\n### Contact Intelligence (${intelData.contactDensity.totalContacts} contacts tracked)`);
               }
 

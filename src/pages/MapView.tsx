@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StackingPlan from '@/components/StackingPlan';
 import AutoEnrichBadges from '@/components/AutoEnrichBadges';
-import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar, Activity } from 'lucide-react';
+import { X, Users, TrendingUp, Search, ChevronDown, ChevronUp, Loader2, Mail, Send, FileText, Sparkles, Radar, Activity, Pencil, Check } from 'lucide-react';
 import { recordVisit, getVisitLog, isStale, getLastVisitLabel, getThresholdDays, setThresholdDays } from '@/lib/buildingVisitTracker';
 import { buildings as mockBuildings, type Building, type Tenant } from '@/data/mockData';
 import { costarBuildings } from '@/data/costarBuildings';

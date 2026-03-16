@@ -235,6 +235,7 @@ export default function DealCopilot() {
       const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
       setBrainEnabled(brainOn);
+      setCopilotName(s?.copilot_name || 'DealFlow Copilot');
 
       const newAiSettings = {
         aiAutoBrainExtraction: s?.ai_auto_brain_extraction ?? false,

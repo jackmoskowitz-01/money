@@ -219,6 +219,16 @@ const MapView = () => {
     return null;
   }, [searchQuery, allBuildingsList]);
 
+  // Keep selectedBuilding in sync with merged stacking plan tenants
+  useEffect(() => {
+    if (selectedBuilding) {
+      const updated = allBuildingsList.find(b => b.id === selectedBuilding.id);
+      if (updated && updated.tenants.length !== selectedBuilding.tenants.length) {
+        setSelectedBuilding(updated);
+      }
+    }
+  }, [allBuildingsList, selectedBuilding]);
+
   // Record visit + clear state + preload contacts when building changes
   useEffect(() => {
     if (selectedBuilding) {

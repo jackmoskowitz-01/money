@@ -1344,6 +1344,64 @@ For each line item, also produce a monthly breakdown:
         
         await saveTemplate(templateName, assistantSoFar, fileNames[0], templateType);
       }
+
+      // Auto-extract critical dates from lease abstracts
+      if (isAbstract && assistantSoFar && user) {
+        try {
+          // Determine prospect/building from context
+          const tenantMatch = location.pathname.match(/\/building\/(.+)\/tenant\/(.+)/);
+          let prospectName = '';
+          let buildingName = '';
+          let prospectId = '';
+          if (tenantMatch) {
+            const [, bId, tId] = tenantMatch;
+            const building = buildings.find(b => b.id === bId);
+            const tenant = building?.tenants.find(t => t.id === tId);
+            prospectName = tenant?.name || '';
+            buildingName = building?.name || '';
+            prospectId = tId;
+          }
+
+          const extractResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-critical-dates`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              leaseText: assistantSoFar.slice(0, 15000),
+              prospectName,
+              buildingName,
+              prospectId,
+            }),
+          });
+
+          if (extractResp.ok) {
+            const extractData = await extractResp.json();
+            if (extractData.dates?.length > 0) {
+              const rows = extractData.dates.map((d: any) => ({
+                user_id: user.id,
+                prospect_id: prospectId || null,
+                prospect_name: prospectName || 'Unknown',
+                building_name: buildingName || 'Unknown',
+                date_type: d.date_type,
+                date_value: d.date_value,
+                description: d.description,
+                remind_days_before: d.remind_days_before || 30,
+                source: 'abstract',
+                lease_abstract_id: null,
+                acknowledged: false,
+              });
+              await supabase.from('critical_dates' as any).insert(rows as any);
+              toast.success(`📅 ${extractData.dates.length} critical dates extracted and tracked`, {
+                description: 'View them on your Dashboard',
+              });
+            }
+          }
+        } catch (err) {
+          console.error('Critical date extraction failed:', err);
+        }
+      }
     } catch (e: any) {
       console.error('File analysis error:', e);
       toast.error(e.message || 'Failed to analyze file');

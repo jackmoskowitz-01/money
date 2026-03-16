@@ -5,6 +5,7 @@ import {
   GripVertical, Plus, StickyNote, ChevronRight, X, UserPlus,
   Mail, Phone, Building2, MessageSquare, Sparkles, Send,
   Check, Clock, Loader2, Copy, AlertTriangle, Trash2,
+  BarChart3, Users, Ruler, TrendingUp,
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import {
@@ -371,6 +372,52 @@ const Pipeline = () => {
               </div>
             </div>
           )}
+
+          {/* Pipeline Summary Stats */}
+          {(() => {
+            const totalDeals = pipeline.length;
+            const activeDeals = pipeline.filter(p => !['won', 'closed', 'lost'].includes(p.stage)).length;
+            const totalSqft = pipeline.reduce((sum, p) => {
+              if (p.isManual) return sum + (p.prospectSqft || 0);
+              const { tenant } = getTenantInfo(p.tenantId, p.buildingId);
+              return sum + (tenant?.sqft || 0);
+            }, 0);
+            const wonDeals = pipeline.filter(p => p.stage === 'won').length;
+            const winRate = totalDeals > 0 ? Math.round((wonDeals / totalDeals) * 100) : 0;
+            const avgDaysInStage = (() => {
+              const now = Date.now();
+              const active = pipeline.filter(p => !['won', 'closed', 'lost'].includes(p.stage));
+              if (active.length === 0) return 0;
+              const totalDays = active.reduce((sum, p) => {
+                return sum + Math.max(1, Math.round((now - new Date(p.lastActivity).getTime()) / 86400000));
+              }, 0);
+              return Math.round(totalDays / active.length);
+            })();
+
+            const stats = [
+              { label: 'Total Deals', value: totalDeals, icon: BarChart3, color: 'text-primary' },
+              { label: 'Active', value: activeDeals, icon: Users, color: 'text-info' },
+              { label: 'Total SF', value: totalSqft > 0 ? `${(totalSqft / 1000).toFixed(0)}K` : '0', icon: Ruler, color: 'text-warning' },
+              { label: 'Win Rate', value: `${winRate}%`, icon: TrendingUp, color: winRate >= 20 ? 'text-success' : 'text-muted-foreground' },
+              { label: 'Avg Days in Stage', value: avgDaysInStage, icon: Clock, color: avgDaysInStage > 14 ? 'text-destructive' : 'text-success' },
+            ];
+
+            return (
+              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {stats.map(s => (
+                  <Card key={s.label} className="border-border bg-card p-3 flex items-center gap-3">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary ${s.color}`}>
+                      <s.icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Mobile: stacked list view */}
           <div className="block md:hidden space-y-4">

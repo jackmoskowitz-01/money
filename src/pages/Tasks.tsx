@@ -45,11 +45,15 @@ const Tasks = () => {
   const { buildings: allBuildings } = useBuildings();
   const navigate = useNavigate();
   const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
+  const { members: teamMembers } = useTeamMembers();
+  const { user } = useAuth();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '' });
+  const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '', assignedTo: '', assignedToName: '' });
   const [prospectSearch, setProspectSearch] = useState('');
+  const [assignSearch, setAssignSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'assigned_to_me'>('all');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({

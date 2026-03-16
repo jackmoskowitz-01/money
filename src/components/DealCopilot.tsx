@@ -1969,7 +1969,7 @@ For each line item, also produce a monthly breakdown:
       }
 
       // Brain learning: extract facts from the conversation asynchronously
-      if (brainEnabled && assistantSoFar && user) {
+      if ((brainEnabled || aiSettings.aiAutoBrainExtraction) && assistantSoFar && user) {
         (async () => {
           try {
             const userText = text.trim();

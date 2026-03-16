@@ -596,7 +596,20 @@ const Tasks = () => {
                 const prospectMap = new Map<string, { tenantId: string; buildingId: string; tenantName: string; taskCount: number; overdueCount: number; nextDue: string }>();
                 activeTasks.forEach(t => {
                   const info = getTenantInfo(t);
-                  const name = info?.tenant?.name || t.title.match(/(?:with|for|to)\s+(.+)/i)?.[1] || t.tenantId || 'Unknown';
+                  // Try building tenant name, then mock buildings, then custom prospects, then parse from title
+                  let name = info?.tenant?.name;
+                  if (!name) {
+                    const mockBuilding = buildings.find(b => b.id === t.buildingId);
+                    const mockTenant = mockBuilding?.tenants.find(tn => tn.id === t.tenantId);
+                    name = mockTenant?.name;
+                  }
+                  if (!name) {
+                    const cp = getCustomProspects().find(p => p.id === t.tenantId);
+                    name = cp?.name;
+                  }
+                  if (!name) {
+                    name = t.title.match(/(?:with|for|to)\s+(.+)/i)?.[1] || t.title || 'Unknown';
+                  }
                   const existing = prospectMap.get(t.tenantId!);
                   const isOverdue = t.dueDate < todayDate;
                   if (existing) {

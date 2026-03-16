@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProspectSearch from './ProspectSearch';
 import {
@@ -19,6 +19,7 @@ const navItems = [
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
   { path: '/loopnet', label: 'LoopNet', icon: Search },
+  { path: '/email-analytics', label: 'Emails', icon: BarChart3 },
 ];
 
 const Navbar = () => {

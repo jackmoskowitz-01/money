@@ -698,7 +698,7 @@ async function generatePitchDeck(args: any, context: string): Promise<string> {
   return result;
 }
 
-async function executeTool(name: string, args: any, context?: string): Promise<string> {
+async function executeTool(name: string, args: any, context?: string, userId?: string | null): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
@@ -806,15 +806,7 @@ async function executeTool(name: string, args: any, context?: string): Promise<s
     }
 
     case "add_critical_date": {
-      // We need a user_id for critical dates — use service role to find one from recent activity
-      const { data: recentActivity } = await supabase
-        .from("activities")
-        .select("tenant_id")
-        .limit(1);
-      
-      // Critical dates require user_id, but from edge function we don't have auth context
-      // We'll insert with a placeholder approach — the RLS requires user_id = auth.uid()
-      // So we skip user_id validation here and let the response tell the user
+      if (!userId) return "⚠️ Critical date noted but couldn't save — user not authenticated. Please add it manually from the Critical Dates tracker.";
       const { error } = await supabase.from("critical_dates").insert({
         prospect_name: args.prospect_name,
         prospect_id: args.prospect_id || null,
@@ -824,7 +816,7 @@ async function executeTool(name: string, args: any, context?: string): Promise<s
         description: args.description || "",
         remind_days_before: args.remind_days_before || 30,
         source: "copilot",
-        user_id: "00000000-0000-0000-0000-000000000000", // Will be overridden by auth context
+        user_id: userId,
       });
       if (error) return `⚠️ Critical date noted but couldn't save to tracker (${error.message}). I'll include it in my summary so you can add it manually.`;
       return `✅ Critical date tracked: ${args.date_type.replace(/_/g, " ")} for ${args.prospect_name} on ${args.date_value}.`;
@@ -856,6 +848,17 @@ serve(async (req) => {
     const { messages, context, mode, voiceMode } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Extract user_id from JWT for tools that need it (e.g. critical_dates)
+    let currentUserId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        currentUserId = payload.sub || null;
+      } catch { /* not a JWT or can't parse */ }
+    }
 
     const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
 
@@ -896,7 +899,7 @@ serve(async (req) => {
         const toolResults = await Promise.all(
           toolCalls.map(async (tc: any) => {
             const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-            return executeTool(tc.function.name, args, systemMessage);
+            return executeTool(tc.function.name, args, systemMessage, currentUserId);
           })
         );
 

@@ -65,3 +65,18 @@ verify_jwt = false
 
 [functions.extract-critical-dates]
 verify_jwt = false
+
+[functions.auto-digest]
+verify_jwt = false
+
+[functions.classify-reply]
+verify_jwt = false
+
+[functions.enrich-prospect]
+verify_jwt = false
+
+[functions.intelligence-gather]
+verify_jwt = false
+
+[functions.parse-stacking-plan]
+verify_jwt = false

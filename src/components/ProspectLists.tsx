@@ -1,16 +1,13 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Users, Search, ChevronDown, ChevronRight, Building2, X, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Users, Search, ChevronDown, ChevronRight, Building2, X, ExternalLink, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { buildings, type Tenant, type Building } from '@/data/mockData';
-import {
-  getProspectLists, createProspectList, addProspectsToList,
-  removeProspectFromList, deleteProspectList, type ProspectList,
-} from '@/data/prospectLists';
+import { useProspectLists } from '@/hooks/useProspectLists';
 import { getCustomProspects } from '@/data/customProspects';
 
 // Get all unique industries
@@ -32,7 +29,7 @@ const getAllProspects = (): { tenant: Tenant; building: Building }[] => {
 
 const ProspectLists = () => {
   const navigate = useNavigate();
-  const [lists, setLists] = useState<ProspectList[]>(getProspectLists);
+  const { lists, loading, createList, addProspects, removeProspect, deleteList } = useProspectLists();
   const [expandedList, setExpandedList] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [newListName, setNewListName] = useState('');
@@ -44,51 +41,44 @@ const ProspectLists = () => {
   const allProspects = useMemo(getAllProspects, []);
   const customProspects = useMemo(() => getCustomProspects(), []);
 
-  const refreshLists = () => setLists(getProspectLists());
-
-  const handleCreateList = () => {
+  const handleCreateList = async () => {
     if (!newListName.trim()) return;
-    const list = createProspectList(newListName.trim(), newListIndustry || undefined);
+    const list = await createList(newListName.trim(), newListIndustry || undefined);
     setNewListName('');
     setNewListIndustry('');
     setShowCreate(false);
-    setExpandedList(list.id);
-    setAddingToList(list.id);
-    refreshLists();
+    if (list) {
+      setExpandedList(list.id);
+      setAddingToList(list.id);
+    }
   };
 
-  const handleDeleteList = (id: string) => {
-    deleteProspectList(id);
+  const handleDeleteList = async (id: string) => {
+    await deleteList(id);
     if (expandedList === id) setExpandedList(null);
-    refreshLists();
   };
 
-  const handleAddProspect = (listId: string, tenantId: string, buildingId: string, tenantName: string) => {
-    addProspectsToList(listId, [{ tenantId, buildingId, tenantName }]);
-    refreshLists();
+  const handleAddProspect = async (listId: string, tenantId: string, buildingId: string, tenantName: string) => {
+    await addProspects(listId, [{ tenantId, buildingId, tenantName }]);
   };
 
-  const handleRemoveProspect = (listId: string, tenantId: string) => {
-    removeProspectFromList(listId, tenantId);
-    refreshLists();
+  const handleRemoveProspect = async (listId: string, tenantId: string) => {
+    await removeProspect(listId, tenantId);
   };
 
   const getProspectInfo = (tenantId: string, buildingId: string) => {
-    // Check building tenants first
     const building = buildings.find(b => b.id === buildingId);
     const tenant = building?.tenants.find(t => t.id === tenantId);
     if (tenant && building) return { name: tenant.name, industry: tenant.industry, buildingName: building.name, contactName: tenant.contactName, isCustom: false, tenantId, buildingId };
-    // Check custom prospects
     const cp = customProspects.find(p => p.id === tenantId);
     if (cp) return { name: cp.name, industry: cp.enrichment?.industry || '', buildingName: cp.address || '', contactName: '', isCustom: true, tenantId, buildingId: '' };
     return null;
   };
 
-  const getAvailableProspects = (list: ProspectList) => {
+  const getAvailableProspects = (list: typeof lists[0]) => {
     const existingIds = new Set(list.entries.map(e => e.tenantId));
     const q = searchQuery.toLowerCase();
 
-    // Building tenants
     const tenantResults = allProspects
       .filter(p => !existingIds.has(p.tenant.id))
       .filter(p => {
@@ -112,7 +102,6 @@ const ProspectLists = () => {
         isCustom: false,
       }));
 
-    // Custom prospects
     const cpResults = customProspects
       .filter(p => !existingIds.has(p.id))
       .filter(p => {
@@ -131,9 +120,16 @@ const ProspectLists = () => {
     return [...tenantResults, ...cpResults];
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {lists.length} list{lists.length !== 1 ? 's' : ''} · {lists.reduce((sum, l) => sum + l.entries.length, 0)} total prospects
@@ -143,7 +139,6 @@ const ProspectLists = () => {
         </Button>
       </div>
 
-      {/* Create Form */}
       <AnimatePresence>
         {showCreate && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
@@ -187,7 +182,6 @@ const ProspectLists = () => {
         )}
       </AnimatePresence>
 
-      {/* Lists */}
       {lists.length === 0 && !showCreate ? (
         <Card className="border-border bg-card p-8 text-center">
           <Users className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
@@ -203,7 +197,6 @@ const ProspectLists = () => {
 
             return (
               <Card key={list.id} className="border-border bg-card overflow-hidden">
-                {/* List Header */}
                 <button
                   onClick={() => {
                     setExpandedList(isExpanded ? null : list.id);
@@ -245,7 +238,6 @@ const ProspectLists = () => {
                   </div>
                 </button>
 
-                {/* Expanded Content */}
                 <AnimatePresence>
                   {isExpanded && (
                     <motion.div
@@ -255,7 +247,6 @@ const ProspectLists = () => {
                       className="overflow-hidden"
                     >
                       <div className="border-t border-border px-3 pb-3">
-                        {/* Add Prospect Panel */}
                         {isAdding && (
                           <div className="mt-3 mb-3 rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3">
                             <div className="mb-2 flex items-center justify-between">
@@ -303,7 +294,6 @@ const ProspectLists = () => {
                           </div>
                         )}
 
-                        {/* Prospect List */}
                         {list.entries.length === 0 && !isAdding ? (
                           <p className="py-4 text-center text-xs text-muted-foreground">
                             No prospects yet — click "Add" to get started, or add from the Prospects page

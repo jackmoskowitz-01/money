@@ -219,7 +219,42 @@ export default function DealCopilot() {
         .single();
 
       const enabled = (settings as any)?.copilot_memory ?? true;
+      const brainOn = (settings as any)?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
+      setBrainEnabled(brainOn);
+
+      // Load brain context if enabled
+      if (brainOn) {
+        const { data: brainFacts } = await supabase
+          .from('copilot_brain' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .order('updated_at', { ascending: false })
+          .limit(100);
+
+        if (brainFacts && (brainFacts as any[]).length > 0) {
+          const facts = brainFacts as any[];
+          const categories = new Map<string, string[]>();
+          facts.forEach(f => {
+            const list = categories.get(f.category) || [];
+            list.push(`- ${f.fact}${f.prospect_name ? ` (re: ${f.prospect_name})` : ''}`);
+            categories.set(f.category, list);
+          });
+
+          const brainParts: string[] = [];
+          for (const [cat, items] of categories) {
+            const label = cat.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            brainParts.push(`**${label}:**\n${items.slice(0, 10).join('\n')}`);
+          }
+
+          setBrainContext(`### 🧠 Brain — Persistent Knowledge\nYou have a persistent brain that stores learned facts about this user and their deals. Reference this knowledge naturally. When you learn NEW facts from the conversation (preferences, deal outcomes, strategies that worked, prospect details), remember them for future use.\n\n${brainParts.join('\n\n')}`);
+        } else {
+          setBrainContext(`### 🧠 Brain — Active\nYour brain is active but empty. As you converse, learn and store facts about the user's preferences, deal patterns, prospect details, and strategies that work.`);
+        }
+      } else {
+        setBrainContext(null);
+      }
+
       if (!enabled) { setConversationMemory(null); return; }
 
       // No prospect in view → no scoped memory

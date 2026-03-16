@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProspectLists } from '@/hooks/useProspectLists';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus, Building2, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
@@ -53,7 +53,7 @@ const Tasks = () => {
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { lists: prospectLists, loading: listsLoading } = useProspectLists();
+  
 
   // Listen for task assignment notifications
   useEffect(() => {
@@ -590,61 +590,85 @@ const Tasks = () => {
 
             {/* ── PROSPECTS TAB ── */}
             <TabsContent value="prospects" className="mt-0">
-              {listsLoading ? (
-                <div className="space-y-2">
-                  {[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full" />)}
-                </div>
-              ) : (() => {
-                const allProspects = prospectLists.flatMap(l => l.entries.map(e => ({ ...e, listName: l.name })));
-                const uniqueMap = new Map<string, typeof allProspects[0] & { lists: string[] }>();
-                allProspects.forEach(p => {
-                  const existing = uniqueMap.get(p.tenantId);
+              {(() => {
+                const todayDate = format(new Date(), 'yyyy-MM-dd');
+                const activeTasks = tasks.filter(t => !t.completed && t.tenantId);
+                const prospectMap = new Map<string, { tenantId: string; buildingId: string; tenantName: string; taskCount: number; overdueCount: number; nextDue: string }>();
+                activeTasks.forEach(t => {
+                  const info = getTenantInfo(t);
+                  const name = info?.tenant?.name || t.title.match(/(?:with|for|to)\s+(.+)/i)?.[1] || t.tenantId || 'Unknown';
+                  const existing = prospectMap.get(t.tenantId!);
+                  const isOverdue = t.dueDate < todayDate;
                   if (existing) {
-                    if (!existing.lists.includes(p.listName)) existing.lists.push(p.listName);
+                    existing.taskCount++;
+                    if (isOverdue) existing.overdueCount++;
+                    if (t.dueDate < existing.nextDue) existing.nextDue = t.dueDate;
                   } else {
-                    uniqueMap.set(p.tenantId, { ...p, lists: [p.listName] });
+                    prospectMap.set(t.tenantId!, {
+                      tenantId: t.tenantId!,
+                      buildingId: t.buildingId || '',
+                      tenantName: name,
+                      taskCount: 1,
+                      overdueCount: isOverdue ? 1 : 0,
+                      nextDue: t.dueDate,
+                    });
                   }
                 });
-                const prospects = Array.from(uniqueMap.values());
+                const prospects = Array.from(prospectMap.values()).sort((a, b) => {
+                  if (a.overdueCount > 0 && b.overdueCount === 0) return -1;
+                  if (b.overdueCount > 0 && a.overdueCount === 0) return 1;
+                  return a.nextDue.localeCompare(b.nextDue);
+                });
 
                 if (prospects.length === 0) {
                   return (
                     <Card className="border-border bg-card p-12 text-center">
                       <User className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
-                      <p className="text-sm font-medium text-muted-foreground">No prospects yet</p>
-                      <p className="mt-1 text-xs text-muted-foreground/60">Add prospects to your lists to see them here</p>
+                      <p className="text-sm font-medium text-muted-foreground">No active prospects</p>
+                      <p className="mt-1 text-xs text-muted-foreground/60">Prospects with overdue or upcoming tasks will appear here automatically</p>
                     </Card>
                   );
                 }
 
                 return (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground mb-2">{prospects.length} prospect{prospects.length !== 1 ? 's' : ''} across your lists</p>
-                    {prospects.map((p, i) => (
-                      <motion.div key={p.tenantId} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
-                        <Card
-                          className="border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30"
-                          onClick={() => {
-                            if (p.buildingId) navigate(`/building/${p.buildingId}/tenant/${p.tenantId}`);
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                              <Building2 className="h-4 w-4 text-primary" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{p.tenantName}</p>
-                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                {p.lists.map(l => (
-                                  <Badge key={l} variant="outline" className="text-[10px] bg-secondary/50">{l}</Badge>
-                                ))}
+                    <p className="text-xs text-muted-foreground mb-2">{prospects.length} prospect{prospects.length !== 1 ? 's' : ''} with active tasks</p>
+                    {prospects.map((p, i) => {
+                      const isOverdue = p.overdueCount > 0;
+                      return (
+                        <motion.div key={p.tenantId} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
+                          <Card
+                            className={`border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30 ${isOverdue ? 'border-destructive/30' : ''}`}
+                            onClick={() => {
+                              if (p.buildingId) navigate(`/building/${p.buildingId}/tenant/${p.tenantId}`);
+                            }}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isOverdue ? 'bg-destructive/10' : 'bg-primary/10'}`}>
+                                <Building2 className={`h-4 w-4 ${isOverdue ? 'text-destructive' : 'text-primary'}`} />
                               </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{p.tenantName}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <Badge variant="outline" className="text-[10px] bg-secondary/50">
+                                    {p.taskCount} task{p.taskCount !== 1 ? 's' : ''}
+                                  </Badge>
+                                  {isOverdue && (
+                                    <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                                      {p.overdueCount} overdue
+                                    </Badge>
+                                  )}
+                                  <span className="text-[11px] text-muted-foreground">
+                                    Next: {format(new Date(p.nextDue + 'T12:00:00'), 'MMM d')}
+                                  </span>
+                                </div>
+                              </div>
+                              <ArrowRight className="h-4 w-4 text-muted-foreground/40" />
                             </div>
-                            <ArrowRight className="h-4 w-4 text-muted-foreground/40" />
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
+                          </Card>
+                        </motion.div>
+                      );
+                    })}
                   </div>
                 );
               })()}

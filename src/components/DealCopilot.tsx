@@ -322,6 +322,9 @@ export default function DealCopilot() {
         } catch (err) {
           console.error('Intelligence fetch error:', err);
         }
+      } else {
+        // All flywheels off — clear any stale intelligence context
+        setIntelligenceContext(null);
       }
 
       // Load brain context if enabled

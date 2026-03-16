@@ -1,69 +1,86 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Plus, X, UserPlus } from 'lucide-react';
+import { ChevronDown, Plus, X, UserPlus, Upload, Download, Loader2 } from 'lucide-react';
 import { type Building, type Tenant } from '@/data/mockData';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 type StackingPlanProps = {
   building: Building;
   onTenantsChange?: (tenants: Tenant[]) => void;
 };
 
-type ManualTenant = {
+type DbTenant = {
   id: string;
-  name: string;
+  building_id: string;
+  tenant_name: string;
   industry: string;
   sqft: number;
   floor: string;
-  leaseExpiration: string;
-  notes?: string;
+  lease_expiration: string;
+  notes: string;
+  source: string;
 };
 
 type FloorEntry = {
   floor: number;
-  tenants: { name: string; sqft: number; leaseExpiration: string; urgency: string; isManual?: boolean }[];
+  tenants: { name: string; sqft: number; leaseExpiration: string; urgency: string; isDb?: boolean }[];
 };
 
-const STORAGE_KEY_PREFIX = 'stacking-tenants-';
-
-function getManualTenants(buildingId: string): ManualTenant[] {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${buildingId}`);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-
-function saveManualTenants(buildingId: string, tenants: ManualTenant[]) {
-  localStorage.setItem(`${STORAGE_KEY_PREFIX}${buildingId}`, JSON.stringify(tenants));
-}
+const PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-stacking-plan`;
 
 const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
   const [expanded, setExpanded] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [manualTenants, setManualTenants] = useState<ManualTenant[]>([]);
+  const [dbTenants, setDbTenants] = useState<DbTenant[]>([]);
   const [newTenant, setNewTenant] = useState({ name: '', industry: '', sqft: '', floor: '', leaseExpiration: '' });
+  const [uploading, setUploading] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const stackRef = useRef<HTMLDivElement>(null);
 
+  // Load from database
   useEffect(() => {
-    setManualTenants(getManualTenants(building.id));
+    const load = async () => {
+      const { data } = await supabase
+        .from('stacking_plans' as any)
+        .select('*')
+        .eq('building_id', building.id)
+        .order('floor', { ascending: false });
+
+      if (data) setDbTenants(data as unknown as DbTenant[]);
+    };
+    load();
+
+    // Realtime updates
+    const channel = supabase
+      .channel(`stacking-${building.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stacking_plans', filter: `building_id=eq.${building.id}` }, () => {
+        load();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [building.id]);
 
   const allTenants = useMemo(() => {
-    const manualAsTenants: Tenant[] = manualTenants.map(mt => ({
-      id: mt.id,
-      name: mt.name,
-      industry: mt.industry || 'Unknown',
-      sqft: mt.sqft || 0,
-      floor: mt.floor || '1',
-      leaseExpiration: mt.leaseExpiration || 'N/A',
+    const dbAsTenants: Tenant[] = dbTenants.map(dt => ({
+      id: dt.id,
+      name: dt.tenant_name,
+      industry: dt.industry || 'Unknown',
+      sqft: dt.sqft || 0,
+      floor: dt.floor || '1',
+      leaseExpiration: dt.lease_expiration || 'N/A',
       contactName: '',
       contactTitle: '',
       contactEmail: '',
       headcount: 0,
       outreachReasons: [],
     }));
-    return [...building.tenants, ...manualAsTenants];
-  }, [building.tenants, manualTenants]);
+    return [...building.tenants, ...dbAsTenants];
+  }, [building.tenants, dbTenants]);
 
   const floorData = useMemo(() => {
     const floors: FloorEntry[] = [];
@@ -88,13 +105,13 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
           : 1;
         const highUrgency = t.outreachReasons?.some(r => r.urgency === 'high');
         const medUrgency = t.outreachReasons?.some(r => r.urgency === 'medium');
-        const isManual = manualTenants.some(mt => mt.id === t.id);
+        const isDb = dbTenants.some(dt => dt.id === t.id);
         return {
           name: t.name,
           sqft: Math.round(t.sqft / floorSpan),
           leaseExpiration: t.leaseExpiration,
           urgency: highUrgency ? 'high' : medUrgency ? 'medium' : 'low',
-          isManual,
+          isDb,
         };
       });
 
@@ -102,10 +119,10 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
     }
 
     return floors;
-  }, [allTenants, building.floors, manualTenants]);
+  }, [allTenants, building.floors, dbTenants]);
 
-  const getUrgencyColor = (urgency: string, isManual?: boolean) => {
-    if (isManual) return 'bg-accent/15 border-accent/30';
+  const getUrgencyColor = (urgency: string, isDb?: boolean) => {
+    if (isDb) return 'bg-accent/15 border-accent/30';
     switch (urgency) {
       case 'high': return 'bg-destructive/15 border-destructive/30';
       case 'medium': return 'bg-primary/15 border-primary/30';
@@ -113,35 +130,156 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
     }
   };
 
-  const handleAddTenant = () => {
+  const handleAddTenant = async () => {
     if (!newTenant.name.trim()) return;
-    const mt: ManualTenant = {
-      id: `manual-${Date.now()}`,
-      name: newTenant.name.trim(),
+    const row = {
+      building_id: building.id,
+      tenant_name: newTenant.name.trim(),
       industry: newTenant.industry.trim(),
       sqft: Number(newTenant.sqft) || 0,
       floor: newTenant.floor.trim() || '1',
-      leaseExpiration: newTenant.leaseExpiration.trim() || 'N/A',
+      lease_expiration: newTenant.leaseExpiration.trim() || 'N/A',
+      notes: '',
+      source: 'manual',
     };
-    const updated = [...manualTenants, mt];
-    setManualTenants(updated);
-    saveManualTenants(building.id, updated);
+    const { data, error } = await supabase.from('stacking_plans' as any).insert(row as any).select('*').single();
+    if (error) {
+      toast.error('Failed to add tenant');
+      return;
+    }
+    if (data) setDbTenants(prev => [...prev, data as unknown as DbTenant]);
     setNewTenant({ name: '', industry: '', sqft: '', floor: '', leaseExpiration: '' });
     setShowAddForm(false);
     onTenantsChange?.(allTenants);
   };
 
-  const handleRemoveManual = (id: string) => {
-    const updated = manualTenants.filter(t => t.id !== id);
-    setManualTenants(updated);
-    saveManualTenants(building.id, updated);
+  const handleRemoveDb = async (id: string) => {
+    const { error } = await supabase.from('stacking_plans' as any).delete().eq('id', id);
+    if (!error) setDbTenants(prev => prev.filter(t => t.id !== id));
   };
+
+  // Upload stacking plan document
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('buildingName', building.name || building.address);
+
+      const resp = await fetch(PARSE_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to parse document');
+      }
+
+      const { tenants } = await resp.json();
+      if (!tenants || tenants.length === 0) {
+        toast.info('No tenants found in document');
+        return;
+      }
+
+      // Insert parsed tenants into database
+      const rows = tenants.map((t: any) => ({
+        building_id: building.id,
+        tenant_name: t.tenant_name || t.name || 'Unknown',
+        industry: t.industry || '',
+        sqft: Number(t.sqft) || 0,
+        floor: String(t.floor || '1'),
+        lease_expiration: t.lease_expiration || t.leaseExpiration || 'N/A',
+        notes: t.notes || '',
+        source: 'upload',
+      }));
+
+      const { data, error } = await supabase.from('stacking_plans' as any).insert(rows as any).select('*');
+      if (error) throw error;
+      if (data) setDbTenants(prev => [...prev, ...(data as unknown as DbTenant[])]);
+      toast.success(`📋 ${tenants.length} tenants imported from ${file.name}`);
+    } catch (err: any) {
+      console.error('Upload parse error:', err);
+      toast.error(err.message || 'Failed to parse stacking plan');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Export stacking plan as CSV
+  const handleExportCSV = useCallback(() => {
+    const headers = ['Floor', 'Tenant', 'Industry', 'Sq Ft', 'Lease Expiration'];
+    const rows = allTenants.map(t => [t.floor, t.name, t.industry, t.sqft, t.leaseExpiration]);
+    const csv = [headers, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${building.name || building.address}_Stacking_Plan.csv`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Stacking plan exported as CSV');
+  }, [allTenants, building]);
+
+  // Export as styled HTML/image for presentations
+  const handleExportImage = useCallback(async () => {
+    setExporting(true);
+    try {
+      // Build HTML table for the stacking plan
+      const bName = building.name || building.address;
+      let html = `<html><head><style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; padding: 24px; }
+        h2 { color: #7c3aed; margin-bottom: 4px; }
+        h3 { color: #a78bfa; font-weight: 400; margin-top: 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        th { background: #7c3aed; color: white; text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 6px 12px; border-bottom: 1px solid #2a2a4a; font-size: 12px; }
+        tr:nth-child(even) { background: #16162a; }
+        .vacant { color: #666; font-style: italic; }
+        .footer { margin-top: 16px; font-size: 10px; color: #666; }
+      </style></head><body>`;
+      html += `<h2>${bName}</h2>`;
+      html += `<h3>${building.sqft.toLocaleString()} SF · Class ${building.class} · ${building.vacancyRate}% Vacant</h3>`;
+      html += `<table><tr><th>Floor</th><th>Tenant</th><th>Industry</th><th>Sq Ft</th><th>Lease Exp</th></tr>`;
+
+      for (const floor of floorData) {
+        if (floor.tenants.length === 0) {
+          html += `<tr><td>${floor.floor}</td><td class="vacant" colspan="4">Vacant</td></tr>`;
+        } else {
+          for (const t of floor.tenants) {
+            html += `<tr><td>${floor.floor}</td><td>${t.name}</td><td></td><td>${t.sqft > 0 ? t.sqft.toLocaleString() : '—'}</td><td>${t.leaseExpiration}</td></tr>`;
+          }
+        }
+      }
+      html += `</table>`;
+      html += `<p class="footer">Generated ${new Date().toLocaleDateString()} · DealFlow</p>`;
+      html += `</body></html>`;
+
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${bName}_Stacking_Plan.html`.replace(/[^a-zA-Z0-9_.-]/g, '_');
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Stacking plan exported for presentation');
+    } finally {
+      setExporting(false);
+    }
+  }, [building, floorData]);
 
   const visibleFloors = expanded ? floorData : floorData.slice(0, 8);
   const hasMore = floorData.length > 8;
 
   return (
-    <div className="w-full">
+    <div className="w-full" ref={stackRef}>
       <div className="mb-2 flex items-center justify-between">
         <button
           onClick={() => setExpanded(prev => !prev)}
@@ -150,16 +288,66 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
           Stacking Plan
           <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-6 text-[10px] px-2 gap-1"
-          onClick={() => setShowAddForm(prev => !prev)}
-        >
-          <UserPlus className="h-3 w-3" />
-          Add Tenant
-        </Button>
+        <div className="flex items-center gap-1">
+          {/* Export dropdown */}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={handleExportCSV}
+            title="Export as CSV"
+          >
+            <Download className="h-3 w-3" />
+            CSV
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={handleExportImage}
+            disabled={exporting}
+            title="Export for presentation"
+          >
+            {exporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+            Deck
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            title="Upload stacking plan document"
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Upload className="h-3 w-3" />}
+            Upload
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept=".pdf,.xlsx,.xls,.csv,.docx,.doc,.txt"
+            onChange={handleUpload}
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 text-[10px] px-2 gap-1"
+            onClick={() => setShowAddForm(prev => !prev)}
+          >
+            <UserPlus className="h-3 w-3" />
+            Add
+          </Button>
+        </div>
       </div>
+
+      {/* Upload status */}
+      {uploading && (
+        <div className="mb-2 rounded-md bg-primary/5 border border-primary/20 px-3 py-2 flex items-center gap-2">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+          <span className="text-[11px] text-primary font-medium">Parsing stacking plan with AI...</span>
+        </div>
+      )}
 
       {/* Add Tenant Form */}
       <AnimatePresence>
@@ -243,7 +431,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
                     return (
                       <div
                         key={i}
-                        className={`px-1.5 py-1 ${getUrgencyColor(t.urgency, t.isManual)} ${
+                        className={`px-1.5 py-1 ${getUrgencyColor(t.urgency, t.isDb)} ${
                           i > 0 ? 'border-l border-border/50' : ''
                         }`}
                         style={{ width: floor.tenants.length > 1 ? `${widthPct}%` : '100%' }}
@@ -251,7 +439,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
                         <div className="flex items-center justify-between gap-0.5">
                           <span className="text-[10px] font-medium text-foreground truncate">
                             {t.name}
-                            {t.isManual && <span className="text-[8px] text-accent ml-0.5">✦</span>}
+                            {t.isDb && <span className="text-[8px] text-accent ml-0.5">✦</span>}
                           </span>
                           <span className="text-[8px] text-muted-foreground shrink-0">{t.leaseExpiration}</span>
                         </div>
@@ -277,14 +465,20 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
         </button>
       )}
 
-      {/* Manual tenants list for removal */}
-      {manualTenants.length > 0 && (
+      {/* DB tenants list for removal */}
+      {dbTenants.length > 0 && (
         <div className="mt-2 space-y-0.5">
-          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Manually Added</p>
-          {manualTenants.map(mt => (
-            <div key={mt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px]">
-              <span className="text-foreground font-medium truncate">{mt.name} <span className="text-muted-foreground">· Fl {mt.floor}</span></span>
-              <button onClick={() => handleRemoveManual(mt.id)} className="text-muted-foreground hover:text-destructive ml-1">
+          <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Added ({dbTenants.length})
+          </p>
+          {dbTenants.map(dt => (
+            <div key={dt.id} className="flex items-center justify-between rounded px-1.5 py-0.5 bg-accent/5 text-[10px]">
+              <span className="text-foreground font-medium truncate">
+                {dt.tenant_name}
+                <span className="text-muted-foreground"> · Fl {dt.floor}</span>
+                {dt.source === 'upload' && <span className="text-primary/60 ml-1">📄</span>}
+              </span>
+              <button onClick={() => handleRemoveDb(dt.id)} className="text-muted-foreground hover:text-destructive ml-1">
                 <X className="h-3 w-3" />
               </button>
             </div>
@@ -298,8 +492,8 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-primary/30" /> Medium</span>
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-success/30" /> Stable</span>
         <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-muted/50" /> Vacant</span>
-        {manualTenants.length > 0 && (
-          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-accent/30" /> Manual</span>
+        {dbTenants.length > 0 && (
+          <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-accent/30" /> Added ✦</span>
         )}
       </div>
     </div>

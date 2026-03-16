@@ -259,9 +259,12 @@ const Settings = () => {
         <p className="text-muted-foreground text-sm mb-6">Manage your preferences and defaults</p>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="profile" className="text-xs gap-1">
               <User className="h-3.5 w-3.5 hidden sm:block" /> Profile
+            </TabsTrigger>
+            <TabsTrigger value="broker" className="text-xs gap-1">
+              <Target className="h-3.5 w-3.5 hidden sm:block" /> Broker DNA
             </TabsTrigger>
             <TabsTrigger value="email" className="text-xs gap-1">
               <Mail className="h-3.5 w-3.5 hidden sm:block" /> Email
@@ -273,7 +276,7 @@ const Settings = () => {
               <Workflow className="h-3.5 w-3.5 hidden sm:block" /> Workflow
             </TabsTrigger>
             <TabsTrigger value="integrations" className="text-xs gap-1">
-              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI & Integrations
+              <Brain className="h-3.5 w-3.5 hidden sm:block" /> AI
             </TabsTrigger>
             <TabsTrigger value="appearance" className="text-xs gap-1">
               <Palette className="h-3.5 w-3.5 hidden sm:block" /> Display

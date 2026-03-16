@@ -15,6 +15,7 @@ import {
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
 import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
+import { usePipeline } from '@/hooks/usePipeline';
 import { toast } from 'sonner';
 
 const typeOptions: { value: ActivityType; label: string; icon: typeof Mail }[] = [

@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProspectLists } from '@/hooks/useProspectLists';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus, Building2, User } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
 import { Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';

@@ -109,7 +109,7 @@ const CustomProspectDetail = () => {
     setOwnerActing(false);
   };
 
-  const [contactsVersion, setContactsVersion] = useState(0);
+  const { contacts: prospectContacts } = useContacts(prospectId);
   const [customReasonOpen, setCustomReasonOpen] = useState(false);
   const [customReasonText, setCustomReasonText] = useState('');
   const [generatingKey, setGeneratingKey] = useState<string | null>(null);

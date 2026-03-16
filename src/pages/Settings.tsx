@@ -209,6 +209,7 @@ const Settings = () => {
         dark_mode: appearance.darkMode,
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
+        copilot_name: integrations.copilotName,
         brain_enabled: integrations.brainEnabled,
         ai_auto_brain_extraction: integrations.aiAutoBrainExtraction,
         ai_email_performance_loop: integrations.aiEmailPerformanceLoop,

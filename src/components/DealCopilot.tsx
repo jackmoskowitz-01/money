@@ -81,6 +81,16 @@ export default function DealCopilot() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [brainEnabled, setBrainEnabled] = useState(false);
   const [brainContext, setBrainContext] = useState<string | null>(null);
+  const [aiSettings, setAiSettings] = useState({
+    aiAutoBrainExtraction: false,
+    aiEmailPerformanceLoop: false,
+    aiDealPatternLearning: false,
+    aiActivityInsights: false,
+    aiStyleTraining: false,
+    aiScoopSynthesis: false,
+    aiContactMemory: false,
+  });
+  const [intelligenceContext, setIntelligenceContext] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const pendingAutoExportRef = useRef(false);

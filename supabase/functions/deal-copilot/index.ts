@@ -806,15 +806,7 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
     }
 
     case "add_critical_date": {
-      // We need a user_id for critical dates — use service role to find one from recent activity
-      const { data: recentActivity } = await supabase
-        .from("activities")
-        .select("tenant_id")
-        .limit(1);
-      
-      // Critical dates require user_id, but from edge function we don't have auth context
-      // We'll insert with a placeholder approach — the RLS requires user_id = auth.uid()
-      // So we skip user_id validation here and let the response tell the user
+      if (!userId) return "⚠️ Critical date noted but couldn't save — user not authenticated. Please add it manually from the Critical Dates tracker.";
       const { error } = await supabase.from("critical_dates").insert({
         prospect_name: args.prospect_name,
         prospect_id: args.prospect_id || null,
@@ -824,7 +816,7 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         description: args.description || "",
         remind_days_before: args.remind_days_before || 30,
         source: "copilot",
-        user_id: "00000000-0000-0000-0000-000000000000", // Will be overridden by auth context
+        user_id: userId,
       });
       if (error) return `⚠️ Critical date noted but couldn't save to tracker (${error.message}). I'll include it in my summary so you can add it manually.`;
       return `✅ Critical date tracked: ${args.date_type.replace(/_/g, " ")} for ${args.prospect_name} on ${args.date_value}.`;

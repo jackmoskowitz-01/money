@@ -698,7 +698,7 @@ async function generatePitchDeck(args: any, context: string): Promise<string> {
   return result;
 }
 
-async function executeTool(name: string, args: any, context?: string): Promise<string> {
+async function executeTool(name: string, args: any, context?: string, userId?: string | null): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);

@@ -514,33 +514,56 @@ const MapView = () => {
                   )}
                 </div>
                 <div className="flex-1 min-h-0 space-y-2 overflow-y-auto px-3 pb-3">
-                  {filteredBuildings.map(b => (
-                    <button
-                      key={b.id}
-                      onClick={() => setSelectedBuilding(b)}
-                      className={`w-full rounded-md border p-2.5 text-left transition-all ${
-                        selectedBuilding?.id === b.id
-                          ? 'border-primary/50 bg-primary/10'
-                          : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold text-foreground">{b.address}</p>
-                      {b.name && b.name !== b.address && (
-                        <p className="text-[11px] text-muted-foreground">{b.name}</p>
-                      )}
-                      <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <Users className="h-3 w-3" /> {b.tenants.length} tenants
-                        </span>
-                        <span className={`flex items-center gap-1 ${b.vacancyRate > 20 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                          <TrendingUp className="h-3 w-3" /> {b.vacancyRate}% vacant
-                        </span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                          Class {b.class}
-                        </Badge>
-                      </div>
-                    </button>
-                  ))}
+                  {filteredBuildings.map(b => {
+                    const q = searchQuery.toLowerCase().trim();
+                    const matchingTenants = q ? b.tenants.filter(t => t.name.toLowerCase().includes(q) || t.industry.toLowerCase().includes(q)) : [];
+                    const isTenantMatch = matchingTenants.length > 0 && !b.name.toLowerCase().includes(q) && !b.address.toLowerCase().includes(q);
+
+                    return (
+                      <button
+                        key={b.id}
+                        onClick={() => {
+                          setSelectedBuilding(b);
+                          if (mapInstanceRef.current && b.lat && b.lng) {
+                            mapInstanceRef.current.setView([b.lat, b.lng], 17, { animate: true });
+                          }
+                        }}
+                        className={`w-full rounded-md border p-2.5 text-left transition-all ${
+                          selectedBuilding?.id === b.id
+                            ? 'border-primary/50 bg-primary/10'
+                            : 'border-border bg-secondary/30 hover:border-border hover:bg-secondary/60'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-foreground">{b.address}</p>
+                        {b.name && b.name !== b.address && (
+                          <p className="text-[11px] text-muted-foreground">{b.name}</p>
+                        )}
+                        {isTenantMatch && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {matchingTenants.slice(0, 3).map(t => (
+                              <span key={t.id} className="inline-flex items-center rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                                🔍 {t.name}
+                              </span>
+                            ))}
+                            {matchingTenants.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">+{matchingTenants.length - 3} more</span>
+                            )}
+                          </div>
+                        )}
+                        <div className="mt-1.5 flex items-center gap-3 text-[11px]">
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Users className="h-3 w-3" /> {b.tenants.length} tenants
+                          </span>
+                          <span className={`flex items-center gap-1 ${b.vacancyRate > 20 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                            <TrendingUp className="h-3 w-3" /> {b.vacancyRate}% vacant
+                          </span>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                            Class {b.class}
+                          </Badge>
+                        </div>
+                      </button>
+                    );
+                  })}
                   {filteredBuildings.length === 0 && (
                     <p className="py-4 text-center text-xs text-muted-foreground">No buildings found</p>
                   )}

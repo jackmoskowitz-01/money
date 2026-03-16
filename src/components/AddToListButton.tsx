@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ListPlus, Plus, Check } from 'lucide-react';
+import { ListPlus, Plus, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { getProspectLists, createProspectList, addProspectsToList } from '@/data/prospectLists';
+import { useProspectLists } from '@/hooks/useProspectLists';
 import { toast } from 'sonner';
 
 interface Props {
@@ -15,16 +15,15 @@ interface Props {
 const AddToListButton = ({ tenantId, buildingId, tenantName }: Props) => {
   const [open, setOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
-
-  const lists = getProspectLists();
+  const { lists, loading, createList, addProspects } = useProspectLists();
 
   const isInList = (listId: string) => {
     const list = lists.find(l => l.id === listId);
     return list?.entries.some(e => e.tenantId === tenantId) || false;
   };
 
-  const handleAdd = (listId: string) => {
-    const added = addProspectsToList(listId, [{ tenantId, buildingId, tenantName }]);
+  const handleAdd = async (listId: string) => {
+    const added = await addProspects(listId, [{ tenantId, buildingId, tenantName }]);
     if (added > 0) {
       const list = lists.find(l => l.id === listId);
       toast.success(`Added to "${list?.name}"`);
@@ -34,11 +33,13 @@ const AddToListButton = ({ tenantId, buildingId, tenantName }: Props) => {
     setOpen(false);
   };
 
-  const handleCreateAndAdd = () => {
+  const handleCreateAndAdd = async () => {
     if (!newListName.trim()) return;
-    const list = createProspectList(newListName.trim());
-    addProspectsToList(list.id, [{ tenantId, buildingId, tenantName }]);
-    toast.success(`Created "${list.name}" and added prospect`);
+    const list = await createList(newListName.trim());
+    if (list) {
+      await addProspects(list.id, [{ tenantId, buildingId, tenantName }]);
+      toast.success(`Created "${list.name}" and added prospect`);
+    }
     setNewListName('');
     setOpen(false);
   };
@@ -54,7 +55,11 @@ const AddToListButton = ({ tenantId, buildingId, tenantName }: Props) => {
         <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Add to List
         </p>
-        {lists.length > 0 ? (
+        {loading ? (
+          <div className="flex justify-center py-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        ) : lists.length > 0 ? (
           <div className="max-h-48 space-y-0.5 overflow-y-auto">
             {lists.map(list => {
               const alreadyIn = isInList(list.id);

@@ -15,7 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { getProspectLists, addProspectsToList, createProspectList, type ProspectList } from '@/data/prospectLists';
+import { useProspectLists } from '@/hooks/useProspectLists';
 
 type ProspectEntry = {
   tenant: Tenant;
@@ -48,6 +48,7 @@ const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate
 const Prospects = () => {
   const { buildings, loading: buildingsLoading } = useBuildings();
   const brokers = useBrokers();
+  const { lists: prospectLists, createList, addProspects: addProspectsToList } = useProspectLists();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterUrgency, setFilterUrgency] = useState<string>('all');
   const [filterIndustry, setFilterIndustry] = useState<string>('all');
@@ -135,23 +136,23 @@ const Prospects = () => {
     clearSelection();
   };
 
-  const bulkAddToList = (listId: string) => {
+  const bulkAddToList = async (listId: string) => {
     const selected = filtered.filter(p => selectedIds.has(p.tenant.id));
     const prospects = selected.map(p => ({
       tenantId: p.tenant.id,
       buildingId: p.building.id,
       tenantName: p.tenant.name,
     }));
-    const added = addProspectsToList(listId, prospects);
+    const added = await addProspectsToList(listId, prospects);
     toast.success(`Added ${added} prospects to list`);
     setShowListPicker(false);
     clearSelection();
   };
 
-  const bulkCreateListAndAdd = () => {
+  const bulkCreateListAndAdd = async () => {
     if (!newListName.trim()) return;
-    const list = createProspectList(newListName.trim());
-    bulkAddToList(list.id);
+    const list = await createList(newListName.trim());
+    if (list) await bulkAddToList(list.id);
     setNewListName('');
   };
 
@@ -850,7 +851,7 @@ const Prospects = () => {
                   </Button>
                   {showListPicker && (
                     <div className="absolute bottom-full left-0 mb-2 w-56 rounded-md border border-border bg-card p-2 shadow-lg space-y-1">
-                      {getProspectLists().map(list => (
+                      {prospectLists.map(list => (
                         <button
                           key={list.id}
                           onClick={() => bulkAddToList(list.id)}

@@ -308,47 +308,81 @@ export default function DealCopilot() {
     } as any);
   }, [user]);
 
-  // Proactive alerts check — includes smart follow-up reminders
+  // Proactive alerts check — includes smart follow-up reminders + critical dates
   useEffect(() => {
-    if (!alertsEnabled || pipeline.length === 0) return;
+    if (!alertsEnabled) return;
 
-    const now = new Date();
-    const alerts: string[] = [];
+    const checkAlerts = async () => {
+      const now = new Date();
+      const alerts: string[] = [];
 
-    // Check leases expiring this month
-    const expiringThisMonth = pipeline.filter(item => {
-      const building = buildings.find(b => b.id === item.buildingId);
-      const tenant = building?.tenants.find(t => t.id === item.tenantId);
-      if (!tenant) return false;
-      const parts = tenant.leaseExpiration.split('/');
-      if (parts.length < 2) return false;
-      const expMonth = parseInt(parts[0]);
-      const expYear = parseInt(parts[1]);
-      return expYear === now.getFullYear() && expMonth === now.getMonth() + 1;
-    });
+      if (pipeline.length > 0) {
+        // Check leases expiring this month
+        const expiringThisMonth = pipeline.filter(item => {
+          const building = buildings.find(b => b.id === item.buildingId);
+          const tenant = building?.tenants.find(t => t.id === item.tenantId);
+          if (!tenant) return false;
+          const parts = tenant.leaseExpiration.split('/');
+          if (parts.length < 2) return false;
+          const expMonth = parseInt(parts[0]);
+          const expYear = parseInt(parts[1]);
+          return expYear === now.getFullYear() && expMonth === now.getMonth() + 1;
+        });
 
-    // Check overdue follow-ups
-    const overdueFollowUps = pipeline.flatMap(item =>
-      (item.sentTouchpoints || [])
-        .filter(tp => tp.followUpDate && tp.followUpDate < now.toISOString())
-    );
+        // Check overdue follow-ups
+        const overdueFollowUps = pipeline.flatMap(item =>
+          (item.sentTouchpoints || [])
+            .filter(tp => tp.followUpDate && tp.followUpDate < now.toISOString())
+        );
 
-    // Smart follow-up reminders: deals with no activity in 7+ days
-    const staleDeals = pipeline.filter(item => {
-      if (['won', 'closed', 'lost'].includes(item.stage)) return false;
-      const lastActivity = new Date(item.lastActivity);
-      const daysSince = Math.floor((now.getTime() - lastActivity.getTime()) / 86400000);
-      return daysSince >= 7;
-    });
+        // Smart follow-up reminders: deals with no activity in 7+ days
+        const staleDeals = pipeline.filter(item => {
+          if (['won', 'closed', 'lost'].includes(item.stage)) return false;
+          const lastActivity = new Date(item.lastActivity);
+          const daysSince = Math.floor((now.getTime() - lastActivity.getTime()) / 86400000);
+          return daysSince >= 7;
+        });
 
-    if (expiringThisMonth.length > 0) alerts.push(`${expiringThisMonth.length} lease(s) expire this month`);
-    if (overdueFollowUps.length > 0) alerts.push(`${overdueFollowUps.length} overdue follow-up(s)`);
-    if (staleDeals.length > 0) alerts.push(`${staleDeals.length} deal(s) need attention`);
+        if (expiringThisMonth.length > 0) alerts.push(`${expiringThisMonth.length} lease(s) expire this month`);
+        if (overdueFollowUps.length > 0) alerts.push(`${overdueFollowUps.length} overdue follow-up(s)`);
+        if (staleDeals.length > 0) alerts.push(`${staleDeals.length} deal(s) need attention`);
+      }
 
-    if (alerts.length > 0) {
-      setProactiveAlert(alerts.join(' · '));
-    }
-  }, [pipeline, alertsEnabled]);
+      // Check critical dates approaching
+      if (user) {
+        const { data: critDates } = await supabase
+          .from('critical_dates' as any)
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('acknowledged', false);
+
+        if (critDates && critDates.length > 0) {
+          const urgentDates = (critDates as any[]).filter(d => {
+            const target = new Date(d.date_value + 'T00:00:00');
+            const daysUntil = Math.ceil((target.getTime() - now.getTime()) / 86400000);
+            return daysUntil <= d.remind_days_before && daysUntil >= -7;
+          });
+          if (urgentDates.length > 0) {
+            const critical = urgentDates.filter(d => {
+              const daysUntil = Math.ceil((new Date(d.date_value + 'T00:00:00').getTime() - now.getTime()) / 86400000);
+              return daysUntil <= 14;
+            });
+            if (critical.length > 0) {
+              alerts.push(`🚨 ${critical.length} critical date(s) within 2 weeks`);
+            } else {
+              alerts.push(`📅 ${urgentDates.length} critical date(s) approaching`);
+            }
+          }
+        }
+      }
+
+      if (alerts.length > 0) {
+        setProactiveAlert(alerts.join(' · '));
+      }
+    };
+
+    checkAlerts();
+  }, [pipeline, alertsEnabled, user]);
 
   // Auto-scroll smoothly
   const scrollToBottom = useCallback(() => {

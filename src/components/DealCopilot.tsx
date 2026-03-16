@@ -276,6 +276,7 @@ export default function DealCopilot() {
       }
     };
     loadMemoryAndSettings();
+  }, [user]);
 
   // Save message to DB
   const persistMessage = useCallback(async (msg: Msg, convId: string) => {

@@ -48,6 +48,11 @@ const Settings = () => {
     activityCategories: 'Calls, Tours, Emails, Meetings, Proposals',
   });
 
+  const [integrations, setIntegrations] = useState({
+    calendarConnected: false,
+    copilotMemory: true,
+  });
+
   // Load settings from database
   useEffect(() => {
     if (!user) return;

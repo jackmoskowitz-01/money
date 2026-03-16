@@ -81,6 +81,7 @@ export default function DealCopilot() {
   const [memoryEnabled, setMemoryEnabled] = useState(true);
   const [brainEnabled, setBrainEnabled] = useState(false);
   const [brainContext, setBrainContext] = useState<string | null>(null);
+  const [copilotName, setCopilotName] = useState('DealFlow Copilot');
   const [aiSettings, setAiSettings] = useState({
     aiAutoBrainExtraction: false,
     aiEmailPerformanceLoop: false,
@@ -225,7 +226,7 @@ export default function DealCopilot() {
       // Check if memory is enabled in settings
       const { data: settings } = await supabase
         .from('user_settings' as any)
-        .select('copilot_memory, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
+        .select('copilot_memory, copilot_name, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
         .eq('user_id', user.id)
         .single();
 
@@ -234,6 +235,7 @@ export default function DealCopilot() {
       const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
       setBrainEnabled(brainOn);
+      setCopilotName(s?.copilot_name || 'DealFlow Copilot');
 
       const newAiSettings = {
         aiAutoBrainExtraction: s?.ai_auto_brain_extraction ?? false,
@@ -2110,7 +2112,7 @@ For each line item, also produce a monthly breakdown:
                   <Sparkles className="h-4 w-4 text-primary" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-foreground">DealFlow Copilot</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{copilotName}</h3>
                   <p className="text-[10px] text-muted-foreground">Strategy · Actions · Market Intel</p>
                 </div>
               </div>

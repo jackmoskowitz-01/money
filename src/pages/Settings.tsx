@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain, Target } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain, Target, Sparkles } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,6 +52,7 @@ const Settings = () => {
   const [integrations, setIntegrations] = useState({
     calendarConnected: false,
     copilotMemory: true,
+    copilotName: 'DealFlow Copilot',
     brainEnabled: false,
     aiAutoBrainExtraction: false,
     aiEmailPerformanceLoop: false,
@@ -131,6 +132,7 @@ const Settings = () => {
         setIntegrations({
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
+          copilotName: (s as any).copilot_name || 'DealFlow Copilot',
           brainEnabled: (s as any).brain_enabled ?? false,
           aiAutoBrainExtraction: (s as any).ai_auto_brain_extraction ?? false,
           aiEmailPerformanceLoop: (s as any).ai_email_performance_loop ?? false,
@@ -208,6 +210,7 @@ const Settings = () => {
         dark_mode: appearance.darkMode,
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
+        copilot_name: integrations.copilotName,
         brain_enabled: integrations.brainEnabled,
         ai_auto_brain_extraction: integrations.aiAutoBrainExtraction,
         ai_email_performance_loop: integrations.aiEmailPerformanceLoop,
@@ -791,6 +794,28 @@ const Settings = () => {
                         setIntegrations(i => ({ ...i, calendarConnected: false }));
                       }}
                     />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" /> Copilot Name
+                  </CardTitle>
+                  <CardDescription>Give your AI assistant a custom name</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="copilot-name">Assistant Name</Label>
+                    <Input
+                      id="copilot-name"
+                      value={integrations.copilotName}
+                      onChange={e => setIntegrations(i => ({ ...i, copilotName: e.target.value }))}
+                      placeholder="DealFlow Copilot"
+                      maxLength={40}
+                    />
+                    <p className="text-xs text-muted-foreground">This name appears in the Copilot header</p>
                   </div>
                 </CardContent>
               </Card>

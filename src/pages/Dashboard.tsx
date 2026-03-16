@@ -186,9 +186,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* ═══ AI Daily Briefing ═══ */}
-        <DailyBriefing />
-
         {/* ═══ Stat Cards ═══ */}
         <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {stats.map((stat, i) => {
@@ -226,54 +223,6 @@ const Dashboard = () => {
             );
           })}
         </div>
-
-        {/* ═══ Today's Focus ═══ */}
-        {focusItems.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6">
-            <Card className="border-primary/20 bg-card overflow-hidden">
-              <div className="border-b border-border px-5 py-3 flex items-center gap-2.5 bg-gradient-to-r from-primary/5 to-transparent">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                  <Flame className="h-4 w-4 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-foreground">Today's Focus</h2>
-                  <p className="text-[10px] text-muted-foreground">Priority action items</p>
-                </div>
-                <Badge className="ml-auto bg-primary/10 text-primary border-0 text-[10px] font-bold px-2">
-                  {focusItems.length} item{focusItems.length > 1 ? 's' : ''}
-                </Badge>
-              </div>
-              <div className="divide-y divide-border">
-                {focusItems.map((item, i) => {
-                  const urgencyStyles = {
-                    high: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-l-destructive', badge: 'bg-destructive/10 text-destructive' },
-                    medium: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-l-warning', badge: 'bg-warning/10 text-warning' },
-                    low: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-l-primary', badge: 'bg-primary/10 text-primary' },
-                  }[item.urgency];
-                  return (
-                    <Link key={item.id} to={item.link || '/'} className="block">
-                      <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className={`px-5 py-3.5 hover:bg-muted/30 transition-all group border-l-[3px] ${urgencyStyles.border}`}>
-                        <div className="flex items-center gap-3">
-                          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${urgencyStyles.bg}`}>
-                            <item.icon className={`h-4 w-4 ${urgencyStyles.text}`} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
-                          </div>
-                          <Badge className={`text-[10px] px-2 py-0.5 border-0 font-semibold ${urgencyStyles.badge}`}>
-                            {item.urgency === 'high' ? 'Urgent' : item.urgency === 'medium' ? 'Today' : 'Action'}
-                          </Badge>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
-                        </div>
-                      </motion.div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </Card>
-          </motion.div>
-        )}
 
         {/* ═══ Tabbed Sections ═══ */}
         <Tabs defaultValue="performance" className="w-full">

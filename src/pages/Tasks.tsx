@@ -54,7 +54,7 @@ const Tasks = () => {
   const [prospectSearch, setProspectSearch] = useState('');
   const [assignSearch, setAssignSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'assigned_to_me'>('all');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({
     title: '', description: '', type: 'call', priority: 'medium', dueDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),

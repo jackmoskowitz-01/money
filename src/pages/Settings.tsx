@@ -839,6 +839,10 @@ const Settings = () => {
                       maxLength={40}
                     />
                     <p className="text-xs text-muted-foreground">This name appears in the Copilot header</p>
+                    <Button onClick={() => saveAll('Copilot name')} className="mt-2" disabled={saving}>
+                      {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                      Save Copilot Name
+                    </Button>
                   </div>
                 </CardContent>
               </Card>

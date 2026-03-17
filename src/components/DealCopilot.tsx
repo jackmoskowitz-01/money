@@ -170,7 +170,7 @@ export default function DealCopilot() {
     return parts.join('\n');
   }, [pipeline, location.pathname]);
 
-  // Load conversation history
+  // Load conversation history — only load today's conversation, otherwise start fresh
   useEffect(() => {
     if (!user || hasLoadedHistory) return;
     const loadHistory = async () => {
@@ -182,17 +182,24 @@ export default function DealCopilot() {
         .limit(1);
 
       if (data && data.length > 0) {
-        const convId = (data[0] as any).conversation_id;
-        const { data: msgs } = await supabase
-          .from('copilot_messages')
-          .select('*')
-          .eq('conversation_id', convId)
-          .order('created_at', { ascending: true });
+        const lastMessageDate = new Date((data[0] as any).created_at);
+        const today = new Date();
+        const isToday = lastMessageDate.toDateString() === today.toDateString();
 
-        if (msgs && msgs.length > 0) {
-          setConversationId(convId);
-          setMessages(msgs.map((m: any) => ({ role: m.role, content: m.content })));
+        if (isToday) {
+          const convId = (data[0] as any).conversation_id;
+          const { data: msgs } = await supabase
+            .from('copilot_messages')
+            .select('*')
+            .eq('conversation_id', convId)
+            .order('created_at', { ascending: true });
+
+          if (msgs && msgs.length > 0) {
+            setConversationId(convId);
+            setMessages(msgs.map((m: any) => ({ role: m.role, content: m.content })));
+          }
         }
+        // If not today, leave messages empty (fresh conversation)
       }
       setHasLoadedHistory(true);
     };

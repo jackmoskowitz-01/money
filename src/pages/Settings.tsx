@@ -185,14 +185,25 @@ const Settings = () => {
     setSaving(true);
 
     try {
-      // Update profile name
-      await supabase.from('profiles').update({
+      const normalizedCopilotName = integrations.copilotName.trim() || 'DealFlow Copilot';
+      const nextAiSettings = {
+        aiAutoBrainExtraction: integrations.aiAutoBrainExtraction,
+        aiEmailPerformanceLoop: integrations.aiEmailPerformanceLoop,
+        aiDealPatternLearning: integrations.aiDealPatternLearning,
+        aiActivityInsights: integrations.aiActivityInsights,
+        aiStyleTraining: integrations.aiStyleTraining,
+        aiScoopSynthesis: integrations.aiScoopSynthesis,
+        aiContactMemory: integrations.aiContactMemory,
+      };
+
+      const { error: profileError } = await supabase.from('profiles').update({
         full_name: profile.name,
         email: profile.email,
         avatar_initials: profile.name ? profile.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : 'AN',
       }).eq('id', user.id);
 
-      // Upsert user_settings
+      if (profileError) throw profileError;
+
       const settingsRow = {
         user_id: user.id,
         brokerage: profile.brokerage,
@@ -210,7 +221,7 @@ const Settings = () => {
         dark_mode: appearance.darkMode,
         calendar_connected: integrations.calendarConnected,
         copilot_memory: integrations.copilotMemory,
-        copilot_name: integrations.copilotName,
+        copilot_name: normalizedCopilotName,
         brain_enabled: integrations.brainEnabled,
         ai_auto_brain_extraction: integrations.aiAutoBrainExtraction,
         ai_email_performance_loop: integrations.aiEmailPerformanceLoop,
@@ -239,21 +250,33 @@ const Settings = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Try update first, then insert if no rows affected
-      const { data: existing } = await supabase
+      const { data: existing, error: existingError } = await supabase
         .from('user_settings' as any)
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (existing) {
-        await supabase.from('user_settings' as any).update(settingsRow as any).eq('user_id', user.id);
-      } else {
-        await supabase.from('user_settings' as any).insert(settingsRow as any);
-      }
+      if (existingError) throw existingError;
+
+      const { error: settingsError } = existing
+        ? await supabase.from('user_settings' as any).update(settingsRow as any).eq('user_id', user.id)
+        : await supabase.from('user_settings' as any).insert(settingsRow as any);
+
+      if (settingsError) throw settingsError;
+
+      setIntegrations(i => ({ ...i, copilotName: normalizedCopilotName }));
+      window.dispatchEvent(new CustomEvent('copilot-settings-updated', {
+        detail: {
+          copilotName: normalizedCopilotName,
+          copilotMemory: integrations.copilotMemory,
+          brainEnabled: integrations.brainEnabled,
+          aiSettings: nextAiSettings,
+        },
+      }));
 
       toast.success(`${section} settings saved`);
     } catch (err) {
+      console.error('Failed to save settings', err);
       toast.error('Failed to save settings');
     }
 

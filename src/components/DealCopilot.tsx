@@ -242,7 +242,7 @@ export default function DealCopilot() {
       const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
       setBrainEnabled(brainOn);
-      setCopilotName(s?.copilot_name || 'DealFlow Copilot');
+      setCopilotName(s?.copilot_name?.trim() || 'DealFlow Copilot');
 
       const newAiSettings = {
         aiAutoBrainExtraction: s?.ai_auto_brain_extraction ?? false,
@@ -540,7 +540,34 @@ export default function DealCopilot() {
     checkAlerts();
   }, [pipeline, alertsEnabled, user]);
 
-  // Auto-scroll smoothly
+  useEffect(() => {
+    const handleSettingsUpdate = (event: Event) => {
+      const detail = (event as CustomEvent).detail as {
+        copilotName?: string;
+        copilotMemory?: boolean;
+        brainEnabled?: boolean;
+        aiSettings?: {
+          aiAutoBrainExtraction: boolean;
+          aiEmailPerformanceLoop: boolean;
+          aiDealPatternLearning: boolean;
+          aiActivityInsights: boolean;
+          aiStyleTraining: boolean;
+          aiScoopSynthesis: boolean;
+          aiContactMemory: boolean;
+        };
+      };
+
+      if (detail.copilotName) setCopilotName(detail.copilotName);
+      if (typeof detail.copilotMemory === 'boolean') setMemoryEnabled(detail.copilotMemory);
+      if (typeof detail.brainEnabled === 'boolean') setBrainEnabled(detail.brainEnabled);
+      if (detail.aiSettings) setAiSettings(detail.aiSettings);
+    };
+
+    window.addEventListener('copilot-settings-updated', handleSettingsUpdate);
+    return () => window.removeEventListener('copilot-settings-updated', handleSettingsUpdate);
+  }, []);
+
+
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });

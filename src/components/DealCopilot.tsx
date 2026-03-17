@@ -551,12 +551,15 @@ export default function DealCopilot() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Focus input
+  // Focus input and scroll to bottom when opening
   useEffect(() => {
-    if (open && inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
+    if (open) {
+      setTimeout(() => {
+        scrollToBottom();
+        inputRef.current?.focus();
+      }, 150);
     }
-  }, [open]);
+  }, [open, scrollToBottom]);
 
   // Keep voiceModeRef in sync
   // Keep voiceModeRef in sync

@@ -23,6 +23,7 @@ import LoopNetSearch from "./pages/LoopNetSearch";
 import LoopNetDetail from "./pages/LoopNetDetail";
 import EmailAnalytics from "./pages/EmailAnalytics";
 import ProspectTable from "./pages/ProspectTable";
+import LeaseAbstracts from "./pages/LeaseAbstracts";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -65,6 +66,7 @@ const ProtectedRoutes = () => {
         <Route path="/loopnet/detail" element={<ErrorBoundary><LoopNetDetail /></ErrorBoundary>} />
         <Route path="/email-analytics" element={<ErrorBoundary><EmailAnalytics /></ErrorBoundary>} />
         <Route path="/prospect-table" element={<ErrorBoundary><ProspectTable /></ErrorBoundary>} />
+        <Route path="/lease-abstracts" element={<ErrorBoundary><LeaseAbstracts /></ErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

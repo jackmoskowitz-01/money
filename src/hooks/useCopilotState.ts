@@ -1190,6 +1190,79 @@ export function useCopilotState() {
         } catch (err) {
           console.error('Critical date extraction failed:', err);
         }
+
+        // Also extract structured lease data in parallel
+        try {
+          const parseResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-lease-abstract`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              abstractText: assistantSoFar.slice(0, 15000),
+              prospectName,
+              buildingName,
+            }),
+          });
+
+          if (parseResp.ok) {
+            const parsed = await parseResp.json();
+            const abstractRow = {
+              user_id: user.id,
+              prospect_id: prospectId || null,
+              prospect_name: parsed.prospect_name || prospectName || 'Unknown',
+              building_name: parsed.building_name || buildingName || 'Unknown',
+              building_address: parsed.building_address || '',
+              tenant_name: parsed.tenant_name || '',
+              landlord_name: parsed.landlord_name || '',
+              premises_sf: parsed.premises_sf || null,
+              floor_suite: parsed.floor_suite || '',
+              lease_type: parsed.lease_type || '',
+              commencement_date: parsed.commencement_date || null,
+              expiration_date: parsed.expiration_date || null,
+              term_months: parsed.term_months || null,
+              base_rent_psf: parsed.base_rent_psf || null,
+              rent_schedule: parsed.rent_schedule || [],
+              escalation_type: parsed.escalation_type || '',
+              escalation_rate: parsed.escalation_rate || null,
+              free_rent_months: parsed.free_rent_months || 0,
+              ti_allowance_psf: parsed.ti_allowance_psf || null,
+              parking_spaces: parsed.parking_spaces || null,
+              parking_rate: parsed.parking_rate || null,
+              renewal_options: parsed.renewal_options || [],
+              expansion_options: parsed.expansion_options || [],
+              termination_options: parsed.termination_options || [],
+              operating_expenses: parsed.operating_expenses || '',
+              security_deposit: parsed.security_deposit || '',
+              assignment_subletting: parsed.assignment_subletting || '',
+              notable_clauses: parsed.notable_clauses || '',
+              source_filename: fileNames[0] || '',
+              raw_abstract: assistantSoFar,
+              completeness_score: parsed.completeness_score || 0,
+            };
+            await supabase.from('lease_abstracts' as any).insert(abstractRow as any);
+            toast.success('Structured lease abstract saved', {
+              description: 'View it on the Lease Abstracts page',
+              action: {
+                label: 'View',
+                onClick: () => window.location.href = '/lease-abstracts',
+              },
+            });
+
+            // Append a link to the chat
+            setMessages(prev => {
+              const viewLink = '\n\n---\n[View Parsed Abstract](/lease-abstracts)';
+              const last = prev[prev.length - 1];
+              if (last?.role === 'assistant') {
+                return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: m.content + viewLink } : m);
+              }
+              return prev;
+            });
+          }
+        } catch (err) {
+          console.error('Structured lease parsing failed:', err);
+        }
       }
     } catch (e: any) {
       console.error('File analysis error:', e);

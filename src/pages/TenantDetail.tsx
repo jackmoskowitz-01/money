@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Mail, User, Building2, Clock, Copy, Check, AlertTriangle, Loader2, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, Zap, Info, Calendar, Briefcase, TrendingUp, ChevronDown, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Mail, User, Building2, Clock, Copy, Check, AlertTriangle, Loader2, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, Zap, Info, Calendar, Briefcase, TrendingUp, ChevronDown, ExternalLink, FileText } from 'lucide-react';
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, newsItems, getUrgencyColor, scoopPosts, type OutreachReason } from '@/data/mockData';
 import { updatePipelineStage, getOrCreatePipelineItem, stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
@@ -678,6 +678,14 @@ const TenantDetail = () => {
                 sqft={tenant.sqft}
               />
               <OwnershipHistoryCard buildingId={buildingId!} />
+              <Link to="/lease-abstracts">
+                <Card className="p-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2 text-sm">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span>View Lease Abstracts</span>
+                  </div>
+                </Card>
+              </Link>
             </div>
           </div>
         </motion.div>

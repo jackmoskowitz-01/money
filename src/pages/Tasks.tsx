@@ -155,11 +155,24 @@ const Tasks = () => {
 
   const handleDelete = async (id: string) => { await deleteTask(id); };
 
-  const getTenantInfo = (task: { tenantId?: string; buildingId?: string }) => {
-    if (!task.tenantId || !task.buildingId) return null;
-    const building = allBuildings.find(b => b.id === task.buildingId);
-    const tenant = building?.tenants.find(t => t.id === task.tenantId);
-    return tenant ? { tenant, building } : null;
+  const getTenantInfo = (task: { tenantId?: string; buildingId?: string; title?: string }) => {
+    // Direct link via IDs
+    if (task.tenantId && task.buildingId) {
+      const building = allBuildings.find(b => b.id === task.buildingId);
+      const tenant = building?.tenants.find(t => t.id === task.tenantId);
+      if (tenant) return { tenant, building };
+    }
+    // Fuzzy match by name in task title
+    if (task.title) {
+      for (const b of allBuildings) {
+        for (const t of b.tenants) {
+          if (task.title.toLowerCase().includes(t.name.toLowerCase())) {
+            return { tenant: t, building: b };
+          }
+        }
+      }
+    }
+    return null;
   };
 
   if (loading) {
@@ -329,7 +342,15 @@ const Tasks = () => {
 
     return (
       <motion.div key={task.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
-        <Card className={`border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30 ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''}`} onClick={() => { if (info) navigate(`/building/${task.buildingId}/tenant/${task.tenantId}`); }}>
+        <Card className={`border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30 ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''}`} onClick={() => {
+          if (info) {
+            navigate(`/building/${info.building!.id}/tenant/${info.tenant.id}`);
+          } else if (task.tenantId && (task.buildingId === 'custom' || task.buildingId === 'manual')) {
+            navigate(`/prospect/${task.tenantId}`);
+          } else {
+            navigate('/prospect-table');
+          }
+        }}>
           <div className="flex items-start gap-3">
             <button onClick={(e) => { e.stopPropagation(); handleToggle(task.id); }} className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${task.completed ? 'border-success bg-success/20 text-success' : 'border-border hover:border-primary'}`}>
               {task.completed && <Check className="h-3 w-3" />}

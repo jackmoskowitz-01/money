@@ -65,13 +65,13 @@ export function useCriticalDates() {
   const fetchDates = useCallback(async () => {
     if (!user) return;
     const { data, error } = await supabase
-      .from('critical_dates' as any)
+      .from('critical_dates')
       .select('*')
       .eq('user_id', user.id)
       .order('date_value', { ascending: true });
 
     if (!error && data) {
-      setDates(data as any as CriticalDate[]);
+      setDates(data as CriticalDate[]);
     }
     setLoading(false);
   }, [user]);
@@ -89,8 +89,8 @@ export function useCriticalDates() {
     }));
 
     const { error } = await supabase
-      .from('critical_dates' as any)
-      .insert(rows as any);
+      .from('critical_dates')
+      .insert(rows);
 
     if (!error) {
       await fetchDates();
@@ -101,8 +101,8 @@ export function useCriticalDates() {
 
   const acknowledge = useCallback(async (id: string) => {
     const { error } = await supabase
-      .from('critical_dates' as any)
-      .update({ acknowledged: true } as any)
+      .from('critical_dates')
+      .update({ acknowledged: true })
       .eq('id', id);
 
     if (!error) {
@@ -112,7 +112,7 @@ export function useCriticalDates() {
 
   const deleteDate = useCallback(async (id: string) => {
     const { error } = await supabase
-      .from('critical_dates' as any)
+      .from('critical_dates')
       .delete()
       .eq('id', id);
 

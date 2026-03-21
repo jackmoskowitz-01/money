@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { buildings } from '@/data/mockData';
 import { digestEvent } from '@/lib/autoDigest';
+import { toast } from 'sonner';
 import type { PipelineStage, PipelineItem, Touchpoint } from '@/data/pipelineData';
 
 type DbRow = {
@@ -51,7 +52,7 @@ export function usePipeline() {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching pipeline:', error);
+      toast.error('Failed to load pipeline');
       return;
     }
 
@@ -111,25 +112,27 @@ export function usePipeline() {
       .eq('tenant_id', tenantId)
       .eq('building_id', buildingId);
 
-    if (!error) {
-      setPipeline(prev => prev.map(p =>
-        p.tenantId === tenantId && p.buildingId === buildingId
-          ? { ...p, stage, lastActivity: new Date().toISOString() }
-          : p
-      ));
-      // Auto-digest: feed pipeline move to AI brain
-      const name = item?.prospectName || item?.prospectCompany || tenantId;
-      const prevStage = item?.stage || 'unknown';
-      digestEvent('pipeline_moved', {
-        prospect: name,
-        tenantId,
-        buildingId,
-        previousStage: prevStage,
-        newStage: stage,
-        sqft: item?.prospectSqft || undefined,
-        touchpoints: item?.sentTouchpoints?.length || 0,
-      });
+    if (error) {
+      toast.error('Failed to update deal stage');
+      return;
     }
+    setPipeline(prev => prev.map(p =>
+      p.tenantId === tenantId && p.buildingId === buildingId
+        ? { ...p, stage, lastActivity: new Date().toISOString() }
+        : p
+    ));
+    // Auto-digest: feed pipeline move to AI brain
+    const name = item?.prospectName || item?.prospectCompany || tenantId;
+    const prevStage = item?.stage || 'unknown';
+    digestEvent('pipeline_moved', {
+      prospect: name,
+      tenantId,
+      buildingId,
+      previousStage: prevStage,
+      newStage: stage,
+      sqft: item?.prospectSqft || undefined,
+      touchpoints: item?.sentTouchpoints?.length || 0,
+    });
   }, [pipeline]);
 
   const addNote = useCallback(async (tenantId: string, buildingId: string, note: string) => {
@@ -143,13 +146,15 @@ export function usePipeline() {
       .eq('tenant_id', tenantId)
       .eq('building_id', buildingId);
 
-    if (!error) {
-      setPipeline(prev => prev.map(p =>
-        p.tenantId === tenantId && p.buildingId === buildingId
-          ? { ...p, notes: newNotes, lastActivity: new Date().toISOString() }
-          : p
-      ));
+    if (error) {
+      toast.error('Failed to add note');
+      return;
     }
+    setPipeline(prev => prev.map(p =>
+      p.tenantId === tenantId && p.buildingId === buildingId
+        ? { ...p, notes: newNotes, lastActivity: new Date().toISOString() }
+        : p
+    ));
   }, [pipeline]);
 
   const addProspect = useCallback(async (prospect: {
@@ -177,10 +182,14 @@ export function usePipeline() {
       .select('*')
       .single();
 
-    if (!error && data) {
+    if (error) {
+      toast.error('Failed to add prospect');
+      return false;
+    }
+    if (data) {
       setPipeline(prev => [...prev, rowToItem(data as unknown as DbRow)]);
     }
-    return !error;
+    return true;
   }, []);
 
   const markTouchpointSent = useCallback(async (tenantId: string, buildingId: string, touchpoint: Touchpoint) => {
@@ -204,13 +213,15 @@ export function usePipeline() {
       .eq('tenant_id', tenantId)
       .eq('building_id', buildingId);
 
-    if (!error) {
-      setPipeline(prev => prev.map(p =>
-        p.tenantId === tenantId && p.buildingId === buildingId
-          ? { ...p, sentTouchpoints: newSent, lastActivity: new Date().toISOString() }
-          : p
-      ));
+    if (error) {
+      toast.error('Failed to record touchpoint');
+      return;
     }
+    setPipeline(prev => prev.map(p =>
+      p.tenantId === tenantId && p.buildingId === buildingId
+        ? { ...p, sentTouchpoints: newSent, lastActivity: new Date().toISOString() }
+        : p
+    ));
   }, [pipeline]);
 
   const deleteDeal = useCallback(async (tenantId: string, buildingId: string) => {
@@ -220,9 +231,11 @@ export function usePipeline() {
       .eq('tenant_id', tenantId)
       .eq('building_id', buildingId);
 
-    if (!error) {
-      setPipeline(prev => prev.filter(p => !(p.tenantId === tenantId && p.buildingId === buildingId)));
+    if (error) {
+      toast.error('Failed to delete deal');
+      return;
     }
+    setPipeline(prev => prev.filter(p => !(p.tenantId === tenantId && p.buildingId === buildingId)));
   }, []);
 
   const reorderInStage = useCallback(async (stage: PipelineStage, fromIndex: number, toIndex: number) => {

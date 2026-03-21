@@ -3,6 +3,7 @@ import { FileText, Loader2, Copy, Check, Printer, RefreshCw } from 'lucide-react
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 const MEETING_PREP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meeting-prep`;
 
@@ -137,13 +138,13 @@ const MeetingPrepBrief = (props: MeetingPrepBriefProps) => {
         elements.push(
           <div key={i} className="flex items-start gap-1.5 ml-2 mb-0.5">
             <span className="mt-1.5 h-1 w-1 rounded-full bg-muted-foreground/40 shrink-0" />
-            <p className="text-[11px] text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: text }} />
+            <p className="text-[11px] text-foreground/80 leading-relaxed" dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />
           </div>
         );
       } else if (line.trim()) {
         const text = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         elements.push(
-          <p key={i} className="text-[11px] text-foreground/80 leading-relaxed mb-1" dangerouslySetInnerHTML={{ __html: text }} />
+          <p key={i} className="text-[11px] text-foreground/80 leading-relaxed mb-1" dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />
         );
       }
     }

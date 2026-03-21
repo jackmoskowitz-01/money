@@ -55,11 +55,14 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchActivities = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('activities')
         .select('*')
         .order('timestamp', { ascending: false })
         .limit(100);
+      if (error) {
+        console.error('Failed to load activities:', error);
+      }
       setActivities((data || []) as ActivityRow[]);
       setActivitiesLoading(false);
     };

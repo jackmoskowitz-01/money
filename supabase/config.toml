@@ -1,82 +1,82 @@
 project_id = "fvdncnxgmfzxlqtqxitl"
 
 [functions.generate-outreach]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fetch-dc-buildings]
-verify_jwt = false
+verify_jwt = true
 
 [functions.generate-nonprofit-outreach]
-verify_jwt = false
+verify_jwt = true
 
 [functions.refine-email]
-verify_jwt = false
+verify_jwt = true
 
 [functions.fetch-market-news]
-verify_jwt = false
+verify_jwt = true
 
 [functions.smart-drafting]
-verify_jwt = false
+verify_jwt = true
 
 [functions.smart-outreach]
-verify_jwt = false
+verify_jwt = true
 
 [functions.places-autocomplete]
-verify_jwt = false
+verify_jwt = true
 
 [functions.meeting-prep]
-verify_jwt = false
+verify_jwt = true
 
 [functions.scan-company-news]
-verify_jwt = false
+verify_jwt = true
 
 [functions.deal-copilot]
-verify_jwt = false
+verify_jwt = true
 
 [functions.copilot-parse-file]
-verify_jwt = false
+verify_jwt = true
 
 [functions.copilot-tts]
-verify_jwt = false
+verify_jwt = true
 
 [functions.elevenlabs-scribe-token]
-verify_jwt = false
+verify_jwt = true
 
 [functions.daily-briefing]
-verify_jwt = false
+verify_jwt = true
 
 [functions.territory-analysis]
-verify_jwt = false
+verify_jwt = true
 
 [functions.loopnet-search]
-verify_jwt = false
+verify_jwt = true
 
 [functions.apify-zoominfo-company]
-verify_jwt = false
+verify_jwt = true
 
 [functions.apify-zoominfo-enrich]
-verify_jwt = false
+verify_jwt = true
 
 [functions.apify-zoominfo-people]
-verify_jwt = false
+verify_jwt = true
 
 [functions.zoominfo-webhook]
 verify_jwt = false
 
 [functions.extract-critical-dates]
-verify_jwt = false
+verify_jwt = true
 
 [functions.auto-digest]
-verify_jwt = false
+verify_jwt = true
 
 [functions.classify-reply]
-verify_jwt = false
+verify_jwt = true
 
 [functions.enrich-prospect]
-verify_jwt = false
+verify_jwt = true
 
 [functions.intelligence-gather]
-verify_jwt = false
+verify_jwt = true
 
 [functions.parse-stacking-plan]
-verify_jwt = false
+verify_jwt = true

@@ -1,10 +1,7 @@
+import { corsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -14,18 +11,48 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, supabaseKey);
 
+    // Webhook secret validation (optional - skip if not configured)
+    const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
+    if (webhookSecret) {
+      const providedSecret = req.headers.get("x-webhook-secret");
+      if (providedSecret !== webhookSecret) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     const body = await req.json();
 
+    // Helper to truncate strings for safety
+    const truncate = (val: string | null | undefined, max = 500): string =>
+      val ? String(val).slice(0, max) : "";
+    const truncateOrNull = (val: unknown, max = 500): string | null =>
+      val ? String(val).slice(0, max) : null;
+
     // Accept flexible field names from Zapier/ZoomInfo
-    const name = body.company_name || body.companyName || body.name || body.Company || "";
-    const website = body.website || body.Website || body.company_website || "";
-    const address = body.headquarters || body.address || body.Address || body.hq || "";
-    const industry = body.industry || body.Industry || null;
+    const name = truncate(body.company_name || body.companyName || body.name || body.Company);
+    const website = truncate(body.website || body.Website || body.company_website);
+    const address = truncate(body.headquarters || body.address || body.Address || body.hq);
+    const industry = truncateOrNull(body.industry || body.Industry);
     const employeeCount = body.employee_count || body.employees || body.Employees || null;
     const revenue = body.revenue || body.Revenue || null;
-    const description = body.description || body.Description || null;
-    const phone = body.phone || body.Phone || null;
+    const description = truncateOrNull(body.description || body.Description, 2000);
+    const phone = truncateOrNull(body.phone || body.Phone, 50);
     const foundingYear = body.founding_year || body.founded || null;
+
+    // Validate website URL if provided
+    if (website) {
+      try {
+        new URL(website.startsWith("http") ? website : `https://${website}`);
+      } catch {
+        return new Response(
+          JSON.stringify({ error: "Invalid website URL" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     if (!name) {
       return new Response(

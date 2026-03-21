@@ -24,6 +24,7 @@ import LoopNetDetail from "./pages/LoopNetDetail";
 import EmailAnalytics from "./pages/EmailAnalytics";
 import Landing from "./pages/Landing";
 import NotFound from "./pages/NotFound";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 const queryClient = new QueryClient();
@@ -48,20 +49,20 @@ const ProtectedRoutes = () => {
       <Navbar />
       <DealCopilot />
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/map" element={<MapView />} />
-        <Route path="/news" element={<News />} />
-        <Route path="/building/:buildingId/tenant/:tenantId" element={<TenantDetail />} />
-        <Route path="/prospect/:prospectId" element={<CustomProspectDetail />} />
-        <Route path="/scoop" element={<ScoopBoard />} />
-        <Route path="/pipeline" element={<Pipeline />} />
-        <Route path="/tasks" element={<Tasks />} />
-        <Route path="/prospects" element={<Prospects />} />
-        <Route path="/activities" element={<ActivityLogger />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/loopnet" element={<LoopNetSearch />} />
-        <Route path="/loopnet/detail" element={<LoopNetDetail />} />
-        <Route path="/email-analytics" element={<EmailAnalytics />} />
+        <Route path="/" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+        <Route path="/map" element={<ErrorBoundary><MapView /></ErrorBoundary>} />
+        <Route path="/news" element={<ErrorBoundary><News /></ErrorBoundary>} />
+        <Route path="/building/:buildingId/tenant/:tenantId" element={<ErrorBoundary><TenantDetail /></ErrorBoundary>} />
+        <Route path="/prospect/:prospectId" element={<ErrorBoundary><CustomProspectDetail /></ErrorBoundary>} />
+        <Route path="/scoop" element={<ErrorBoundary><ScoopBoard /></ErrorBoundary>} />
+        <Route path="/pipeline" element={<ErrorBoundary><Pipeline /></ErrorBoundary>} />
+        <Route path="/tasks" element={<ErrorBoundary><Tasks /></ErrorBoundary>} />
+        <Route path="/prospects" element={<ErrorBoundary><Prospects /></ErrorBoundary>} />
+        <Route path="/activities" element={<ErrorBoundary><ActivityLogger /></ErrorBoundary>} />
+        <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+        <Route path="/loopnet" element={<ErrorBoundary><LoopNetSearch /></ErrorBoundary>} />
+        <Route path="/loopnet/detail" element={<ErrorBoundary><LoopNetDetail /></ErrorBoundary>} />
+        <Route path="/email-analytics" element={<ErrorBoundary><EmailAnalytics /></ErrorBoundary>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

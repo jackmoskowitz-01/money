@@ -96,7 +96,7 @@ export function useScoops() {
     linked_tenant_name?: string;
     linked_building_name?: string;
   }) => {
-    const { error } = await supabase.from('scoops').insert([scoop] as any);
+    const { error } = await supabase.from('scoops').insert([scoop]);
     if (error) {
       toast.error('Failed to post scoop');
       return false;
@@ -120,7 +120,7 @@ export function useScoops() {
       await supabase.from('scoop_likes').delete().eq('scoop_id', scoopId).eq('session_id', SESSION_ID);
       setLikedIds(prev => { const n = new Set(prev); n.delete(scoopId); return n; });
     } else {
-      await supabase.from('scoop_likes').insert([{ scoop_id: scoopId, session_id: SESSION_ID }] as any);
+      await supabase.from('scoop_likes').insert([{ scoop_id: scoopId, session_id: SESSION_ID }]);
       setLikedIds(prev => new Set(prev).add(scoopId));
     }
     await fetchScoops();
@@ -131,7 +131,7 @@ export function useScoops() {
       scoop_id: scoopId,
       verifier_name: verifierName,
       session_id: SESSION_ID,
-    }] as any);
+    }]);
     if (error) {
       if (error.code === '23505') {
         toast.info('You already verified this scoop');
@@ -184,7 +184,7 @@ export function useScoopComments(scoopId: string | null) {
       author_name: authorName,
       author_avatar: authorAvatar,
       content,
-    }] as any);
+    }]);
     if (error) {
       toast.error('Failed to add comment');
       return false;

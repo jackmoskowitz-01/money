@@ -193,7 +193,7 @@ export function useEmailThreads() {
         response_time_hours: Math.round(responseTimeHours * 10) / 10,
         thread_status: classification.is_relevant ? 'replied' : 'spam',
         updated_at: new Date().toISOString(),
-      } as any)
+      })
       .eq('id', threadId);
 
     if (!error) {
@@ -262,7 +262,7 @@ export function useEmailThreads() {
   const updateThreadStatus = useCallback(async (threadId: string, status: string) => {
     await supabase
       .from('email_threads')
-      .update({ thread_status: status, updated_at: new Date().toISOString() } as any)
+      .update({ thread_status: status, updated_at: new Date().toISOString() })
       .eq('id', threadId);
     fetchThreads();
   }, [fetchThreads]);

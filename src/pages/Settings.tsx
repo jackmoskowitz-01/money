@@ -105,13 +105,13 @@ const Settings = () => {
 
       // Load user settings
       const { data: settingsData } = await supabase
-        .from('user_settings' as any)
+        .from('user_settings')
         .select('*')
         .eq('user_id', user.id)
         .single();
 
       if (settingsData) {
-        const s = settingsData as any;
+        const s = settingsData;
         setProfile(p => ({ ...p, brokerage: s.brokerage || '', phone: s.phone || '' }));
         setEmailDefaults({
           signature: s.email_signature || '',
@@ -132,15 +132,15 @@ const Settings = () => {
         setIntegrations({
           calendarConnected: s.calendar_connected ?? false,
           copilotMemory: s.copilot_memory ?? true,
-          copilotName: (s as any).copilot_name || 'DealFlow Copilot',
-          brainEnabled: (s as any).brain_enabled ?? false,
-          aiAutoBrainExtraction: (s as any).ai_auto_brain_extraction ?? false,
-          aiEmailPerformanceLoop: (s as any).ai_email_performance_loop ?? false,
-          aiDealPatternLearning: (s as any).ai_deal_pattern_learning ?? false,
-          aiActivityInsights: (s as any).ai_activity_insights ?? false,
-          aiStyleTraining: (s as any).ai_style_training ?? false,
-          aiScoopSynthesis: (s as any).ai_scoop_synthesis ?? false,
-          aiContactMemory: (s as any).ai_contact_memory ?? false,
+          copilotName: s.copilot_name || 'DealFlow Copilot',
+          brainEnabled: s.brain_enabled ?? false,
+          aiAutoBrainExtraction: s.ai_auto_brain_extraction ?? false,
+          aiEmailPerformanceLoop: s.ai_email_performance_loop ?? false,
+          aiDealPatternLearning: s.ai_deal_pattern_learning ?? false,
+          aiActivityInsights: s.ai_activity_insights ?? false,
+          aiStyleTraining: s.ai_style_training ?? false,
+          aiScoopSynthesis: s.ai_scoop_synthesis ?? false,
+          aiContactMemory: s.ai_contact_memory ?? false,
         });
         setBrokerProfile({
           specialties: s.specialties || '',
@@ -251,7 +251,7 @@ const Settings = () => {
       };
 
       const { data: existing, error: existingError } = await supabase
-        .from('user_settings' as any)
+        .from('user_settings')
         .select('id')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -259,8 +259,8 @@ const Settings = () => {
       if (existingError) throw existingError;
 
       const { error: settingsError } = existing
-        ? await supabase.from('user_settings' as any).update(settingsRow as any).eq('user_id', user.id)
-        : await supabase.from('user_settings' as any).insert(settingsRow as any);
+        ? await supabase.from('user_settings').update(settingsRow).eq('user_id', user.id)
+        : await supabase.from('user_settings').insert(settingsRow);
 
       if (settingsError) throw settingsError;
 
@@ -914,7 +914,7 @@ const Settings = () => {
                       setAppearance(a => ({ ...a, darkMode: v }));
                       // Auto-save theme preference
                       if (user) {
-                        supabase.from('user_settings' as any).update({ dark_mode: v, updated_at: new Date().toISOString() }).eq('user_id', user.id).then();
+                        supabase.from('user_settings').update({ dark_mode: v, updated_at: new Date().toISOString() }).eq('user_id', user.id).then();
                       }
                     }}
                   />

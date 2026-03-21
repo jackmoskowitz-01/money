@@ -80,7 +80,7 @@ const TaskComments = ({ taskId }: Props) => {
       author_name: profile?.full_name || 'Anonymous',
       author_initials: profile?.avatar_initials || 'AN',
       content: newComment.trim(),
-    } as any);
+    });
     setNewComment('');
     setSubmitting(false);
   };

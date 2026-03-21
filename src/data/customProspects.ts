@@ -56,7 +56,7 @@ const toProspect = (row: DbProspect): CustomProspect => ({
 
 /** Async: Get all custom prospects from DB */
 export const getCustomProspectsAsync = async (): Promise<CustomProspect[]> => {
-  const { data, error } = await (supabase.from('custom_prospects' as any) as any)
+  const { data, error } = await supabase.from('custom_prospects')
     .select('*')
     .order('created_at', { ascending: false });
   if (error) {
@@ -85,7 +85,7 @@ export const addCustomProspect = (prospect: Omit<CustomProspect, 'id' | 'created
   localStorage.setItem(CUSTOM_PROSPECTS_KEY, JSON.stringify([newProspect, ...prospects]));
 
   // Also save to DB (fire-and-forget)
-  supabase.from('custom_prospects' as any).insert({
+  supabase.from('custom_prospects').insert({
     id: newProspect.id,
     name: newProspect.name,
     website: newProspect.website || '',
@@ -116,7 +116,7 @@ export const updateCustomProspect = (id: string, updates: Partial<CustomProspect
   if (updates.enrichment !== undefined) dbUpdates.enrichment = updates.enrichment as unknown as Record<string, unknown>;
   dbUpdates.updated_at = new Date().toISOString();
 
-  supabase.from('custom_prospects' as any).update(dbUpdates).eq('id', id).then(({ error }: any) => {
+  supabase.from('custom_prospects').update(dbUpdates).eq('id', id).then(({ error }: any) => {
     if (error) console.error('DB update prospect error:', error);
   });
 
@@ -130,7 +130,7 @@ export const getCustomProspect = (id: string): CustomProspect | undefined => {
 
 /** Async: Get a single prospect from DB */
 export const getCustomProspectAsync = async (id: string): Promise<CustomProspect | undefined> => {
-  const { data, error } = await (supabase.from('custom_prospects' as any) as any)
+  const { data, error } = await supabase.from('custom_prospects')
     .select('*')
     .eq('id', id)
     .maybeSingle();
@@ -146,7 +146,7 @@ export const migrateLocalProspectsToDb = async () => {
   if (local.length === 0) return;
 
   for (const p of local) {
-    const { error } = await (supabase.from('custom_prospects' as any) as any).upsert({
+    const { error } = await supabase.from('custom_prospects').upsert({
       id: p.id,
       name: p.name,
       website: p.website || '',

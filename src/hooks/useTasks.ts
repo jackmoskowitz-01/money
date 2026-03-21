@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 export type TaskType = 'follow_up' | 'call' | 'meeting' | 'email' | 'research' | 'other';
@@ -69,7 +70,7 @@ export function useTasks() {
       .order('due_date', { ascending: true });
 
     if (error) {
-      console.error('Error fetching tasks:', error);
+      toast.error('Failed to load tasks');
       setLoading(false);
       return;
     }
@@ -146,7 +147,11 @@ export function useTasks() {
     }
 
     const { data, error } = await supabase.from('tasks').insert(row as any).select('*').single();
-    if (!error && data) {
+    if (error) {
+      toast.error('Failed to create task');
+      return null;
+    }
+    if (data) {
       const newTask = rowToTask(data as unknown as DbRow);
       setTasks(prev => [newTask, ...prev]);
       return newTask;
@@ -167,7 +172,11 @@ export function useTasks() {
     }
 
     const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', id);
-    if (!error) {
+    if (error) {
+      toast.error('Failed to update task');
+      return;
+    }
+    {
       const task = tasks.find(t => t.id === id);
       setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
       // Auto-digest: feed task completion to AI brain
@@ -187,9 +196,11 @@ export function useTasks() {
 
   const deleteTask = useCallback(async (id: string) => {
     const { error } = await supabase.from('tasks').delete().eq('id', id);
-    if (!error) {
-      setTasks(prev => prev.filter(t => t.id !== id));
+    if (error) {
+      toast.error('Failed to delete task');
+      return;
     }
+    setTasks(prev => prev.filter(t => t.id !== id));
   }, []);
 
   return { tasks, loading, addTask, updateTask, deleteTask, refetch: fetchTasks };

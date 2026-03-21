@@ -56,7 +56,7 @@ const MapView = () => {
   useEffect(() => {
     const loadStackingTenants = async () => {
       const { data } = await supabase
-        .from('stacking_plans' as any)
+        .from('stacking_plans')
         .select('*')
         .limit(1000);
       if (!data) return;

@@ -1,39 +1,26 @@
 import { useState, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  GripVertical, Plus, StickyNote, ChevronRight, X, UserPlus,
-  Mail, Phone, Building2, MessageSquare, Sparkles, Send,
-  Check, Clock, Loader2, Copy, AlertTriangle, Trash2,
-  BarChart3, Users, Ruler, TrendingUp,
-} from 'lucide-react';
+import { UserPlus, AlertTriangle, Check } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  stageLabels, stageColors, generateTouchpoints, touchpointLabels,
+  stageLabels, stageColors, generateTouchpoints,
   type PipelineStage, type PipelineItem, type Touchpoint,
 } from '@/data/pipelineData';
 import { usePipeline } from '@/hooks/usePipeline';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PipelineStats } from '@/components/pipeline/PipelineStats';
+import { StageColumn } from '@/components/pipeline/StageColumn';
+import { MobileDealCard } from '@/components/pipeline/DealCard';
+import { TouchpointsPanel } from '@/components/pipeline/TouchpointsPanel';
+import { OutcomeDialog } from '@/components/pipeline/OutcomeDialog';
 
 const stages: PipelineStage[] = ['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
-
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
-
-const touchpointIcons: Record<Touchpoint['type'], typeof Mail> = {
-  market_update: Sparkles,
-  lease_comp: Building2,
-  space_available: Building2,
-  building_news: Building2,
-  check_in: MessageSquare,
-  intro_colleague: UserPlus,
-  event_invite: Send,
-};
 
 const Pipeline = () => {
   const { pipeline, loading, updateStage, addNote, addProspect, markTouchpointSent, deleteDeal, reorderInStage } = usePipeline();
@@ -41,20 +28,15 @@ const Pipeline = () => {
   const [noteTarget, setNoteTarget] = useState<{ tenantId: string; buildingId: string } | null>(null);
   const [selectedItem, setSelectedItem] = useState<PipelineItem | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  const [newProspect, setNewProspect] = useState({
-    name: '', company: '', email: '', phone: '', sqft: '',
-  });
+  const [newProspect, setNewProspect] = useState({ name: '', company: '', email: '', phone: '', sqft: '' });
 
-  // Outcome tracking state
   const [outcomeDialog, setOutcomeDialog] = useState<{ tenantId: string; buildingId: string; stage: PipelineStage } | null>(null);
   const [outcomeReason, setOutcomeReason] = useState('');
 
-  // Drag-and-drop state
   const [dragItem, setDragItem] = useState<PipelineItem | null>(null);
   const [dragOverStage, setDragOverStage] = useState<PipelineStage | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Email generation state
   const [emailTouchpoint, setEmailTouchpoint] = useState<Touchpoint | null>(null);
   const [generatingEmail, setGeneratingEmail] = useState(false);
   const [generatedEmail, setGeneratedEmail] = useState('');
@@ -99,7 +81,6 @@ const Pipeline = () => {
   };
 
   const handleStageChange = async (tenantId: string, buildingId: string, newStage: PipelineStage) => {
-    // If moving to won or lost, prompt for outcome reason
     if (newStage === 'won' || newStage === 'lost') {
       setOutcomeDialog({ tenantId, buildingId, stage: newStage });
       return;
@@ -114,7 +95,6 @@ const Pipeline = () => {
     if (!outcomeDialog) return;
     const { tenantId, buildingId, stage } = outcomeDialog;
     await updateStage(tenantId, buildingId, stage);
-    // Save outcome and reason
     await supabase
       .from('pipeline_deals')
       .update({
@@ -147,7 +127,6 @@ const Pipeline = () => {
     }
   };
 
-  // Drag-and-drop handlers
   const handleDragStart = (e: React.DragEvent, item: PipelineItem) => {
     setDragItem(item);
     e.dataTransfer.effectAllowed = 'move';
@@ -179,7 +158,6 @@ const Pipeline = () => {
     if (!dragItem) return;
 
     if (dragItem.stage === stage && dragOverIndex !== null) {
-      // Reorder within same column
       const stageItems = itemsByStage(stage);
       const fromIndex = stageItems.findIndex(
         i => i.tenantId === dragItem.tenantId && i.buildingId === dragItem.buildingId
@@ -188,7 +166,6 @@ const Pipeline = () => {
         await reorderInStage(stage, fromIndex, dragOverIndex);
       }
     } else if (dragItem.stage !== stage) {
-      // Move to different column
       await handleStageChange(dragItem.tenantId, dragItem.buildingId, stage);
     }
     setDragItem(null);
@@ -200,7 +177,6 @@ const Pipeline = () => {
     setDragOverIndex(null);
   };
 
-  // Email generation for touchpoint
   const generateTouchpointEmail = useCallback(async (tp: Touchpoint, item: PipelineItem) => {
     setEmailTouchpoint(tp);
     setGeneratingEmail(true);
@@ -286,7 +262,6 @@ const Pipeline = () => {
   const handleMarkSent = async (tp: Touchpoint) => {
     if (!selectedItem) return;
     await markTouchpointSent(selectedItem.tenantId, selectedItem.buildingId, tp);
-    // Refresh selected item from pipeline state
     setSelectedItem(prev => {
       if (!prev) return null;
       const sent: Touchpoint = { ...tp, sentAt: new Date().toISOString(), followUpDate: new Date(Date.now() + 7 * 86400000).toISOString() };
@@ -404,54 +379,7 @@ const Pipeline = () => {
             </div>
           )}
 
-          {/* Pipeline Summary Stats */}
-          {(() => {
-            const prospects = pipeline.filter(p => p.stage === 'hot_prospect').length;
-            const activeDeals = pipeline.filter(p => ['meeting_set', 'meeting_held', 'moving_forward'].includes(p.stage)).length;
-            const totalSqft = pipeline.reduce((sum, p) => {
-              if (p.isManual) return sum + (p.prospectSqft || 0);
-              const { tenant } = getTenantInfo(p.tenantId, p.buildingId);
-              return sum + (tenant?.sqft || 0);
-            }, 0);
-            const wonDeals = pipeline.filter(p => p.stage === 'won').length;
-            const closedLost = pipeline.filter(p => ['closed', 'lost'].includes(p.stage)).length;
-            const decidedTotal = wonDeals + closedLost;
-            const winRate = decidedTotal > 0 ? Math.round((wonDeals / decidedTotal) * 100) : 0;
-            const avgDaysInStage = (() => {
-              const now = Date.now();
-              const active = pipeline.filter(p => !['won', 'closed', 'lost'].includes(p.stage));
-              if (active.length === 0) return 0;
-              const totalDays = active.reduce((sum, p) => {
-                return sum + Math.max(1, Math.round((now - new Date(p.lastActivity).getTime()) / 86400000));
-              }, 0);
-              return Math.round(totalDays / active.length);
-            })();
-
-            const stats = [
-              { label: 'Prospects', value: prospects, icon: Users, color: 'text-warning' },
-              { label: 'Active Deals', value: activeDeals, icon: BarChart3, color: 'text-info' },
-              { label: 'Won', value: wonDeals, icon: TrendingUp, color: 'text-success' },
-              { label: 'Total SF', value: totalSqft > 0 ? `${(totalSqft / 1000).toFixed(0)}K` : '0', icon: Ruler, color: 'text-primary' },
-              { label: 'Win Rate', value: `${winRate}%`, icon: TrendingUp, color: winRate >= 20 ? 'text-success' : 'text-muted-foreground' },
-              { label: 'Avg Days in Stage', value: avgDaysInStage, icon: Clock, color: avgDaysInStage > 14 ? 'text-destructive' : 'text-success' },
-            ];
-
-            return (
-              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                {stats.map(s => (
-                  <Card key={s.label} className="border-border bg-card p-3 flex items-center gap-3">
-                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary ${s.color}`}>
-                      <s.icon className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-foreground leading-none">{s.value}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">{s.label}</p>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            );
-          })()}
+          <PipelineStats pipeline={pipeline} />
 
           {/* Mobile: stacked list view */}
           <div className="block md:hidden space-y-4">
@@ -472,33 +400,17 @@ const Pipeline = () => {
                         const { tenant, building } = getTenantInfo(item.tenantId, item.buildingId);
                         if (!tenant || !building) return null;
                       }
-                      const sentCount = (item.sentTouchpoints || []).length;
                       return (
-                        <Card
+                        <MobileDealCard
                           key={`m-${item.tenantId}-${item.buildingId}`}
-                          className="border-border bg-card p-3"
-                          onClick={() => setSelectedItem(item)}
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-semibold text-foreground">{getDisplayName(item)}</p>
-                            <select
-                              value={item.stage}
-                              onChange={e => { e.stopPropagation(); handleStageChange(item.tenantId, item.buildingId, e.target.value as PipelineStage); }}
-                              className="rounded-sm border border-border bg-secondary/50 px-1.5 py-0.5 text-[10px] text-foreground"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              {stages.map(s => <option key={s} value={s}>{stageLabels[s]}</option>)}
-                            </select>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{getDisplayCompany(item)}</p>
-                          <p className="text-[11px] text-muted-foreground">{getDisplayDetail(item)}</p>
-                          {sentCount > 0 && (
-                            <div className="mt-1.5 flex items-center gap-1">
-                              <Check className="h-3 w-3 text-primary" />
-                              <span className="text-[10px] text-primary">{sentCount} touchpoint{sentCount > 1 ? 's' : ''}</span>
-                            </div>
-                          )}
-                        </Card>
+                          item={item}
+                          stages={stages}
+                          getDisplayName={getDisplayName}
+                          getDisplayCompany={getDisplayCompany}
+                          getDisplayDetail={getDisplayDetail}
+                          onSelect={setSelectedItem}
+                          onStageChange={handleStageChange}
+                        />
                       );
                     })}
                   </div>
@@ -511,381 +423,65 @@ const Pipeline = () => {
           <div className="hidden md:flex gap-4">
             <div className={`flex gap-2 sm:gap-4 overflow-x-auto pb-4 transition-all ${selectedItem ? 'flex-1' : 'w-full'}`}>
               {stages.map(stage => (
-                <div
+                <StageColumn
                   key={stage}
-                  className={`min-w-[180px] sm:min-w-[220px] flex-1 rounded-lg p-1.5 sm:p-2 transition-colors ${dragOverStage === stage ? 'bg-primary/5 ring-2 ring-primary/20' : ''}`}
-                  onDragOver={e => handleDragOver(e, stage)}
+                  stage={stage}
+                  items={itemsByStage(stage)}
+                  stages={stages}
+                  selectedItem={selectedItem}
+                  dragItem={dragItem}
+                  dragOverStage={dragOverStage}
+                  dragOverIndex={dragOverIndex}
+                  noteInput={noteInput}
+                  onNoteInputChange={setNoteInput}
+                  onNoteSubmit={handleAddNote}
+                  onNoteTargetSet={setNoteTarget}
+                  onSelect={setSelectedItem}
+                  onStageChange={handleStageChange}
+                  onDelete={handleDeleteDeal}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onCardDragOver={handleCardDragOver}
                   onDragLeave={handleDragLeave}
-                  onDrop={e => handleDrop(e, stage)}
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className={`${stageColors[stage]} text-xs`}>
-                        {stageLabels[stage]}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground">{itemsByStage(stage).length}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {itemsByStage(stage).map((item, idx) => {
-                      if (!item.isManual) {
-                        const { tenant, building } = getTenantInfo(item.tenantId, item.buildingId);
-                        if (!tenant || !building) return null;
-                      }
-
-                      const isSelected = selectedItem?.tenantId === item.tenantId && selectedItem?.buildingId === item.buildingId;
-                      const isDragging = dragItem?.tenantId === item.tenantId && dragItem?.buildingId === item.buildingId;
-                      const sentCount = (item.sentTouchpoints || []).length;
-                      const isDropTarget = dragOverStage === stage && dragOverIndex === idx && dragItem && !(dragItem.tenantId === item.tenantId && dragItem.buildingId === item.buildingId);
-
-                      return (
-                        <Card
-                          key={`${item.tenantId}-${item.buildingId}`}
-                          draggable
-                          onDragStart={e => handleDragStart(e, item)}
-                          onDragOver={e => handleCardDragOver(e, stage, idx)}
-                          onDragEnd={handleDragEnd}
-                          className={`cursor-grab active:cursor-grabbing border-border bg-card p-3 transition-all hover:border-primary/30 ${isSelected ? 'border-primary ring-1 ring-primary/20' : ''} ${isDragging ? 'opacity-50 scale-95' : ''} ${isDropTarget ? 'border-t-2 border-t-primary' : ''}`}
-                          onClick={() => setSelectedItem(isSelected ? null : item)}
-                        >
-                          <div className="mb-2 flex items-start justify-between">
-                            <p className="text-sm font-semibold text-foreground">{getDisplayName(item)}</p>
-                            <div className="flex items-center gap-0.5">
-                              <button
-                                onClick={e => handleDeleteDeal(item, e)}
-                                className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                                title="Remove from pipeline"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                              <GripVertical className="h-4 w-4 text-muted-foreground/40" />
-                            </div>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground">{getDisplayCompany(item)}</p>
-                          <p className="text-[11px] text-muted-foreground">{getDisplayDetail(item)}</p>
-
-                          {sentCount > 0 && (
-                            <div className="mt-1.5 flex items-center gap-1">
-                              <Check className="h-3 w-3 text-primary" />
-                              <span className="text-[10px] text-primary">{sentCount} touchpoint{sentCount > 1 ? 's' : ''} sent</span>
-                            </div>
-                          )}
-
-                          {item.notes.length > 0 && (
-                            <div className="mt-2 border-t border-border pt-2">
-                              <p className="text-[10px] text-muted-foreground">
-                                <StickyNote className="mr-1 inline h-3 w-3" />
-                                {item.notes[item.notes.length - 1]}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="mt-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                            <select
-                              value={item.stage}
-                              onChange={e => handleStageChange(item.tenantId, item.buildingId, e.target.value as PipelineStage)}
-                              className="flex-1 rounded-sm border border-border bg-secondary/50 px-1.5 py-0.5 text-[10px] text-foreground"
-                            >
-                              {stages.map(s => (
-                                <option key={s} value={s}>{stageLabels[s]}</option>
-                              ))}
-                            </select>
-
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => setNoteTarget({ tenantId: item.tenantId, buildingId: item.buildingId })}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="bg-card border-border">
-                                <DialogHeader>
-                                  <DialogTitle className="text-foreground">Add Note — {getDisplayName(item)}</DialogTitle>
-                                </DialogHeader>
-                                <div className="flex gap-2">
-                                  <Input
-                                    placeholder="Add a note..."
-                                    value={noteInput}
-                                    onChange={e => setNoteInput(e.target.value)}
-                                    className="border-border bg-secondary/50 text-foreground"
-                                    onKeyDown={e => e.key === 'Enter' && handleAddNote()}
-                                  />
-                                  <Button onClick={handleAddNote} className="bg-primary text-primary-foreground">Add</Button>
-                                </div>
-                                {item.notes.length > 0 && (
-                                  <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-                                    {item.notes.map((n, i) => (
-                                      <p key={i} className="text-xs text-muted-foreground">• {n}</p>
-                                    ))}
-                                  </div>
-                                )}
-                              </DialogContent>
-                            </Dialog>
-
-                            {!item.isManual && (
-                              <Link to={`/building/${item.buildingId}/tenant/${item.tenantId}`}>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                  <ChevronRight className="h-3 w-3" />
-                                </Button>
-                              </Link>
-                            )}
-                          </div>
-                        </Card>
-                      );
-                    })}
-                  </div>
-                </div>
+                  onDrop={handleDrop}
+                  onDragEnd={handleDragEnd}
+                  getDisplayName={getDisplayName}
+                  getDisplayCompany={getDisplayCompany}
+                  getDisplayDetail={getDisplayDetail}
+                />
               ))}
             </div>
 
             {/* Touchpoints Panel */}
             <AnimatePresence>
               {selectedItem && (
-                <motion.div
-                  initial={{ width: 0, opacity: 0 }}
-                  animate={{ width: 400, opacity: 1 }}
-                  exit={{ width: 0, opacity: 0 }}
-                  transition={{ type: 'spring', damping: 25 }}
-                  className="shrink-0 overflow-hidden hidden lg:block"
-                >
-                  <Card className="sticky top-20 border-border bg-card p-4">
-                    <div className="mb-4 flex items-start justify-between">
-                      <div>
-                        <h3 className="font-display text-lg font-bold text-foreground">{getDisplayName(selectedItem)}</h3>
-                        <p className="text-xs text-muted-foreground">{getDisplayCompany(selectedItem)}</p>
-                        <Badge variant="outline" className={`mt-1.5 ${stageColors[selectedItem.stage]} text-[10px]`}>
-                          {stageLabels[selectedItem.stage]}
-                        </Badge>
-                      </div>
-                      <button onClick={() => { setSelectedItem(null); setEmailTouchpoint(null); setGeneratedEmail(''); }} className="rounded-md p-1 text-muted-foreground hover:bg-secondary">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* Contact info for manual prospects */}
-                    {selectedItem.isManual && (selectedItem.prospectEmail || selectedItem.prospectPhone) && (
-                      <div className="mb-4 space-y-1.5 rounded-md border border-border bg-secondary/30 p-3">
-                        {selectedItem.prospectEmail && (
-                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Mail className="h-3 w-3" /> {selectedItem.prospectEmail}
-                          </p>
-                        )}
-                        {selectedItem.prospectPhone && (
-                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" /> {selectedItem.prospectPhone}
-                          </p>
-                        )}
-                        {selectedItem.prospectSqft && (
-                          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Building2 className="h-3 w-3" /> {selectedItem.prospectSqft.toLocaleString()} SF requirement
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Email Draft Panel */}
-                    <AnimatePresence>
-                      {emailTouchpoint && (
-                        <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: 'auto', opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          className="mb-4 overflow-hidden"
-                        >
-                          <div className="rounded-md border border-primary/20 bg-primary/5 p-3">
-                            <div className="mb-2 flex items-center justify-between">
-                              <p className="text-xs font-semibold text-foreground">
-                                {generatingEmail ? 'Generating email...' : 'Draft Email'}
-                              </p>
-                              <div className="flex items-center gap-1">
-                                {!generatingEmail && generatedEmail && (
-                                  <>
-                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={handleCopyEmail}>
-                                      {copied ? <Check className="h-3 w-3 text-primary" /> : <Copy className="h-3 w-3" />}
-                                      {copied ? 'Copied' : 'Copy'}
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 px-2 text-[10px] text-primary"
-                                      onClick={() => {
-                                        handleMarkSent(emailTouchpoint);
-                                        setEmailTouchpoint(null);
-                                        setGeneratedEmail('');
-                                      }}
-                                    >
-                                      <Check className="h-3 w-3 mr-1" /> Mark Sent
-                                    </Button>
-                                  </>
-                                )}
-                                <button onClick={() => { setEmailTouchpoint(null); setGeneratedEmail(''); }} className="rounded p-0.5 hover:bg-secondary">
-                                  <X className="h-3 w-3 text-muted-foreground" />
-                                </button>
-                              </div>
-                            </div>
-                            {generatingEmail && !generatedEmail && (
-                              <div className="flex items-center gap-2 py-4 justify-center">
-                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                <span className="text-xs text-muted-foreground">Drafting your email...</span>
-                              </div>
-                            )}
-                            {generatedEmail && (
-                              <div className="max-h-60 overflow-y-auto rounded bg-background p-2.5">
-                                <p className="whitespace-pre-wrap text-xs leading-relaxed text-foreground">{generatedEmail}</p>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Suggested Touchpoints
-                    </h4>
-                    <p className="mb-3 text-[11px] text-muted-foreground">
-                      Warm follow-up ideas based on pipeline stage. Click to generate an email draft.
-                    </p>
-
-                    <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
-                      {touchpoints.map(tp => {
-                        const Icon = touchpointIcons[tp.type];
-                        const isSent = sentTouchpointIds.has(tp.id);
-                        const isActive = emailTouchpoint?.id === tp.id;
-                        return (
-                          <div
-                            key={tp.id}
-                            className={`group cursor-pointer rounded-md border p-3 transition-all ${
-                              isSent
-                                ? 'border-primary/20 bg-primary/5 opacity-70'
-                                : isActive
-                                ? 'border-primary bg-primary/10'
-                                : 'border-border bg-secondary/20 hover:border-primary/30 hover:bg-secondary/50'
-                            }`}
-                            onClick={() => {
-                              if (!isSent) generateTouchpointEmail(tp, selectedItem);
-                            }}
-                          >
-                            <div className="mb-1.5 flex items-center gap-2">
-                              <div className={`flex h-6 w-6 items-center justify-center rounded-md ${isSent ? 'bg-primary/20' : 'bg-primary/10'}`}>
-                                {isSent ? <Check className="h-3.5 w-3.5 text-primary" /> : <Icon className="h-3.5 w-3.5 text-primary" />}
-                              </div>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
-                                {touchpointLabels[tp.type]}
-                              </Badge>
-                              {isSent && (
-                                <Badge variant="outline" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
-                                  Sent
-                                </Badge>
-                              )}
-                              {tp.suggested && !isSent && (
-                                <Badge variant="outline" className="bg-primary/10 text-primary text-[10px] px-1.5 py-0">
-                                  Suggested
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm font-medium text-foreground">{tp.title}</p>
-                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{tp.description}</p>
-                            {isSent && (
-                              <p className="mt-1 text-[10px] text-primary/70">
-                                <Clock className="inline h-3 w-3 mr-0.5" />
-                                Sent {new Date((selectedItem.sentTouchpoints || []).find(s => s.id === tp.id)?.sentAt || '').toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Sent touchpoints history */}
-                    {(selectedItem.sentTouchpoints || []).length > 0 && (
-                      <div className="mt-4 border-t border-border pt-3">
-                        <h4 className="mb-2 text-xs font-semibold text-muted-foreground">TOUCHPOINT HISTORY</h4>
-                        <div className="space-y-1">
-                          {(selectedItem.sentTouchpoints || []).map((tp, i) => (
-                            <div key={i} className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <Check className="h-3 w-3 text-primary shrink-0" />
-                              <span className="flex-1">{tp.title}</span>
-                              <span className="text-[10px] shrink-0">{new Date(tp.sentAt!).toLocaleDateString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes section */}
-                    {selectedItem.notes.length > 0 && (
-                      <div className="mt-4 border-t border-border pt-3">
-                        <h4 className="mb-2 text-xs font-semibold text-muted-foreground">NOTES</h4>
-                        <div className="space-y-1">
-                          {selectedItem.notes.map((n, i) => (
-                            <p key={i} className="text-[11px] text-muted-foreground">• {n}</p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-                </motion.div>
+                <TouchpointsPanel
+                  selectedItem={selectedItem}
+                  touchpoints={touchpoints}
+                  sentTouchpointIds={sentTouchpointIds}
+                  emailTouchpoint={emailTouchpoint}
+                  generatingEmail={generatingEmail}
+                  generatedEmail={generatedEmail}
+                  copied={copied}
+                  onClose={() => { setSelectedItem(null); setEmailTouchpoint(null); setGeneratedEmail(''); }}
+                  onGenerateEmail={generateTouchpointEmail}
+                  onMarkSent={handleMarkSent}
+                  onCopyEmail={handleCopyEmail}
+                  onClearEmail={() => { setEmailTouchpoint(null); setGeneratedEmail(''); }}
+                />
               )}
             </AnimatePresence>
           </div>
         </motion.div>
       </div>
 
-      {/* Outcome Dialog */}
-      <Dialog open={!!outcomeDialog} onOpenChange={v => { if (!v) { setOutcomeDialog(null); setOutcomeReason(''); } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              {outcomeDialog?.stage === 'won' ? '🎉 Deal Won!' : '📉 Deal Lost'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <p className="text-sm text-muted-foreground">
-              {outcomeDialog?.stage === 'won'
-                ? 'Congrats! What made this deal close?'
-                : 'What happened? This helps the AI learn for next time.'}
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {(outcomeDialog?.stage === 'won'
-                ? ['Strong relationship', 'Competitive pricing', 'Perfect timing', 'Market knowledge', 'Referral']
-                : ['Lost to competitor', 'Budget constraints', 'Went dark', 'Decided to renew', 'Bad timing', 'Wrong fit']
-              ).map(reason => (
-                <button
-                  key={reason}
-                  onClick={() => setOutcomeReason(reason)}
-                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
-                    outcomeReason === reason
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:border-primary/30'
-                  }`}
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
-            <Input
-              placeholder="Add more detail (optional)..."
-              value={outcomeReason}
-              onChange={e => setOutcomeReason(e.target.value)}
-              className="text-sm"
-            />
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="outline" size="sm" onClick={() => { setOutcomeDialog(null); setOutcomeReason(''); }}>
-                Skip
-              </Button>
-              <Button size="sm" onClick={handleOutcomeConfirm}>
-                {outcomeDialog?.stage === 'won' ? '🎉 Confirm Win' : 'Confirm'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <OutcomeDialog
+        outcomeDialog={outcomeDialog}
+        outcomeReason={outcomeReason}
+        onReasonChange={setOutcomeReason}
+        onConfirm={handleOutcomeConfirm}
+        onClose={() => { setOutcomeDialog(null); setOutcomeReason(''); }}
+      />
     </div>
   );
 };

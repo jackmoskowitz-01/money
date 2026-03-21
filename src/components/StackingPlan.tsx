@@ -46,7 +46,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
-        .from('stacking_plans' as any)
+        .from('stacking_plans')
         .select('*')
         .eq('building_id', building.id)
         .order('floor', { ascending: false });
@@ -143,7 +143,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
       notes: '',
       source: 'manual',
     };
-    const { data, error } = await supabase.from('stacking_plans' as any).insert(row as any).select('*').single();
+    const { data, error } = await supabase.from('stacking_plans').insert(row).select('*').single();
     if (error) {
       toast.error('Failed to add tenant');
       return;
@@ -175,13 +175,13 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
   };
 
   const saveEdit = async (id: string) => {
-    const { error } = await supabase.from('stacking_plans' as any).update({
+    const { error } = await supabase.from('stacking_plans').update({
       tenant_name: editValues.tenant_name,
       industry: editValues.industry,
       sqft: Number(editValues.sqft) || 0,
       floor: editValues.floor,
       lease_expiration: editValues.lease_expiration,
-    } as any).eq('id', id);
+    }).eq('id', id);
     if (error) {
       toast.error('Failed to update tenant');
       return;
@@ -202,7 +202,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
   };
 
   const handleRemoveDb = async (id: string) => {
-    const { error } = await supabase.from('stacking_plans' as any).delete().eq('id', id);
+    const { error } = await supabase.from('stacking_plans').delete().eq('id', id);
     if (!error) setDbTenants(prev => prev.filter(t => t.id !== id));
   };
 
@@ -249,7 +249,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
         source: 'upload',
       }));
 
-      const { data, error } = await supabase.from('stacking_plans' as any).insert(rows as any).select('*');
+      const { data, error } = await supabase.from('stacking_plans').insert(rows).select('*');
       if (error) throw error;
       if (data) setDbTenants(prev => [...prev, ...(data as unknown as DbTenant[])]);
       toast.success(`📋 ${tenants.length} tenants imported from ${file.name}`);

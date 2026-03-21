@@ -410,7 +410,7 @@ const News = () => {
     }
     if (activeIndustry !== 'all') {
       result = result.filter(news => {
-        if ((news as any).industryTag === activeIndustry) return true;
+        if ('industryTag' in news && news.industryTag === activeIndustry) return true;
         if (news.id.startsWith(`ind-${activeIndustry.toLowerCase().replace(/[^a-z]/g, '')}`)) return true;
         const prospects = getAffectedProspects(news);
         return prospects.some(p => p.tenant.industry === activeIndustry) ||
@@ -807,9 +807,9 @@ const News = () => {
               📡 {companyItem.matchedCompanyName}
             </Badge>
           )}
-          {(news as any).url && (
+          {'url' in news && news.url && (
             <a
-              href={(news as any).url}
+              href={news.url as string}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[10px] text-primary hover:underline flex items-center gap-0.5"

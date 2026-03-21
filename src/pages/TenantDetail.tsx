@@ -204,7 +204,7 @@ const TenantDetail = () => {
 
   if (!building || !tenant) {
     return (
-      <div className="flex min-h-screen items-center justify-center pt-14">
+      <div className="flex min-h-screen items-center justify-center pt-12">
         <p className="text-muted-foreground">Tenant not found</p>
       </div>
     );
@@ -262,7 +262,7 @@ const TenantDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-screen pt-12">
       <div className="mx-auto max-w-5xl px-4 py-8">
         <Link to="/map" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to Map

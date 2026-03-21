@@ -291,7 +291,7 @@ const Pipeline = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-14">
+      <div className="min-h-screen pt-12">
         <div className="mx-auto max-w-[1600px] px-4 py-8">
           <Skeleton className="h-10 w-48 mb-6" />
           <div className="flex gap-4">
@@ -309,7 +309,7 @@ const Pipeline = () => {
   }
 
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-screen pt-12">
       <div className="mx-auto max-w-[1600px] px-2 sm:px-4 py-4 sm:py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import LogActivityButton from '@/components/LogActivityButton';
 
 interface DealCardProps {
   item: PipelineItem;
@@ -53,7 +54,13 @@ export const DealCard = ({
     >
       <div className="mb-2 flex items-start justify-between">
         <p className="text-sm font-semibold text-foreground">{getDisplayName(item)}</p>
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+          <LogActivityButton
+            tenantId={item.tenantId}
+            buildingId={item.buildingId}
+            prospectName={getDisplayName(item)}
+            variant="icon"
+          />
           <button
             onClick={e => onDelete(item, e)}
             className="rounded p-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors"

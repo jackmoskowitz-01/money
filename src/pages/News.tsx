@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import EmailDisplay from '@/components/EmailDisplay';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
+import AddToProspectsButton from '@/components/AddToProspectsButton';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
@@ -838,6 +839,13 @@ const News = () => {
               </div>
 
               <div className="flex items-center gap-0.5">
+                <span onClick={e => e.stopPropagation()}>
+                  <AddToProspectsButton
+                    defaultName={isCompanyNews && companyItem?.matchedCompanyName ? companyItem.matchedCompanyName : ''}
+                    defaultSource="news"
+                    variant="icon"
+                  />
+                </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); toggleBookmark(news.id); }}
                   className="rounded p-1.5 hover:bg-secondary transition-colors"
@@ -1293,7 +1301,7 @@ const News = () => {
   );
 
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-screen pt-12">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">

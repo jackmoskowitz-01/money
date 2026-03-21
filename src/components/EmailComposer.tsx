@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Send, X, ChevronRight, Copy, Check } from 'lucide-react';
+import { Mail, Send, X, ChevronRight, Copy, Check, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { addActivity } from '@/data/activityData';
+import { supabase } from '@/integrations/supabase/client';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {
   emailTemplates,
@@ -54,6 +55,7 @@ const EmailComposer = ({
   const [editableSubject, setEditableSubject] = useState('');
   const [editableBody, setEditableBody] = useState('');
   const [copied, setCopied] = useState(false);
+  const [markedSent, setMarkedSent] = useState(false);
 
   const contactFirstName = contactName.split(' ')[0];
 
@@ -117,6 +119,35 @@ const EmailComposer = ({
     });
 
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleMarkAsSent = async () => {
+    const emailBody = `Subject: ${editableSubject}\n\n${editableBody}`;
+
+    // Log to local activity store
+    addActivity({
+      tenantId,
+      buildingId,
+      type: 'email_sent',
+      title: `Email sent: ${editableSubject}`,
+      description: emailBody,
+    });
+
+    // Also insert into Supabase activities table
+    await supabase.from('activities').insert({
+      tenant_id: tenantId,
+      building_id: buildingId,
+      type: 'email_sent',
+      title: `Email sent: ${editableSubject}`,
+      description: emailBody,
+      timestamp: new Date().toISOString(),
+    }).then(({ error }) => {
+      if (error) console.error('Mark as sent DB error:', error);
+    });
+
+    toast.success('Email logged as sent');
+    setMarkedSent(true);
+    setTimeout(() => setMarkedSent(false), 2000);
   };
 
   const handleClose = () => {
@@ -271,6 +302,10 @@ const EmailComposer = ({
                     <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleCopy}>
                       {copied ? <Check className="mr-1 h-3 w-3 text-success" /> : <Copy className="mr-1 h-3 w-3" />}
                       {copied ? 'Copied' : 'Copy'}
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={handleMarkAsSent} disabled={markedSent}>
+                      {markedSent ? <CheckCircle className="mr-1 h-3 w-3 text-success" /> : <Check className="mr-1 h-3 w-3" />}
+                      {markedSent ? 'Sent!' : 'Mark as Sent'}
                     </Button>
                     <Button size="sm" variant="ghost" className="text-xs h-8" onClick={handleClose}>
                       Cancel

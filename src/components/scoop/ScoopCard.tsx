@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScoopCategoryBadge } from './ScoopCategoryBadge';
 import { useScoopComments, type Scoop } from '@/hooks/useScoops';
+import AddToProspectsButton from '@/components/AddToProspectsButton';
 
 interface Props {
   scoop: Scoop;
@@ -101,6 +102,11 @@ const ScoopCard = ({ scoop, isLiked, onLike, onVerify }: Props) => {
           <MessageCircle className="h-3.5 w-3.5" /> {scoop.comments_count}
           {showComments ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
         </button>
+        <AddToProspectsButton
+          defaultName={scoop.linked_tenant_name || ''}
+          defaultSource="scoop"
+          variant="icon"
+        />
         {!scoop.verified && (
           <button
             onClick={() => {

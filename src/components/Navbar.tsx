@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3 } from 'lucide-react';
+import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProspectSearch from './ProspectSearch';
 import dealflowLogo from '@/assets/dealflow-logo.jpg';
@@ -17,9 +17,9 @@ const navItems = [
   { path: '/news', label: 'News', icon: Building2 },
   { path: '/map', label: 'Map', icon: Map },
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { path: '/prospect-table', label: 'Prospects', icon: Users },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
   { path: '/scoop', label: 'Scoop', icon: MessageSquare },
-  { path: '/email-analytics', label: 'Emails', icon: BarChart3 },
 ];
 
 const Navbar = () => {
@@ -28,14 +28,14 @@ const Navbar = () => {
   const { signOut } = useAuth();
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/40">
+      <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-4">
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 outline-none group">
-            <div className="relative">
-              <img src={dealflowLogo} alt="DealFlow" className="h-8 rounded-md transition-transform group-hover:scale-105" />
-              <div className="absolute -inset-1 rounded-lg bg-primary/0 group-hover:bg-primary/5 transition-colors" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Building2 className="h-3.5 w-3.5" />
             </div>
+            <span className="text-sm font-semibold tracking-tight text-foreground hidden sm:inline">DealFlow</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-48 glass-card">
             <DropdownMenuItem asChild>
@@ -60,24 +60,21 @@ const Navbar = () => {
         </DropdownMenu>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-0.5">
+        <div className="hidden md:flex items-center gap-0">
           {navItems.map(({ path, label, icon: Icon }) => {
             const isActive = location.pathname === path;
             return (
               <Link
                 key={path}
                 to={path}
-                className={`nav-indicator ${isActive ? 'active' : ''} relative flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+                className={`nav-indicator ${isActive ? 'active' : ''} relative flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-all duration-150 ${
                   isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <Icon className={`h-4 w-4 transition-colors ${isActive ? 'text-primary' : ''}`} />
+                <Icon className={`h-3.5 w-3.5 ${isActive ? 'text-primary' : ''}`} />
                 <span>{label}</span>
-                {isActive && (
-                  <span className="absolute inset-0 rounded-lg bg-primary/8 pointer-events-none" />
-                )}
               </Link>
             );
           })}

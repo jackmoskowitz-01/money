@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
+        display: ['"Inter"', 'system-ui', 'sans-serif'],
         body: ['"Inter"', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -96,8 +97,8 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         "glow-pulse": {
-          "0%, 100%": { boxShadow: "0 0 20px hsla(38, 92%, 55%, 0.1)" },
-          "50%": { boxShadow: "0 0 30px hsla(38, 92%, 55%, 0.2)" },
+          "0%, 100%": { boxShadow: "0 0 20px hsla(213, 94%, 58%, 0.1)" },
+          "50%": { boxShadow: "0 0 30px hsla(213, 94%, 58%, 0.2)" },
         },
       },
       animation: {

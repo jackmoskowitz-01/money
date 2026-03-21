@@ -131,6 +131,15 @@ const Dashboard = () => {
     const meetingSet = pipeline.filter(p => p.stage === 'meeting_set').length;
     if (meetingSet > 0) items.push({ id: 'meetings', icon: Users, label: `${meetingSet} meeting${meetingSet > 1 ? 's' : ''} to prepare for`, detail: 'Review meeting prep briefs', urgency: 'low', link: '/pipeline' });
 
+    // Lease expirations within 90 days
+    const todayDate = new Date();
+    const ninetyDaysOut = new Date(todayDate.getTime() + 90 * 86400000);
+    const expiringLeases = buildings.flatMap(b => b.tenants.filter(t => {
+      const expDate = new Date(t.leaseExpiration);
+      return expDate >= todayDate && expDate <= ninetyDaysOut;
+    }));
+    if (expiringLeases.length > 0) items.push({ id: 'leases', icon: Calendar, label: `${expiringLeases.length} lease${expiringLeases.length > 1 ? 's' : ''} expiring within 90 days`, detail: expiringLeases[0].name + (expiringLeases.length > 1 ? ` + ${expiringLeases.length - 1} more` : ''), urgency: 'medium', link: '/prospect-table' });
+
     return items.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.urgency] - { high: 0, medium: 1, low: 2 }[b.urgency]));
   }, [tasks, pipeline, now]);
 
@@ -166,7 +175,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-14">
+      <div className="min-h-screen pt-12">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
           <Skeleton className="h-10 w-48 mb-6" />
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
@@ -179,7 +188,7 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="min-h-screen pt-14">
+    <div className="min-h-screen pt-12">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
@@ -196,15 +205,16 @@ const Dashboard = () => {
           {stats.map((stat, i) => {
             const trendUp = stat.trend > 0;
             const inner = (
-              <div className={`stat-card gradient-border p-5 ${stat.link ? 'cursor-pointer' : ''}`}>
-                <div className="flex items-start justify-between">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.color} transition-transform`}>
-                    <stat.icon className="h-5 w-5" />
+              <div className={`stat-card p-4 ${stat.link ? 'cursor-pointer' : ''}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${stat.color}`}>
+                    <stat.icon className="h-4 w-4" />
                   </div>
+                  <p className="text-xs font-medium text-muted-foreground">{stat.label}</p>
                 </div>
-                <div className="mt-4">
+                <div>
                   <div className="flex items-end gap-2">
-                    <p className="text-3xl font-bold text-foreground tabular-nums tracking-tight">{stat.value}</p>
+                    <p className="text-2xl font-semibold text-foreground tabular-nums tracking-tight">{stat.value}</p>
                     {stat.trend !== 0 && (
                       <span className={`mb-1 flex items-center gap-0.5 text-[11px] font-semibold ${
                         stat.label === 'Pending Tasks'
@@ -216,9 +226,8 @@ const Dashboard = () => {
                       </span>
                     )}
                   </div>
-                  <p className="text-xs font-medium text-muted-foreground mt-1">{stat.label}</p>
                 </div>
-                <p className="mt-2 text-[11px] text-muted-foreground/60">{stat.detail}</p>
+                <p className="mt-1.5 text-[11px] text-muted-foreground/50">{stat.detail}</p>
               </div>
             );
             return (
@@ -229,84 +238,89 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* ═══ Tabbed Sections ═══ */}
+        {/* ═══ Today's Focus — Priority Queue ═══ */}
+        {focusItems.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
+                  <Flame className="h-3.5 w-3.5 text-primary" />
+                </div>
+                <h2 className="text-sm font-semibold text-foreground">Today's Focus</h2>
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  {focusItems.length} item{focusItems.length > 1 ? 's' : ''}
+                </Badge>
+              </div>
+            </div>
+            <div className="grid gap-2">
+              {focusItems.map((item, i) => {
+                const urgencyStyles = {
+                  high: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-l-destructive', label: 'Urgent' },
+                  medium: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-l-warning', label: 'Today' },
+                  low: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-l-primary', label: 'Action' },
+                }[item.urgency];
+                return (
+                  <Link key={item.id} to={item.link || '/'} className="block">
+                    <motion.div
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.2 + i * 0.04 }}
+                      className={`flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-secondary/30 transition-all group border-l-[3px] ${urgencyStyles.border}`}
+                    >
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${urgencyStyles.bg}`}>
+                        <item.icon className={`h-4 w-4 ${urgencyStyles.text}`} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors">{item.label}</p>
+                        <p className="text-xs text-muted-foreground">{item.detail}</p>
+                      </div>
+                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 border-0 ${urgencyStyles.bg} ${urgencyStyles.text}`}>
+                        {urgencyStyles.label}
+                      </Badge>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+                    </motion.div>
+                  </Link>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ═══ Quick Actions ═══ */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mb-8 flex flex-wrap gap-2">
+          <Link to="/activities"><Button variant="outline" size="sm" className="gap-1.5"><Phone className="h-3.5 w-3.5" /> Log Activity</Button></Link>
+          <Link to="/prospect-table"><Button variant="outline" size="sm" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Search Prospects</Button></Link>
+          <Link to="/pipeline"><Button variant="outline" size="sm" className="gap-1.5"><Mail className="h-3.5 w-3.5" /> Draft Outreach</Button></Link>
+        </motion.div>
+
+        {/* ═══ Analytics & Reports ═══ */}
         <Tabs defaultValue="performance" className="w-full">
-          <TabsList className="w-full justify-start glass border-0 rounded-xl p-1.5 mb-8 gap-0.5">
-            <TabsTrigger value="performance" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+          <TabsList className="w-full justify-start bg-secondary/30 border border-border rounded-lg p-1 mb-6 gap-0.5">
+            <TabsTrigger value="performance" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
               <TrendingUp className="h-3 w-3" /> Performance
             </TabsTrigger>
-            <TabsTrigger value="pipeline" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="pipeline" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
               <PieChartIcon className="h-3 w-3" /> Pipeline
             </TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="activity" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
               <Activity className="h-3 w-3" /> Activity
             </TabsTrigger>
-            <TabsTrigger value="market" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
+            <TabsTrigger value="market" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
               <MapPin className="h-3 w-3" /> Market
             </TabsTrigger>
-            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all">
-              <Calendar className="h-3 w-3" /> Critical Dates
+            <TabsTrigger value="critical-dates" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
+              <Calendar className="h-3 w-3" /> Dates
             </TabsTrigger>
           </TabsList>
 
           {/* ── PERFORMANCE TAB ── */}
           <TabsContent value="performance" className="mt-0 space-y-6">
-            {/* Broker Activity first */}
             <BrokerLeaderboard />
-
-            {/* AI Briefing + Today's Focus row */}
             <div className="grid gap-4 lg:grid-cols-2">
               <DailyBriefing />
-              {focusItems.length > 0 && (
-                <Card className="border-primary/20 bg-card overflow-hidden">
-                  <div className="border-b border-border px-5 py-3 flex items-center gap-2.5 bg-gradient-to-r from-primary/5 to-transparent">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                      <Flame className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-bold text-foreground">Today's Focus</h2>
-                      <p className="text-[10px] text-muted-foreground">Priority action items</p>
-                    </div>
-                    <Badge className="ml-auto bg-primary/10 text-primary border-0 text-[10px] font-bold px-2">
-                      {focusItems.length} item{focusItems.length > 1 ? 's' : ''}
-                    </Badge>
-                  </div>
-                  <div className="divide-y divide-border max-h-80 overflow-y-auto">
-                    {focusItems.map((item, i) => {
-                      const urgencyStyles = {
-                        high: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-l-destructive', badge: 'bg-destructive/10 text-destructive' },
-                        medium: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-l-warning', badge: 'bg-warning/10 text-warning' },
-                        low: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-l-primary', badge: 'bg-primary/10 text-primary' },
-                      }[item.urgency];
-                      return (
-                        <Link key={item.id} to={item.link || '/'} className="block">
-                          <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.06 }} className={`px-5 py-3.5 hover:bg-muted/30 transition-all group border-l-[3px] ${urgencyStyles.border}`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${urgencyStyles.bg}`}>
-                                <item.icon className={`h-4 w-4 ${urgencyStyles.text}`} />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{item.label}</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">{item.detail}</p>
-                              </div>
-                              <Badge className={`text-[10px] px-2 py-0.5 border-0 font-semibold ${urgencyStyles.badge}`}>
-                                {item.urgency === 'high' ? 'Urgent' : item.urgency === 'medium' ? 'Today' : 'Action'}
-                              </Badge>
-                              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
-                            </div>
-                          </motion.div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </Card>
-              )}
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-2">
               <DealVelocity />
-              <RevenueForecast />
             </div>
+            <RevenueForecast />
           </TabsContent>
 
           {/* ── PIPELINE TAB ── */}

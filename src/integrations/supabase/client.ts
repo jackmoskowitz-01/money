@@ -8,10 +8,22 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+const USE_MOCK = !SUPABASE_URL || SUPABASE_URL === 'https://your-project.supabase.co';
+
+let supabase: any;
+if (USE_MOCK) {
+  // Use mock client for local development without a Supabase backend
+  const { supabase: mock } = await import('./mockClient');
+  supabase = mock;
+  console.info('[Supabase] Running with MOCK client — no backend connected');
+} else {
+  supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: {
+      storage: localStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+    }
+  });
+}
+
+export { supabase };

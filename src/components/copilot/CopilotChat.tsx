@@ -1,17 +1,16 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
 import {
   Send, Loader2, Sparkles, Trash2, ChevronDown,
-  Mic, MicOff, Copy, Check, Bell, BellOff,
-  Paperclip, FileText, X, Pin, PinOff, AudioLines,
+  Mic, MicOff, Bell, BellOff,
+  Paperclip, AudioLines,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CopilotFollowUps from '@/components/copilot/CopilotFollowUps';
 import CopilotHistory from '@/components/copilot/CopilotHistory';
 import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
-import { CopilotExportButtons } from '@/components/copilot/CopilotExports';
 import { CopilotFileChips, CopilotFileContextIndicator, CopilotDragOverlay } from '@/components/copilot/CopilotFileHandler';
+import ChatMessage from '@/components/copilot/ChatMessage';
 import type { Msg } from '@/hooks/useCopilotState';
 import { SUGGESTIONS } from '@/hooks/useCopilotState';
 
@@ -76,7 +75,7 @@ interface CopilotChatProps {
   setShowSlashCommands: (v: boolean) => void;
 }
 
-export default function CopilotChat(props: CopilotChatProps) {
+function CopilotChat(props: CopilotChatProps) {
   const {
     messages, input, isLoading, copiedIndex, isRecording, alertsEnabled, proactiveAlert,
     attachedFiles, setAttachedFiles, isDraggingOver, showSlashCommands, fileContext, setFileContext,
@@ -319,66 +318,25 @@ export default function CopilotChat(props: CopilotChatProps) {
           </div>
         ) : (
           messages.map((msg, i) => (
-            <motion.div
+            <ChatMessage
               key={i}
-              initial={{ opacity: 0, y: 8, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: 'spring', damping: 20, stiffness: 300, duration: 0.25 }}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} group`}
-            >
-              <div className="relative">
-                <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
-                    msg.role === 'user'
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-secondary/50 text-foreground rounded-bl-md'
-                  }`}
-                >
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      {/* Blinking cursor while streaming */}
-                      {isLoading && i === messages.length - 1 && (
-                        <span className="inline-block w-[2px] h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom" />
-                      )}
-                    </div>
-                  ) : (
-                    <p>{msg.content}</p>
-                  )}
-                </div>
-                {/* Message actions for assistant */}
-                {msg.role === 'assistant' && !isLoading && (
-                  <div className="absolute -bottom-5 right-1 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-                    <button
-                      onClick={() => togglePin(i)}
-                      className="flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-foreground"
-                      title={msg.pinned ? 'Unpin' : 'Pin'}
-                    >
-                      {msg.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
-                    </button>
-                    <CopilotExportButtons
-                      content={msg.content}
-                      isMatrixReport={isMatrixReport}
-                      isCompReport={isCompReport}
-                      isCashflowReport={isCashflowReport}
-                      isExportableReport={isExportableReport}
-                      hasEmailDraft={hasEmailDraft}
-                      handleExportWord={handleExportWord}
-                      handleExportExcel={handleExportExcel}
-                      handleExportEmail={handleExportEmail}
-                      setPitchDeckContent={setPitchDeckContent}
-                    />
-                    <button
-                      onClick={() => handleCopy(msg.content, i)}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
-                    >
-                      {copiedIndex === i ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                      {copiedIndex === i ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </motion.div>
+              msg={msg}
+              index={i}
+              isLast={i === messages.length - 1}
+              isLoading={isLoading}
+              copiedIndex={copiedIndex}
+              handleCopy={handleCopy}
+              togglePin={togglePin}
+              isMatrixReport={isMatrixReport}
+              isCompReport={isCompReport}
+              isCashflowReport={isCashflowReport}
+              isExportableReport={isExportableReport}
+              hasEmailDraft={hasEmailDraft}
+              handleExportWord={handleExportWord}
+              handleExportExcel={handleExportExcel}
+              handleExportEmail={handleExportEmail}
+              setPitchDeckContent={setPitchDeckContent}
+            />
           ))
         )}
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
@@ -489,3 +447,5 @@ export default function CopilotChat(props: CopilotChatProps) {
     </motion.div>
   );
 }
+
+export default React.memo(CopilotChat);

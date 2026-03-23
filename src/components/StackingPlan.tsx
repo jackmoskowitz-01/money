@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { digestEvent } from '@/lib/autoDigest';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 type StackingPlanProps = {
   building: Building;
@@ -221,7 +222,7 @@ const StackingPlan = ({ building, onTenantsChange }: StackingPlanProps) => {
       const resp = await fetch(PARSE_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: formData,
       });

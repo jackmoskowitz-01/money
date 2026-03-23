@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { type ProspectEnrichment, updateCustomProspect, getCustomProspect } from '@/data/customProspects';
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const ENRICH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-prospect`;
 
@@ -43,7 +44,7 @@ const ProspectEnrichmentCard = ({ prospectId, companyName, website, address, cac
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ companyName, website, address }),
       });

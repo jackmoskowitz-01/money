@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
 import { getActivities, type ActivityEntry } from '@/data/activityData';
 import { digestEvent } from '@/lib/autoDigest';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
@@ -398,7 +399,7 @@ const MapView = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,

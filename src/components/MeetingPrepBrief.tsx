@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const MEETING_PREP_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meeting-prep`;
 
@@ -42,7 +43,7 @@ const MeetingPrepBrief = (props: MeetingPrepBriefProps) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify(props),
       });

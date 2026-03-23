@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CASHFLOW_TEMPLATE } from '@/lib/copilotTemplates';
 import { parseSSEStream } from '@/lib/parseSSEStream';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
@@ -99,6 +100,7 @@ export function useCopilotState() {
   const conversationIdRef = useRef<string | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTranscriptRef = useRef('');
+  const abortControllerRef = useRef<AbortController | null>(null);
   const enqueueTTSChunkRef = useRef<((text: string) => void) | null>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
@@ -178,12 +180,12 @@ export function useCopilotState() {
         .limit(1);
 
       if (data && data.length > 0) {
-        const lastMessageDate = new Date((data[0] as any).created_at);
+        const lastMessageDate = new Date(data[0].created_at);
         const today = new Date();
         const isToday = lastMessageDate.toDateString() === today.toDateString();
 
         if (isToday) {
-          const convId = (data[0] as any).conversation_id;
+          const convId = data[0].conversation_id;
           const { data: msgs } = await supabase
             .from('copilot_messages')
             .select('*')
@@ -192,7 +194,7 @@ export function useCopilotState() {
 
           if (msgs && msgs.length > 0) {
             setConversationId(convId);
-            setMessages(msgs.map((m: any) => ({ role: m.role, content: m.content })));
+            setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
           }
         }
       }
@@ -224,12 +226,12 @@ export function useCopilotState() {
     if (!user || !open) return;
     const loadMemoryAndSettings = async () => {
       const { data: settings } = await supabase
-        .from('user_settings' as any)
+        .from('user_settings')
         .select('copilot_memory, copilot_name, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
         .eq('user_id', user.id)
         .single();
 
-      const s = settings as any;
+      const s = settings;
       const enabled = s?.copilot_memory ?? true;
       const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
@@ -332,14 +334,14 @@ export function useCopilotState() {
       // Load brain context if enabled
       if (brainOn) {
         const { data: brainFacts } = await supabase
-          .from('copilot_brain' as any)
+          .from('copilot_brain')
           .select('*')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           .limit(100);
 
-        if (brainFacts && (brainFacts as any[]).length > 0) {
-          const facts = brainFacts as any[];
+        if (brainFacts && brainFacts.length > 0) {
+          const facts = brainFacts;
           const categories = new Map<string, string[]>();
           facts.forEach(f => {
             const list = categories.get(f.category) || [];
@@ -374,7 +376,7 @@ export function useCopilotState() {
 
       if (!recentMsgs || recentMsgs.length === 0) { setConversationMemory(null); return; }
 
-      const msgs = recentMsgs as any[];
+      const msgs = recentMsgs;
       const entityLower = currentEntityName.toLowerCase();
 
       const conversations = new Map<string, any[]>();
@@ -441,7 +443,7 @@ export function useCopilotState() {
       conversation_id: convId,
       role: msg.role,
       content: msg.content,
-    } as any);
+    });
   }, [user]);
 
   // Proactive alerts check
@@ -483,13 +485,13 @@ export function useCopilotState() {
 
       if (user) {
         const { data: critDates } = await supabase
-          .from('critical_dates' as any)
+          .from('critical_dates')
           .select('*')
           .eq('user_id', user.id)
           .eq('acknowledged', false);
 
         if (critDates && critDates.length > 0) {
-          const urgentDates = (critDates as any[]).filter(d => {
+          const urgentDates = critDates.filter(d => {
             const target = new Date(d.date_value + 'T00:00:00');
             const daysUntil = Math.ceil((target.getTime() - now.getTime()) / 86400000);
             return daysUntil <= d.remind_days_before && daysUntil >= -7;
@@ -576,7 +578,10 @@ export function useCopilotState() {
 
   // Clear conversation
   const handleClear = async () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setMessages([]);
+    setIsLoading(false);
     setFileContext(null);
     if (conversationId && user) {
       await supabase.from('copilot_messages').delete().eq('conversation_id', conversationId).eq('user_id', user.id);
@@ -690,7 +695,7 @@ export function useCopilotState() {
       template_type: templateType,
       parsed_structure: structure,
       original_filename: filename,
-    } as any);
+    });
     if (error) {
       toast.error('Failed to save template');
       console.error('Template save error:', error);
@@ -710,7 +715,7 @@ export function useCopilotState() {
       .limit(10);
     if (!data || data.length === 0) return '';
     return '\n\n### User Output Templates\nThe user has saved these templates. When generating output that matches a template type, ALWAYS follow the template\'s structure and formatting exactly.\n' +
-      (data as any[]).map((t: any) => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
+      data.map(t => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
   };
 
   // File handling
@@ -767,10 +772,12 @@ export function useCopilotState() {
     await persistMessage({ role: 'user', content: userContent }, convId);
 
     let assistantSoFar = '';
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const authToken = await getAuthToken();
 
       const formData = new FormData();
       attachedFiles.forEach(f => formData.append('file', f));
@@ -795,6 +802,7 @@ export function useCopilotState() {
           Authorization: `Bearer ${authToken}`,
         },
         body: formData,
+        signal: controller.signal,
       });
 
       if (!resp.ok) {
@@ -804,15 +812,30 @@ export function useCopilotState() {
 
       const contentType = resp.headers.get('content-type') || '';
       if (contentType.includes('text/event-stream') && resp.body) {
+        let rafPending = false;
         await parseSSEStream(resp.body.getReader(), (content) => {
           assistantSoFar += content;
-          setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last?.role === 'assistant') {
-              return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-            }
-            return [...prev, { role: 'assistant', content: assistantSoFar }];
-          });
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+            });
+          }
+        }, controller.signal);
+        // Final flush after stream ends
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantSoFar }];
         });
       } else {
         const data = await resp.json();
@@ -883,7 +906,7 @@ export function useCopilotState() {
                 lease_abstract_id: null,
                 acknowledged: false,
               }));
-              await supabase.from('critical_dates' as any).insert(rows as any);
+              await supabase.from('critical_dates').insert(rows);
               toast.success(`${extractData.dates.length} critical dates extracted and tracked`, {
                 description: 'View them on your Dashboard',
               });
@@ -967,6 +990,7 @@ export function useCopilotState() {
         }
       }
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       console.error('File analysis error:', e);
       toast.error(e.message || 'Failed to analyze file');
       if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
@@ -977,6 +1001,7 @@ export function useCopilotState() {
     }
     setAttachedFiles([]);
     setIsLoading(false);
+    abortControllerRef.current = null;
   };
 
   // Market report search
@@ -1000,7 +1025,7 @@ export function useCopilotState() {
     const reportKeywords = ['market', 'report', 'analysis', 'comp', 'submarket', 'vacancy', 'lease', 'trend', 'forecast', 'overview', 'summary', 'abstract', 'cash flow', 'matrix'];
     const searchLower = query.toLowerCase();
 
-    const reports = (data as any[])
+    const reports = data
       .filter(m => {
         const content = m.content.toLowerCase();
         const isReport = content.length > 300 && (content.includes('##') || content.includes('**') || content.includes('| '));
@@ -1059,6 +1084,10 @@ export function useCopilotState() {
     setInput('');
     setIsLoading(true);
 
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     const convId = conversationIdRef.current || crypto.randomUUID();
     if (!conversationIdRef.current) setConversationId(convId);
 
@@ -1074,13 +1103,13 @@ export function useCopilotState() {
       let brokerProfileCtx = '';
       if (!voiceModeRef.current && user) {
         const { data: bp } = await supabase
-          .from('user_settings' as any)
+          .from('user_settings')
           .select('specialties, years_experience, deal_size_sweet_spot, asset_classes, communication_persona_enabled, writing_style_sample, jargon_level, humor_preference, followup_cadence, target_submarkets, key_competitors, buildings_repped, landlord_relationships, quarterly_focus, revenue_target, deal_count_goal, personal_pitch, brokerage')
           .eq('user_id', user.id)
           .single();
 
         if (bp) {
-          const s = bp as any;
+          const s = bp;
           const parts: string[] = [];
           if (s.specialties) parts.push(`- **Specialties:** ${s.specialties}`);
           if (s.years_experience) parts.push(`- **Experience:** ${s.years_experience} years`);
@@ -1117,15 +1146,15 @@ export function useCopilotState() {
       let liveDataCtx = '';
       if (brainEnabled && !voiceModeRef.current) {
         const { data: critDates } = await supabase
-          .from('critical_dates' as any)
+          .from('critical_dates')
           .select('*')
           .eq('user_id', user!.id)
           .eq('acknowledged', false)
           .order('date_value', { ascending: true })
           .limit(20);
 
-        if (critDates && (critDates as any[]).length > 0) {
-          const dateLines = (critDates as any[]).map(d => {
+        if (critDates && critDates.length > 0) {
+          const dateLines = critDates.map(d => {
             const target = new Date(d.date_value + 'T00:00:00');
             const days = Math.ceil((target.getTime() - Date.now()) / 86400000);
             return `- ${d.prospect_name}: ${d.date_type.replace(/_/g, ' ')} in ${days}d (${d.date_value}) - ${d.description}`;
@@ -1178,8 +1207,8 @@ export function useCopilotState() {
           const signals: string[] = [];
           let urgency = 0;
 
-          if (critDates && (critDates as any[]).length > 0) {
-            const matchingDates = (critDates as any[]).filter(d =>
+          if (critDates && critDates.length > 0) {
+            const matchingDates = critDates.filter(d =>
               (d.prospect_name && deal.prospectName && d.prospect_name.toLowerCase().includes(deal.prospectName.toLowerCase())) ||
               (d.prospect_id && d.prospect_id === deal.tenantId)
             );
@@ -1235,8 +1264,13 @@ export function useCopilotState() {
       const intelligenceCtx = intelligenceContext ? `\n\n${intelligenceContext}` : '';
       const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const authToken = await getAuthToken();
+
+      // Sliding window: send pinned messages + last 30 messages to stay within token limits
+      const MAX_API_MESSAGES = 30;
+      const pinnedMessages = updatedMessages.filter(m => m.pinned);
+      const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
+      const apiMessages = [...new Set([...pinnedMessages, ...recentMessages])];
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
@@ -1245,11 +1279,12 @@ export function useCopilotState() {
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: apiMessages,
           context: fullContext,
           mode: 'tools',
           voiceMode: voiceModeRef.current,
         }),
+        signal: controller.signal,
       });
 
       if (!resp.ok) {
@@ -1270,16 +1305,23 @@ export function useCopilotState() {
       } else {
         if (!resp.body) throw new Error('No response body');
         let ttsBuffer = '';
+        let rafPending = false;
 
         await parseSSEStream(resp.body.getReader(), (content) => {
           assistantSoFar += content;
-          setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last?.role === 'assistant') {
-              return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-            }
-            return [...prev, { role: 'assistant', content: assistantSoFar }];
-          });
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+            });
+          }
 
           // Chunked TTS: queue sentences as they complete during streaming
           if (voiceModeRef.current && enqueueTTSChunkRef.current) {
@@ -1293,6 +1335,15 @@ export function useCopilotState() {
               }
             }
           }
+        }, controller.signal);
+
+        // Final flush after stream ends
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantSoFar }];
         });
 
         // Flush remaining TTS buffer
@@ -1350,7 +1401,7 @@ export function useCopilotState() {
                     source: 'conversation',
                     confidence: 0.8,
                   }));
-                  await supabase.from('copilot_brain' as any).insert(rows as any);
+                  await supabase.from('copilot_brain').insert(rows);
                 }
               }
             }
@@ -1362,6 +1413,7 @@ export function useCopilotState() {
 
       refetchPipeline();
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');
       if (!assistantSoFar) {
@@ -1369,6 +1421,7 @@ export function useCopilotState() {
       }
     }
     setIsLoading(false);
+    abortControllerRef.current = null;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

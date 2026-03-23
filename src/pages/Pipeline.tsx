@@ -18,6 +18,7 @@ import { StageColumn } from '@/components/pipeline/StageColumn';
 import { MobileDealCard } from '@/components/pipeline/DealCard';
 import { TouchpointsPanel } from '@/components/pipeline/TouchpointsPanel';
 import { OutcomeDialog } from '@/components/pipeline/OutcomeDialog';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const stages: PipelineStage[] = ['hot_prospect', 'meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
@@ -220,7 +221,7 @@ const Pipeline = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName, buildingName, contactName, contactTitle, industry, sqft,

@@ -5,33 +5,44 @@
 export async function parseSSEStream(
   reader: ReadableStreamDefaultReader<Uint8Array>,
   onChunk: (content: string) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   const decoder = new TextDecoder();
   let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      if (signal?.aborted) {
+        await reader.cancel();
+        return;
+      }
 
-    let idx: number;
-    while ((idx = buffer.indexOf('\n')) !== -1) {
-      let line = buffer.slice(0, idx);
-      buffer = buffer.slice(idx + 1);
-      if (line.endsWith('\r')) line = line.slice(0, -1);
-      if (line.startsWith(':') || line.trim() === '') continue;
-      if (!line.startsWith('data: ')) continue;
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-      const jsonStr = line.slice(6).trim();
-      if (jsonStr === '[DONE]') return;
+      let idx: number;
+      while ((idx = buffer.indexOf('\n')) !== -1) {
+        let line = buffer.slice(0, idx);
+        buffer = buffer.slice(idx + 1);
+        if (line.endsWith('\r')) line = line.slice(0, -1);
+        if (line.startsWith(':') || line.trim() === '') continue;
+        if (!line.startsWith('data: ')) continue;
 
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content;
-        if (content) {
-          onChunk(content);
-        }
-      } catch { /* partial JSON, skip */ }
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === '[DONE]') return;
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content;
+          if (content) {
+            onChunk(content);
+          }
+        } catch { /* partial JSON, skip */ }
+      }
     }
+  } catch (e) {
+    if (signal?.aborted) return;
+    throw e;
   }
 }

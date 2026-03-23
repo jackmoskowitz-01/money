@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const AUTOCOMPLETE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/places-autocomplete`;
 
@@ -92,7 +93,7 @@ const ProspectSearch = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ query: input }),
       });

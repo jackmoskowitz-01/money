@@ -26,6 +26,7 @@ import { addActivity } from '@/data/activityData';
 import { usePipeline } from '@/hooks/usePipeline';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -257,7 +258,7 @@ const CustomProspectDetail = () => {
       const primaryContact = recipients[0];
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getAuthToken()}` },
         body: JSON.stringify({ tenantName: prospect.name, buildingName: prospect.address, contactName: primaryContact?.name || prospect.name, contactTitle: primaryContact?.title || '', industry: prospect.enrichment?.industry || '', sqft: 0, leaseExpiration: '', outreachReason: reason, vacancyRate: 0, headcount: 0, clientsInBuilding: [] }),
       });
       if (!resp.ok) { toast.error('Failed to generate email'); setGeneratingKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; }); return; }

@@ -25,6 +25,7 @@ import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
 import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -105,7 +106,7 @@ const TenantDetail = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useScribe, CommitStrategy } from '@elevenlabs/react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const TTS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-tts`;
 const SCRIBE_TOKEN_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-scribe-token`;
@@ -96,8 +96,7 @@ export function useCopilotVoice({
   const playTTSChunk = useCallback(async (text: string): Promise<void> => {
     if (!voiceModeRef.current) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const authToken = await getAuthToken();
       const resp = await fetch(TTS_URL, {
         method: 'POST',
         headers: {
@@ -214,8 +213,7 @@ export function useCopilotVoice({
       setVoiceMode(true);
       voiceModeRef.current = true;
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        const authToken = await getAuthToken();
         const tokenResp = await fetch(SCRIBE_TOKEN_URL, {
           method: 'POST',
           headers: {

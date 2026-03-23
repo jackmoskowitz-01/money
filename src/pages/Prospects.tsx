@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useProspectLists } from '@/hooks/useProspectLists';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 type ProspectEntry = {
   tenant: Tenant;
@@ -187,7 +188,7 @@ const Prospects = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,

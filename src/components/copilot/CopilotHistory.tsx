@@ -95,7 +95,7 @@ export default function CopilotHistory({ userId, currentConversationId, onLoadCo
             </Button>
           </div>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-60px)]">
+        <ScrollArea className="h-[calc(100%-60px)]">
           {loading ? (
             <div className="p-6 text-center">
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">

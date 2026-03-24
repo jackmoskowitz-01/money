@@ -1302,7 +1302,7 @@ const News = () => {
   );
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">

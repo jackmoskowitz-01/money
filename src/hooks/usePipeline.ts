@@ -4,6 +4,7 @@ import { buildings } from '@/data/mockData';
 import { digestEvent } from '@/lib/autoDigest';
 import { toast } from 'sonner';
 import type { PipelineStage, PipelineItem, Touchpoint } from '@/data/pipelineData';
+import { stageLabels } from '@/data/pipelineData';
 
 type DbRow = {
   id: string;
@@ -121,6 +122,7 @@ export function usePipeline() {
         ? { ...p, stage, lastActivity: new Date().toISOString() }
         : p
     ));
+    toast.success(`Deal moved to ${stageLabels[stage]}`);
     // Auto-digest: feed pipeline move to AI brain
     const name = item?.prospectName || item?.prospectCompany || tenantId;
     const prevStage = item?.stage || 'unknown';
@@ -155,6 +157,7 @@ export function usePipeline() {
         ? { ...p, notes: newNotes, lastActivity: new Date().toISOString() }
         : p
     ));
+    toast.success('Note added');
   }, [pipeline]);
 
   const addProspect = useCallback(async (prospect: {
@@ -189,6 +192,7 @@ export function usePipeline() {
     if (data) {
       setPipeline(prev => [...prev, rowToItem(data as unknown as DbRow)]);
     }
+    toast.success('Prospect added to pipeline');
     return true;
   }, []);
 
@@ -222,6 +226,9 @@ export function usePipeline() {
         ? { ...p, sentTouchpoints: newSent, lastActivity: new Date().toISOString() }
         : p
     ));
+    const recipientItem = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);
+    const recipientName = recipientItem?.prospectName || recipientItem?.prospectCompany || 'prospect';
+    toast.success(`Touchpoint sent to ${recipientName}`);
   }, [pipeline]);
 
   const deleteDeal = useCallback(async (tenantId: string, buildingId: string) => {
@@ -236,6 +243,7 @@ export function usePipeline() {
       return;
     }
     setPipeline(prev => prev.filter(p => !(p.tenantId === tenantId && p.buildingId === buildingId)));
+    toast('Deal removed from pipeline');
   }, []);
 
   const reorderInStage = useCallback(async (stage: PipelineStage, fromIndex: number, toIndex: number) => {

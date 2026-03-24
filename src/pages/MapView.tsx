@@ -514,7 +514,7 @@ const MapView = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 top-14">
+    <div className="absolute inset-0">
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Building List Panel */}
@@ -682,7 +682,7 @@ const MapView = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="absolute right-4 top-4 z-[1000] w-96"
           >
-            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto relative">
+            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100%-6rem)] overflow-y-auto relative">
               {/* Always-visible close button */}
               <button
                 onClick={() => setSelectedBuilding(null)}
@@ -1016,7 +1016,7 @@ const MapView = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={() => setShowThresholdModal(false)}
           >
             <motion.div

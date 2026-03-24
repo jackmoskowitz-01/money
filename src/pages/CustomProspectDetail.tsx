@@ -2,6 +2,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap, ShieldAlert, UserCheck, UserPlus, X, Building2, Phone, Briefcase, Clock, MessageSquare, Sparkles, Newspaper, BookOpen, FileSearch, Upload, FileText, Trash2, Download, File } from 'lucide-react';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -222,7 +230,7 @@ const CustomProspectDetail = () => {
   }, [prospectId, prospectContacts]);
 
   if (!prospect) {
-    return <div className="flex min-h-screen items-center justify-center pt-12"><p className="text-muted-foreground">Prospect not found</p></div>;
+    return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Prospect not found</p></div>;
   }
 
   const handleStageChange = async (stage: PipelineStage) => {
@@ -297,11 +305,27 @@ const CustomProspectDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-12 bg-background">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <Link to="/" className="mb-5 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
-        </Link>
+        <Breadcrumb className="mb-5">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/prospects">Prospects</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{prospect.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* ── COMPANY HEADER CARD ── */}

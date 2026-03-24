@@ -282,7 +282,7 @@ const Prospects = () => {
   }, [customReasonText, generateEmail]);
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <Link to="/" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -800,7 +800,7 @@ const Prospects = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+              className="absolute bottom-6 left-1/2 z-50 -translate-x-1/2"
             >
               <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 shadow-2xl">
                 <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ interface StageColumnProps {
   onSelect: (item: PipelineItem | null) => void;
   onStageChange: (tenantId: string, buildingId: string, stage: PipelineStage) => void;
   onDelete: (item: PipelineItem, e: React.MouseEvent) => void;
+  onQuickView?: (item: PipelineItem, e: React.MouseEvent) => void;
   onDragStart: (e: React.DragEvent, item: PipelineItem) => void;
   onDragOver: (e: React.DragEvent, stage: PipelineStage) => void;
   onCardDragOver: (e: React.DragEvent, stage: PipelineStage, index: number) => void;
@@ -31,7 +32,7 @@ interface StageColumnProps {
 export const StageColumn = ({
   stage, items, stages, selectedItem, dragItem, dragOverStage, dragOverIndex,
   noteInput, onNoteInputChange, onNoteSubmit, onNoteTargetSet,
-  onSelect, onStageChange, onDelete,
+  onSelect, onStageChange, onDelete, onQuickView,
   onDragStart, onDragOver, onCardDragOver, onDragLeave, onDrop, onDragEnd,
   getDisplayName, getDisplayCompany, getDisplayDetail,
 }: StageColumnProps) => {
@@ -76,6 +77,7 @@ export const StageColumn = ({
               onSelect={onSelect}
               onStageChange={onStageChange}
               onDelete={onDelete}
+              onQuickView={onQuickView}
               onDragStart={onDragStart}
               onDragOver={onCardDragOver}
               onDragEnd={onDragEnd}

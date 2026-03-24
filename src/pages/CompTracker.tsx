@@ -46,7 +46,7 @@ const CompTracker = () => {
   const totalSF = filtered.reduce((s, c) => s + c.sqft, 0);
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-6xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           <div className="mb-6">

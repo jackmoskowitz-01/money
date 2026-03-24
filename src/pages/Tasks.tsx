@@ -177,7 +177,7 @@ const Tasks = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-12">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <Skeleton className="h-10 w-64 mb-6" />
           <div className="grid grid-cols-3 gap-3 mb-6">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
@@ -427,7 +427,7 @@ const Tasks = () => {
   };
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}

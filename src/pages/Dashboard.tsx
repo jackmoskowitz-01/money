@@ -175,20 +175,82 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-12">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
-          <Skeleton className="h-10 w-48 mb-6" />
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-6">
-            {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+
+          {/* Header */}
+          <div className="mb-8">
+            <Skeleton className="h-8 w-36 mb-2" />
+            <Skeleton className="h-4 w-52" />
           </div>
-          <Skeleton className="h-48 w-full mb-6" />
+
+          {/* Stat cards — 4 cols matching the real grid */}
+          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-7 w-12 mb-1.5" />
+                <Skeleton className="h-3 w-28" />
+              </div>
+            ))}
+          </div>
+
+          {/* Today's Focus — 3 skeleton rows */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2.5 mb-4">
+              <Skeleton className="h-7 w-7 rounded-lg" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-5 w-12 rounded-full" />
+            </div>
+            <div className="grid gap-2">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
+                  <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+                  <div className="flex-1 min-w-0">
+                    <Skeleton className="h-3.5 w-48 mb-1.5" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-5 w-14 rounded-full" />
+                  <Skeleton className="h-3.5 w-3.5 rounded-sm" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick actions row */}
+          <div className="mb-8 flex gap-2">
+            <Skeleton className="h-8 w-28 rounded-md" />
+            <Skeleton className="h-8 w-36 rounded-md" />
+            <Skeleton className="h-8 w-28 rounded-md" />
+          </div>
+
+          {/* Tab bar */}
+          <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 mb-6">
+            {[0, 1, 2, 3, 4].map(i => (
+              <Skeleton key={i} className="h-7 flex-1 rounded-md" />
+            ))}
+          </div>
+
+          {/* Chart area — 3-column card row */}
+          <div className="grid gap-4 lg:grid-cols-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="rounded-xl border border-border bg-card p-5">
+                <Skeleton className="h-4 w-36 mb-4" />
+                <Skeleton className="h-48 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">

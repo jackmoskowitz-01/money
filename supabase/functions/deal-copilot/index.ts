@@ -33,7 +33,7 @@ You should call ALL of these at once:
 2. **Quick Data Lookup**: Answer questions about prospects, buildings, or market data using provided context.
 3. **Outreach Drafting**: Draft concise, professional broker emails. Position as a market advisor, not salesy.
 4. **Internal Data Only**: This is an internal tool. Do NOT search the internet. All data comes from the deal database, uploaded files, and provided context. If you don't have information about a company, use search_deals or query_database to look it up in the internal system.
-5. **File & Document Lookup**: When the user asks to run a lease abstract, analyze a document, or reference a file for a prospect — use the get_prospect_files tool to find their uploaded documents, then analyze the content. NEVER ask the user to upload a file if files already exist for that prospect.
+5. **File & Document Lookup**: When the user asks to run a lease abstract, analyze a document, or reference a file for a prospect — use the get_prospect_files tool. CRITICAL: When the user says "run a lease abstract for [company]" or "/abstract for [company]", call get_prospect_files with action="abstract" and the company name. This automatically finds their files AND runs the abstract in one step. For just viewing files, use action="read". NEVER ask the user to upload a file if files already exist for that prospect.
 6. **Pipeline Actions**: Execute actions like moving deal stages, adding notes, creating tasks when the user asks.
 7. **Tour Planning**: Optimize property tour routes. CRITICAL RULE: You must ALWAYS ask the user for their starting point — NEVER assume or guess a starting location (not their office, not a default, not "downtown", not any address). When the user provides addresses for a tour, your ENTIRE response must be ONLY: "Where will you be starting from?" — do NOT acknowledge the addresses, do NOT list them back, do NOT call plan_tour, do NOT provide any other commentary. Just ask that single question and stop. Only after the user explicitly replies with their starting address should you call plan_tour and generate the route.
 8. **Comp Analysis**: When asked to analyze comps or compare lease terms, use the analyze_comps tool. Benchmark deals against recent lease comps by submarket, size, and class.
@@ -119,11 +119,12 @@ const TOOLS = [
     type: "function",
     function: {
       name: "get_prospect_files",
-      description: "Retrieve uploaded files and documents for a prospect/company. Use this FIRST when the user asks to run a lease abstract, analyze a document, review files, or reference any uploaded content for a company. Searches by company/prospect name across prospect_files and the RAG document store.",
+      description: "Retrieve and optionally analyze uploaded files for a prospect. Use when the user asks to run a lease abstract, analyze a document, or reference files for a company. When action is 'abstract', it automatically runs a full lease abstract on the file content. When action is 'list', it just lists the files. When action is 'read', it returns the file content.",
       parameters: {
         type: "object",
         properties: {
-          prospect_name: { type: "string", description: "Company or prospect name to find files for (e.g., 'Google', 'Deloitte')" },
+          prospect_name: { type: "string", description: "Company or prospect name (e.g., 'Google', 'Deloitte')" },
+          action: { type: "string", enum: ["abstract", "read", "list"], description: "What to do: 'abstract' runs a full lease abstract, 'read' returns file content, 'list' just lists files. Default: 'read'" },
         },
         required: ["prospect_name"],
         additionalProperties: false,
@@ -1221,7 +1222,117 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         return `No files or documents found for "${args.prospect_name}". The broker needs to upload the lease to the company's Files section first.`;
       }
 
-      return results.join("\n");
+      const fileContent = results.join("\n");
+
+      // If action is "abstract", run a full lease abstract on the file content using Claude
+      if (args.action === "abstract") {
+        const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+        if (!anthropicKey) return "Cannot run abstract — ANTHROPIC_API_KEY not configured.";
+
+        const LEASE_ABSTRACT_TEMPLATE = `You are producing a professional Lease Summary / Abstract. Follow this EXACT structure and section order. Fill in every field from the lease document. If a field is not found in the lease, write "Silent in Lease."
+
+## FORMAT:
+---
+# Lease Summary
+
+**Company Name:** [Tenant Company]
+**Building Name:** [Building/Property Name]
+**Address:** [Full Address]
+**Lease Type:** [Renewal / Expansion / New Lease]
+**Abstract Date:** ${new Date().toLocaleDateString()}
+
+---
+
+### Premises
+- [X] rentable square feet
+- Method of Measurement: [if stated]
+
+### Landlord
+[Landlord entity name] | [City, ST]
+
+### Term
+- Duration: [X years]
+- Commencement Date: [date]
+- Expiration Date: [date]
+
+### Size
+[Rentable SF and Usable SF if stated]
+
+### Rent Schedule
+
+| Period | Rent/SF | Rent/Month | Rent/Year |
+|--------|---------|------------|-----------|
+| Year 1 | $XX.XX  | $XX,XXX.XX | $XXX,XXX.XX |
+[Continue for all years]
+
+### Lease Type
+[Full Service / Net / Modified Gross / etc.]
+
+### Operating Expenses & Taxes
+[Base year, cap, pass-through details or "Silent in Lease"]
+
+### Improvements / Tenant Improvements
+[TI allowance, details or "Silent in Lease"]
+
+### Parking
+[Ratio, cost, reserved/unreserved or "Silent in Lease"]
+
+### Extension Option
+[Terms, notice period, rent basis or "Silent in Lease"]
+
+### Expansion Option
+[Terms or "Silent in Lease"]
+
+### Cancellation Option
+[Terms, penalty or "Silent in Lease"]
+
+### Assignment & Subletting
+[Terms, consent requirements or "Silent in Lease"]
+
+### Security Deposit
+[Amount, terms or "Silent in Lease"]
+
+### Additional Lease Comments
+[Any other notable terms]
+
+---
+
+CRITICAL: Fill in EVERY section. Quote exact dollar amounts, dates, percentages. Include Article/Section/Page references. Do NOT write "See lease for details" — extract the actual details.`;
+
+        // Call Claude to run the abstract
+        let abstractResp: Response | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          abstractResp = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "x-api-key": anthropicKey,
+              "anthropic-version": "2023-06-01",
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "claude-opus-4-20250514",
+              max_tokens: 4096,
+              system: LEASE_ABSTRACT_TEMPLATE,
+              messages: [{ role: "user", content: `Run a complete lease abstract on the following document content:\n\n${fileContent}` }],
+            }),
+          });
+          if (abstractResp.status === 429 || abstractResp.status === 529) {
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+          break;
+        }
+
+        if (!abstractResp?.ok) {
+          return `Found files for ${args.prospect_name} but abstract generation failed. Here are the files:\n\n${fileContent}`;
+        }
+
+        const abstractData = await abstractResp.json();
+        const abstractText = abstractData.content?.find((b: any) => b.type === "text")?.text;
+        return abstractText || `Abstract generation returned no output. Here are the files:\n\n${fileContent}`;
+      }
+
+      return fileContent;
     }
 
     case "plan_tour":

@@ -16,6 +16,7 @@ import EmailDisplay from '@/components/EmailDisplay';
 import { getContacts, subscribeContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
 import { getActivities, type ActivityEntry } from '@/data/activityData';
@@ -46,6 +47,10 @@ const MapView = () => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
   const [stackingPlanTenants, setStackingPlanTenants] = useState<Record<string, Tenant[]>>({});
+  const [buildingNotes, setBuildingNotes] = useState<{ id: string; content: string; author_name: string; created_at: string }[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [notesLoading, setNotesLoading] = useState(false);
+  const { profile } = useAuth();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
@@ -244,6 +249,40 @@ const MapView = () => {
     setGeneratingKeys(new Set());
     setActiveEmailKey(null);
   }, [selectedBuilding?.id]);
+
+  // Fetch building notes when a building is selected
+  useEffect(() => {
+    if (!selectedBuilding) { setBuildingNotes([]); return; }
+    setNotesLoading(true);
+    supabase
+      .from('building_notes')
+      .select('id, content, author_name, created_at')
+      .eq('building_id', selectedBuilding.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setBuildingNotes(data || []);
+        setNotesLoading(false);
+      });
+  }, [selectedBuilding?.id]);
+
+  const addBuildingNote = useCallback(async () => {
+    if (!newNote.trim() || !selectedBuilding) return;
+    const authorName = profile?.full_name || 'Unknown';
+    const { data, error } = await supabase
+      .from('building_notes')
+      .insert({
+        building_id: selectedBuilding.id,
+        content: newNote.trim(),
+        author_name: authorName,
+        author_id: profile ? undefined : undefined,
+      })
+      .select('id, content, author_name, created_at')
+      .single();
+    if (error) { toast.error('Failed to save note'); return; }
+    if (data) setBuildingNotes(prev => [data, ...prev]);
+    setNewNote('');
+    toast.success('Note added');
+  }, [newNote, selectedBuilding, profile]);
 
   // Helper to create a map marker — uses red icon when tracker is on and building is stale
   const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean, mapInstance?: any) => {
@@ -833,6 +872,55 @@ const MapView = () => {
 
               <div className="mb-4">
                 <StackingPlan building={selectedBuilding} />
+              </div>
+
+              {/* Building Notes */}
+              <div className="mb-4 rounded-md border border-border bg-secondary/20 p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h4 className="text-sm font-semibold">Building Notes</h4>
+                  <span className="text-[10px] text-muted-foreground ml-auto">{buildingNotes.length} note{buildingNotes.length !== 1 ? 's' : ''}</span>
+                </div>
+                {/* Add note input */}
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Add a note about this building..."
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => { if (e.key === 'Enter') addBuildingNote(); }}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-8 px-3 text-xs shrink-0"
+                    onClick={addBuildingNote}
+                    disabled={!newNote.trim()}
+                  >
+                    <Send className="h-3 w-3" />
+                  </Button>
+                </div>
+                {/* Notes list */}
+                {notesLoading ? (
+                  <div className="flex items-center justify-center py-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : buildingNotes.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">No notes yet. Be the first to add one.</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {buildingNotes.map((note) => (
+                      <div key={note.id} className="rounded-md bg-background/60 p-2 border border-border/50">
+                        <p className="text-xs text-foreground whitespace-pre-wrap">{note.content}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-muted-foreground font-medium">{note.author_name}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Auto-Enrich */}

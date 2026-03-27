@@ -2,10 +2,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, ChevronUp, X, DollarSign,
+  Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, X, DollarSign,
   Timer, TrendingUp, TrendingDown, AlertTriangle, Calendar, Users, Mail, ArrowRight,
-  Phone, FileText, ChevronRight, Flame, MapPin, Inbox, Loader2, Activity, PieChart as PieChartIcon,
-  Search, Send, Sparkles
+  Phone, FileText, ChevronRight, Flame, MapPin, Inbox, Loader2, Activity, PieChart as PieChartIcon
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { stageLabels, type PipelineStage } from '@/data/pipelineData';
@@ -23,7 +22,6 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
-import { DealflowAsk } from '@/components/DealflowAsk';
 import CriticalDatesTracker from '@/components/CriticalDatesTracker';
 import CriticalDatesFullView from '@/components/CriticalDatesFullView';
 import {
@@ -379,7 +377,6 @@ const Dashboard = () => {
 
           {/* ── PERFORMANCE TAB ── */}
           <TabsContent value="performance" className="mt-0 space-y-6">
-            <DealflowAsk />
             <BrokerLeaderboard />
             <div className="grid gap-4 lg:grid-cols-2">
               <DailyBriefing />

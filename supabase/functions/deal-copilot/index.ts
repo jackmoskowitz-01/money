@@ -1174,33 +1174,28 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
                 const truncated = text.length > 30000 ? text.slice(0, 30000) + "\n\n[... truncated ...]" : text;
                 results.push("```\n" + truncated + "\n```\n");
               } else if (isPdf) {
-                // Send PDF to Claude for native reading
-                const pdfAnthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-                if (pdfAnthropicKey) {
+                // Send PDF to Gemini for native reading — fast, 1M context
+                const pdfGeminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+                if (pdfGeminiKey) {
                   const bytes = new Uint8Array(await fileData.arrayBuffer());
                   const base64 = btoa(String.fromCharCode(...bytes));
-                  const pdfResp = await fetch("https://api.anthropic.com/v1/messages", {
-                    method: "POST",
-                    headers: {
-                      "x-api-key": pdfAnthropicKey,
-                      "anthropic-version": "2023-06-01",
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      model: "claude-sonnet-4-20250514",
-                      max_tokens: 8192,
-                      messages: [{
-                        role: "user",
-                        content: [
-                          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-                          { type: "text", text: "Extract the full text content of this document. Preserve all details, numbers, dates, and formatting." },
-                        ],
-                      }],
-                    }),
-                  });
+                  const pdfResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${pdfGeminiKey}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        contents: [{ parts: [
+                          { inline_data: { mime_type: "application/pdf", data: base64 } },
+                          { text: "Extract the full text content of this document. Preserve all details, numbers, dates, and formatting." },
+                        ] }],
+                        generationConfig: { maxOutputTokens: 16384 },
+                      }),
+                    }
+                  );
                   if (pdfResp.ok) {
                     const pdfData = await pdfResp.json();
-                    const pdfText = pdfData.content?.find((b: any) => b.type === "text")?.text;
+                    const pdfText = pdfData.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (pdfText) {
                       results.push("**[PDF Content Extracted]**\n\n" + pdfText + "\n");
                     }
@@ -1427,27 +1422,23 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
 12. If a clause is complex, use sub-bullets to break it down - never collapse detail into a single line.
 13. DO NOT write "See lease for details" - extract and state the actual details.`;
 
-        // Use GPT-4o for abstracts — faster, better at following templates
-        const openaiKey = Deno.env.get("OPENAI_API_KEY");
-        if (!openaiKey) return "Cannot run abstract — OPENAI_API_KEY not configured.";
+        // Use Gemini 2.5 Flash for abstracts — fastest, follows templates, 1M context
+        const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+        if (!geminiKey) return "Cannot run abstract — GOOGLE_AI_API_KEY not configured.";
 
         let abstractResp: Response | null = null;
         for (let attempt = 0; attempt < 3; attempt++) {
-          abstractResp = await fetch("https://api.openai.com/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${openaiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "gpt-4o",
-              max_tokens: 8192,
-              messages: [
-                { role: "system", content: LEASE_ABSTRACT_TEMPLATE },
-                { role: "user", content: `Run a complete lease abstract on the following document content:\n\n${fileContent}` },
-              ],
-            }),
-          });
+          abstractResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: `${LEASE_ABSTRACT_TEMPLATE}\n\nRun a complete lease abstract on the following document content:\n\n${fileContent}` }] }],
+                generationConfig: { maxOutputTokens: 16384 },
+              }),
+            }
+          );
           if (abstractResp.status === 429) {
             await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
             continue;
@@ -1457,12 +1448,12 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
 
         if (!abstractResp?.ok) {
           const err = await abstractResp?.text();
-          console.error("GPT-4o abstract error:", err);
+          console.error("Gemini abstract error:", err);
           return `Found files for ${args.prospect_name} but abstract generation failed. Here are the files:\n\n${fileContent}`;
         }
 
         const abstractData = await abstractResp.json();
-        const abstractText = abstractData.choices?.[0]?.message?.content;
+        const abstractText = abstractData.candidates?.[0]?.content?.parts?.[0]?.text;
         return abstractText || `Abstract generation returned no output. Here are the files:\n\n${fileContent}`;
       }
 

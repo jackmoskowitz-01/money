@@ -1100,37 +1100,95 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
       return `✅ Context compacted. Summary preserved:\n\n${args.conversation_summary}`;
 
     case "get_prospect_files": {
-      // Search for files uploaded to a prospect + any embedded documents in RAG
       const prospectName = args.prospect_name?.toLowerCase() || "";
       const results: string[] = [];
 
-      // 1. Search prospect_files table
-      const { data: files } = await supabase
+      // Step 1: Find the prospect(s) by name across all tables
+      const { data: dbProspects } = await supabase
+        .from("prospects")
+        .select("id, company_name")
+        .ilike("company_name", `%${prospectName}%`);
+
+      const { data: customProspects } = await supabase
+        .from("custom_prospects")
+        .select("id, name")
+        .ilike("name", `%${prospectName}%`);
+
+      const { data: pipelineDeals } = await supabase
+        .from("pipeline_deals")
+        .select("tenant_id, prospect_company, prospect_name, notes, stage")
+        .or(`prospect_company.ilike.%${prospectName}%,prospect_name.ilike.%${prospectName}%`);
+
+      // Collect all matching prospect IDs
+      const prospectIds = new Set<string>();
+      (dbProspects || []).forEach((p: any) => prospectIds.add(p.id));
+      (customProspects || []).forEach((p: any) => prospectIds.add(p.id));
+      (pipelineDeals || []).forEach((p: any) => prospectIds.add(p.tenant_id));
+
+      if (prospectIds.size === 0) {
+        return `No prospect found matching "${args.prospect_name}". Check the company name and try again.`;
+      }
+
+      // Step 2: Get all files for these prospect IDs
+      const allFiles: any[] = [];
+      for (const pid of prospectIds) {
+        const { data: files } = await supabase
+          .from("prospect_files")
+          .select("*")
+          .eq("prospect_id", pid)
+          .order("created_at", { ascending: false });
+        if (files) allFiles.push(...files);
+      }
+
+      // Also search by filename containing the prospect name
+      const { data: nameMatchFiles } = await supabase
         .from("prospect_files")
         .select("*")
-        .order("created_at", { ascending: false });
+        .ilike("file_name", `%${prospectName}%`);
+      if (nameMatchFiles) {
+        const existingIds = new Set(allFiles.map((f: any) => f.id));
+        nameMatchFiles.forEach((f: any) => { if (!existingIds.has(f.id)) allFiles.push(f); });
+      }
 
-      const matchedFiles = (files || []).filter((f: any) => {
-        const prospectId = f.prospect_id || "";
-        const fileName = (f.file_name || "").toLowerCase();
-        return fileName.includes(prospectName) || prospectId.includes(prospectName);
-      });
+      // Step 3: Download and read file contents
+      if (allFiles.length > 0) {
+        results.push(`## Files for "${args.prospect_name}" (${allFiles.length} found)\n`);
 
-      if (matchedFiles.length > 0) {
-        results.push(`## Uploaded Files for "${args.prospect_name}"\n`);
-        for (const f of matchedFiles) {
-          results.push(`- **${f.file_name}** (${f.file_type || "unknown"}, uploaded ${new Date(f.created_at).toLocaleDateString()} by ${f.uploaded_by_name || "unknown"})`);
+        for (const f of allFiles.slice(0, 5)) { // Limit to 5 files
+          results.push(`### ${f.file_name}`);
+          results.push(`Type: ${f.file_type || "unknown"} | Uploaded: ${new Date(f.created_at).toLocaleDateString()} by ${f.uploaded_by_name || "unknown"}\n`);
+
+          // Download file content from Supabase Storage
+          try {
+            const { data: fileData } = await supabase.storage
+              .from("prospect-files")
+              .download(f.file_path);
+
+            if (fileData) {
+              const isText = f.file_type?.includes("text") || f.file_name?.endsWith(".txt") || f.file_name?.endsWith(".csv") || f.file_name?.endsWith(".md");
+              if (isText) {
+                const text = await fileData.text();
+                const truncated = text.length > 30000 ? text.slice(0, 30000) + "\n\n[... truncated ...]" : text;
+                results.push("```\n" + truncated + "\n```\n");
+              } else {
+                // For PDFs and other binary files, note them — the content may already be in RAG
+                results.push(`_(Binary file — ${(f.file_size / 1024).toFixed(1)} KB. Content may be available via RAG search below.)_\n`);
+              }
+            }
+          } catch (e) {
+            results.push(`_(Could not download file: ${e.message})_\n`);
+          }
         }
       }
 
-      // 2. Search RAG embeddings for documents matching this prospect
+      // Step 4: Search RAG embeddings for any embedded document content
       const openaiKey = Deno.env.get("OPENAI_API_KEY");
       if (openaiKey && orgId) {
         try {
           const embResp = await fetch("https://api.openai.com/v1/embeddings", {
             method: "POST",
             headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ model: "text-embedding-3-small", input: `${args.prospect_name} lease document` }),
+            body: JSON.stringify({ model: "text-embedding-3-small", input: `${args.prospect_name} lease document abstract` }),
           });
           if (embResp.ok) {
             const embData = await embResp.json();
@@ -1138,34 +1196,29 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
               query_embedding: embData.data[0].embedding,
               match_org_id: orgId,
               match_count: 5,
-              match_threshold: 0.3,
-              filter_type: "document",
+              match_threshold: 0.25,
+              filter_type: null,
             });
             if (docs?.length > 0) {
-              results.push(`\n## Embedded Documents\n`);
+              results.push(`\n## Related Data from Knowledge Base\n`);
               for (const doc of docs) {
-                results.push(`---\n**[Document]** (relevance: ${Math.round(doc.similarity * 100)}%)\n${doc.content}`);
+                results.push(`**[${doc.source_type.toUpperCase()}]** (${Math.round(doc.similarity * 100)}% match)\n${doc.content}\n`);
               }
             }
           }
         } catch { /* silent */ }
       }
 
-      // 3. Also search for any deal/activity mentioning this prospect
-      const { data: deals } = await supabase
-        .from("pipeline_deals")
-        .select("*")
-        .or(`prospect_company.ilike.%${prospectName}%,prospect_name.ilike.%${prospectName}%`);
-
-      if (deals?.length > 0) {
-        results.push(`\n## Pipeline Deals\n`);
-        for (const d of deals) {
+      // Step 5: Add pipeline context
+      if (pipelineDeals?.length) {
+        results.push(`\n## Pipeline Context\n`);
+        for (const d of pipelineDeals) {
           results.push(`- **${d.prospect_company || d.prospect_name}** — Stage: ${d.stage}, Notes: ${(d.notes || []).join("; ") || "none"}`);
         }
       }
 
       if (results.length === 0) {
-        return `No files or documents found for "${args.prospect_name}". The broker may need to upload the lease first using the file attachment button.`;
+        return `No files or documents found for "${args.prospect_name}". The broker needs to upload the lease to the company's Files section first.`;
       }
 
       return results.join("\n");

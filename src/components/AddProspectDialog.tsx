@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { buildings as mockBuildings } from '@/data/mockData';
+import { costarBuildings } from '@/data/costarBuildings';
 
 export function AddProspectDialog() {
   const [open, setOpen] = useState(false);
@@ -23,18 +24,31 @@ export function AddProspectDialog() {
   const [showBuildingList, setShowBuildingList] = useState(false);
   const navigate = useNavigate();
 
+  // All buildings from every source (same as map view)
+  const allBuildings = useMemo(() => {
+    const seen = new Set<string>();
+    const result: typeof mockBuildings = [];
+    for (const b of [...mockBuildings, ...costarBuildings]) {
+      const key = b.name.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(b);
+      }
+    }
+    return result;
+  }, []);
+
   const filteredBuildings = useMemo(() => {
     const q = form.building_search.toLowerCase().replace(/[,.\s]+/g, ' ').trim();
-    if (!q) return mockBuildings;
-    // Match each word independently so "1100 ny" matches "1100 New York Avenue"
+    if (!q) return allBuildings;
     const words = q.split(' ').filter(Boolean);
-    return mockBuildings.filter(b => {
+    return allBuildings.filter(b => {
       const haystack = `${b.name} ${b.address}`.toLowerCase();
       return words.every(w => haystack.includes(w));
     });
-  }, [form.building_search]);
+  }, [form.building_search, allBuildings]);
 
-  const selectedBuilding = mockBuildings.find(b => b.id === form.building_id);
+  const selectedBuilding = allBuildings.find(b => b.id === form.building_id);
 
   const handleSubmit = async () => {
     if (!form.company_name.trim() || !form.building_id) return;

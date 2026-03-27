@@ -30,6 +30,7 @@ import Analytics from "./pages/Analytics";
 import EmailAnalytics from "./pages/EmailAnalytics";
 import ProspectTable from "./pages/ProspectTable";
 import LeaseAbstracts from "./pages/LeaseAbstracts";
+import ProspectDetail from "./pages/ProspectDetail";
 import Landing from "./pages/Landing";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
@@ -84,7 +85,7 @@ const ProtectedRoutes = () => {
           <Route path="/map" element={<ErrorBoundary><MapView /></ErrorBoundary>} />
           <Route path="/news" element={<ErrorBoundary><News /></ErrorBoundary>} />
           <Route path="/building/:buildingId/tenant/:tenantId" element={<ErrorBoundary><TenantDetail /></ErrorBoundary>} />
-          <Route path="/prospect/:prospectId" element={<ErrorBoundary><CustomProspectDetail /></ErrorBoundary>} />
+          <Route path="/prospect/:prospectId" element={<ErrorBoundary><ProspectDetail /></ErrorBoundary>} />
           <Route path="/scoop" element={<ErrorBoundary><ScoopBoard /></ErrorBoundary>} />
           <Route path="/pipeline" element={<ErrorBoundary><Pipeline /></ErrorBoundary>} />
           <Route path="/tasks" element={<ErrorBoundary><Tasks /></ErrorBoundary>} />

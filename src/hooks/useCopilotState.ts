@@ -1314,11 +1314,34 @@ export function useCopilotState() {
 
       const authToken = await getAuthToken();
 
-      // Sliding window: send pinned messages + last 30 messages to stay within token limits
+      // Context compaction: when conversation exceeds threshold, summarize older messages
+      // (per Anthropic cookbook context_compaction pattern)
       const MAX_API_MESSAGES = 30;
-      const pinnedMessages = updatedMessages.filter(m => m.pinned);
-      const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
-      const apiMessages = [...new Set([...pinnedMessages, ...recentMessages])];
+      const COMPACTION_THRESHOLD = 40;
+      let apiMessages: Msg[];
+
+      if (updatedMessages.length > COMPACTION_THRESHOLD) {
+        // Summarize older messages into a single context message
+        const olderMessages = updatedMessages.slice(0, -MAX_API_MESSAGES);
+        const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
+        const pinnedMessages = updatedMessages.filter(m => m.pinned);
+
+        const summaryParts = olderMessages
+          .filter(m => m.content.length > 20)
+          .map(m => `${m.role === 'user' ? 'Broker' : 'Copilot'}: ${m.content.slice(0, 200)}${m.content.length > 200 ? '...' : ''}`)
+          .join('\n');
+
+        const compactionMsg: Msg = {
+          role: 'user',
+          content: `[CONVERSATION HISTORY SUMMARY - Earlier in this conversation, the following was discussed:\n${summaryParts}\n\nPlease continue from where we left off.]`,
+        };
+
+        apiMessages = [compactionMsg, ...new Set([...pinnedMessages, ...recentMessages])];
+      } else {
+        const pinnedMessages = updatedMessages.filter(m => m.pinned);
+        const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
+        apiMessages = [...new Set([...pinnedMessages, ...recentMessages])];
+      }
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',

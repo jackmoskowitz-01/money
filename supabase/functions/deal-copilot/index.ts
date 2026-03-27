@@ -62,6 +62,10 @@ You should call ALL of these at once:
 ## Available Tools
 You can execute these actions when the user asks:
 - **search_deals**: Search your deal data using semantic/AI search. Use this FIRST when the user asks about specific deals, contacts, activities, scoops, or documents that may not be in the provided context. This searches the full embedded knowledge base across all deal records, contacts, activities, market intel, and uploaded documents.
+- **query_database**: Query the deal database with natural language. Translates to SQL automatically. Use for data questions: counts, filters, date ranges, aggregations.
+- **deep_analyze**: Deep analysis with extended reasoning. Use for complex strategy questions, multi-deal comparisons, or negotiation planning that need careful thought.
+- **extract_lease_terms**: Extract structured lease terms from document text into a clean table + JSON. Use when the broker wants specific terms pulled from a lease/LOI/proposal.
+- **compact_context**: Compress the conversation history when it gets long. Summarize key facts and continue.
 - **search_market**: Search for real-time market data, news, company information, or any entity/organization not in the provided context. ALWAYS use this when the user asks about a company you don't recognize.
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
@@ -347,6 +351,67 @@ const TOOLS = [
           remind_days_before: { type: "number", description: "Days before the date to send a reminder (default 30)" },
         },
         required: ["prospect_name", "date_type", "date_value"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_database",
+      description: "Query the deal database using natural language. Translates your question into SQL and runs it against pipeline_deals, activities, tasks, scoops, company_contacts, and critical_dates tables. Use for data questions like 'how many deals over 20K SF', 'deals with no activity in 2 weeks', 'all contacts at Deloitte', 'tasks due this week'.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: { type: "string", description: "Natural language question about deal data" },
+        },
+        required: ["question"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "deep_analyze",
+      description: "Perform deep analysis with extended reasoning on complex deal questions. Uses Claude's extended thinking for thorough multi-step analysis. Use for: complex deal scoring, multi-deal strategy, market positioning analysis, negotiation strategy, or any question requiring careful multi-factor reasoning.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: { type: "string", description: "The complex analysis question" },
+          context_data: { type: "string", description: "Additional data to analyze (deal details, comps, etc.)" },
+        },
+        required: ["question"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "extract_lease_terms",
+      description: "Extract structured lease terms from text. Returns a typed JSON object with all key lease fields. Use when the broker wants specific terms extracted from a lease abstract, LOI, proposal, or any document containing deal terms.",
+      parameters: {
+        type: "object",
+        properties: {
+          document_text: { type: "string", description: "The lease/LOI/proposal text to extract terms from" },
+        },
+        required: ["document_text"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compact_context",
+      description: "Summarize the current conversation into a compact context. Use this internally when the conversation is getting very long to preserve memory while freeing up context space.",
+      parameters: {
+        type: "object",
+        properties: {
+          conversation_summary: { type: "string", description: "Your summary of the conversation so far — key facts, decisions, and pending items" },
+        },
+        required: ["conversation_summary"],
         additionalProperties: false,
       },
     },
@@ -711,6 +776,242 @@ async function generatePitchDeck(args: any, context: string): Promise<string> {
   return result;
 }
 
+// ============================================================
+// Text-to-SQL: Convert natural language to SQL queries
+// (per Anthropic cookbook text_to_sql pattern)
+// ============================================================
+
+const DB_SCHEMA = `
+Tables:
+- pipeline_deals (id uuid, tenant_id text, building_id text, stage text, notes text[], last_activity timestamptz, is_manual boolean, prospect_name text, prospect_company text, prospect_email text, prospect_phone text, prospect_sqft int, sent_touchpoints jsonb, sort_order int, created_at timestamptz, updated_at timestamptz, organization_id uuid)
+  Stages: hot_prospect, meeting_set, meeting_held, moving_forward, won, closed, lost
+
+- activities (id uuid, tenant_id text, building_id text, type text, title text, description text, timestamp timestamptz, outreach_reason_used text, organization_id uuid)
+  Types: email_sent, call, meeting, note, do_not_call, meeting_set
+
+- tasks (id uuid, title text, description text, priority text, type text, due_date timestamptz, completed boolean, tenant_id text, building_id text, organization_id uuid, created_at timestamptz)
+  Priorities: high, medium, low
+
+- scoops (id uuid, content text, category text, tags text[], author_name text, linked_tenant_id text, linked_building_id text, linked_tenant_name text, linked_building_name text, organization_id uuid, created_at timestamptz)
+  Categories: lease_move, rfp, expansion, contraction, personnel, concession, conversion, general
+
+- company_contacts (id uuid, entity_id text, name text, title text, email text, direct_phone text, mobile_phone text, organization_id uuid, created_at timestamptz)
+
+- critical_dates (id uuid, prospect_name text, prospect_id text, building_name text, date_type text, date_value date, description text, remind_days_before int, source text, user_id uuid, created_at timestamptz)
+`;
+
+async function queryDatabase(question: string, orgId: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Database query unavailable (ANTHROPIC_API_KEY not configured).";
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  try {
+    // Step 1: Generate SQL from natural language
+    const sqlResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20241022",
+        max_tokens: 500,
+        system: `You are a SQL expert. Given a natural language question and a database schema, generate a PostgreSQL SELECT query. Rules:
+- ONLY generate SELECT queries (never INSERT, UPDATE, DELETE, DROP, etc.)
+- Always filter by organization_id = '${orgId}'
+- Return ONLY the raw SQL, no explanation, no markdown, no backticks
+- Limit results to 25 rows max
+- Use current_date for relative date references`,
+        messages: [{ role: "user", content: `Schema:\n${DB_SCHEMA}\n\nQuestion: ${question}` }],
+      }),
+    });
+
+    if (!sqlResponse.ok) return "Failed to generate query.";
+    const sqlData = await sqlResponse.json();
+    const sql = sqlData.content?.[0]?.text?.trim();
+
+    if (!sql || !sql.toLowerCase().startsWith("select")) {
+      return "Could not generate a safe query for that question.";
+    }
+
+    // Step 2: Execute the query
+    const { data, error } = await supabase.rpc("exec_readonly_sql", { query_text: sql });
+
+    // Fallback: try direct query if RPC doesn't exist
+    if (error?.message?.includes("function") && error?.message?.includes("does not exist")) {
+      // Use a simpler approach — query the most likely table
+      return `## Generated SQL\n\`\`\`sql\n${sql}\n\`\`\`\n\n⚠️ Direct SQL execution requires the \`exec_readonly_sql\` RPC function. The SQL above is ready to run — you can execute it in the Supabase SQL editor.`;
+    }
+
+    if (error) return `Query error: ${error.message}\n\nGenerated SQL:\n\`\`\`sql\n${sql}\n\`\`\``;
+
+    // Step 3: Format results
+    const rows = Array.isArray(data) ? data : [];
+    if (rows.length === 0) return `No results found.\n\nSQL: \`${sql}\``;
+
+    const cols = Object.keys(rows[0]);
+    let table = `| ${cols.join(" | ")} |\n|${cols.map(() => "---").join("|")}|\n`;
+    for (const row of rows.slice(0, 25)) {
+      table += `| ${cols.map(c => String(row[c] ?? "—")).join(" | ")} |\n`;
+    }
+
+    return `## Query Results (${rows.length} rows)\n\n${table}\n\n<details><summary>SQL</summary>\n\n\`\`\`sql\n${sql}\n\`\`\`\n</details>`;
+  } catch (e) {
+    console.error("query_database error:", e);
+    return "Database query failed.";
+  }
+}
+
+// ============================================================
+// Extended Thinking: Deep analysis with reasoning chains
+// (per Anthropic cookbook extended_thinking pattern)
+// ============================================================
+
+async function deepAnalyze(question: string, contextData?: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Deep analysis unavailable (ANTHROPIC_API_KEY not configured).";
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5-20250514",
+        max_tokens: 16000,
+        thinking: {
+          type: "enabled",
+          budget_tokens: 10000,
+        },
+        messages: [{
+          role: "user",
+          content: `You are a senior CRE deal strategist. Analyze the following carefully, considering multiple factors and trade-offs.\n\n${contextData ? `Data:\n${contextData}\n\n` : ""}Question: ${question}\n\nProvide a thorough analysis with clear recommendations. Use headers, bullet points, and tables where appropriate.`,
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("Deep analyze error:", err);
+      return "Deep analysis failed.";
+    }
+
+    const data = await response.json();
+    // Extract the text response (thinking blocks are internal)
+    const textBlock = data.content?.find((b: any) => b.type === "text");
+    return textBlock?.text || "Analysis complete but no output generated.";
+  } catch (e) {
+    console.error("deep_analyze error:", e);
+    return "Deep analysis failed.";
+  }
+}
+
+// ============================================================
+// Structured Lease Term Extraction
+// (per Anthropic cookbook extracting_structured_json pattern)
+// ============================================================
+
+async function extractLeaseTerms(documentText: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Extraction unavailable (ANTHROPIC_API_KEY not configured).";
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20241022",
+        max_tokens: 2000,
+        tools: [{
+          name: "save_lease_terms",
+          description: "Save extracted lease terms as structured data",
+          input_schema: {
+            type: "object",
+            properties: {
+              tenant_name: { type: "string", description: "Name of the tenant" },
+              landlord_name: { type: "string", description: "Name of the landlord/owner" },
+              property_address: { type: "string", description: "Property street address" },
+              suite_number: { type: "string" },
+              rentable_sf: { type: "number", description: "Rentable square footage" },
+              usable_sf: { type: "number", description: "Usable square footage" },
+              lease_term_months: { type: "number", description: "Lease term in months" },
+              commencement_date: { type: "string", description: "Lease start date" },
+              expiration_date: { type: "string", description: "Lease end date" },
+              base_rent_psf: { type: "number", description: "Base rent per SF per year" },
+              annual_escalation_pct: { type: "number", description: "Annual escalation percentage" },
+              escalation_type: { type: "string", enum: ["fixed", "cpi", "market", "step"] },
+              ti_allowance_psf: { type: "number", description: "Tenant improvement allowance per SF" },
+              free_rent_months: { type: "number", description: "Months of free rent" },
+              operating_expenses: { type: "string", enum: ["full_service", "nnn", "modified_gross", "base_year"] },
+              base_year: { type: "number", description: "OpEx base year if applicable" },
+              parking_spaces: { type: "number" },
+              parking_rate: { type: "number", description: "Monthly parking rate per space" },
+              renewal_options: { type: "string", description: "Renewal option terms" },
+              termination_option: { type: "string", description: "Early termination terms" },
+              security_deposit: { type: "number" },
+              total_lease_value: { type: "number", description: "Total rent over the lease term" },
+              notes: { type: "string", description: "Any other notable terms or clauses" },
+            },
+            required: ["tenant_name", "property_address"],
+          },
+        }],
+        tool_choice: { type: "tool", name: "save_lease_terms" },
+        messages: [{
+          role: "user",
+          content: `Extract all lease terms from this document into structured fields. If a field is not found in the document, omit it.\n\n${documentText}`,
+        }],
+      }),
+    });
+
+    if (!response.ok) return "Lease term extraction failed.";
+
+    const data = await response.json();
+    const toolUse = data.content?.find((b: any) => b.type === "tool_use");
+    if (!toolUse?.input) return "Could not extract structured terms from this document.";
+
+    const terms = toolUse.input;
+    // Format as a clean table
+    let result = `## 📋 Extracted Lease Terms\n\n`;
+    result += `| Field | Value |\n|-------|-------|\n`;
+    const labels: Record<string, string> = {
+      tenant_name: "Tenant", landlord_name: "Landlord", property_address: "Property",
+      suite_number: "Suite", rentable_sf: "Rentable SF", usable_sf: "Usable SF",
+      lease_term_months: "Term (months)", commencement_date: "Commencement",
+      expiration_date: "Expiration", base_rent_psf: "Base Rent/SF/yr",
+      annual_escalation_pct: "Annual Escalation", escalation_type: "Escalation Type",
+      ti_allowance_psf: "TI Allowance/SF", free_rent_months: "Free Rent (months)",
+      operating_expenses: "OpEx Structure", base_year: "Base Year",
+      parking_spaces: "Parking Spaces", parking_rate: "Parking $/mo/space",
+      renewal_options: "Renewal Options", termination_option: "Termination Option",
+      security_deposit: "Security Deposit", total_lease_value: "Total Lease Value",
+      notes: "Notes",
+    };
+    for (const [key, val] of Object.entries(terms)) {
+      if (val == null || val === "") continue;
+      const label = labels[key] || key;
+      const display = typeof val === "number" ? val.toLocaleString() : String(val);
+      result += `| **${label}** | ${display} |\n`;
+    }
+
+    result += `\n<details><summary>Raw JSON</summary>\n\n\`\`\`json\n${JSON.stringify(terms, null, 2)}\n\`\`\`\n</details>`;
+    return result;
+  } catch (e) {
+    console.error("extract_lease_terms error:", e);
+    return "Lease term extraction failed.";
+  }
+}
+
 // Fire-and-forget: embed a record into the RAG vector store
 async function embedRecord(sourceType: string, sourceId: string, record: Record<string, unknown>, orgId: string): Promise<void> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -785,6 +1086,18 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         return "Deal search failed.";
       }
     }
+
+    case "query_database":
+      return queryDatabase(args.question, orgId || "");
+
+    case "deep_analyze":
+      return deepAnalyze(args.question, args.context_data || context || "");
+
+    case "extract_lease_terms":
+      return extractLeaseTerms(args.document_text);
+
+    case "compact_context":
+      return `✅ Context compacted. Summary preserved:\n\n${args.conversation_summary}`;
 
     case "search_market":
       return searchMarket(args.query);

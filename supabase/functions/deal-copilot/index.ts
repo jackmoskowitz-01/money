@@ -1166,14 +1166,50 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
               .download(f.file_path);
 
             if (fileData) {
+              const isPdf = f.file_type === "application/pdf" || f.file_name?.endsWith(".pdf");
               const isText = f.file_type?.includes("text") || f.file_name?.endsWith(".txt") || f.file_name?.endsWith(".csv") || f.file_name?.endsWith(".md");
+
               if (isText) {
                 const text = await fileData.text();
                 const truncated = text.length > 30000 ? text.slice(0, 30000) + "\n\n[... truncated ...]" : text;
                 results.push("```\n" + truncated + "\n```\n");
+              } else if (isPdf) {
+                // Send PDF to Claude for native reading
+                const pdfAnthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+                if (pdfAnthropicKey) {
+                  const bytes = new Uint8Array(await fileData.arrayBuffer());
+                  const base64 = btoa(String.fromCharCode(...bytes));
+                  const pdfResp = await fetch("https://api.anthropic.com/v1/messages", {
+                    method: "POST",
+                    headers: {
+                      "x-api-key": pdfAnthropicKey,
+                      "anthropic-version": "2023-06-01",
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      model: "claude-sonnet-4-20250514",
+                      max_tokens: 8192,
+                      messages: [{
+                        role: "user",
+                        content: [
+                          { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
+                          { type: "text", text: "Extract the full text content of this document. Preserve all details, numbers, dates, and formatting." },
+                        ],
+                      }],
+                    }),
+                  });
+                  if (pdfResp.ok) {
+                    const pdfData = await pdfResp.json();
+                    const pdfText = pdfData.content?.find((b: any) => b.type === "text")?.text;
+                    if (pdfText) {
+                      results.push("**[PDF Content Extracted]**\n\n" + pdfText + "\n");
+                    }
+                  } else {
+                    results.push(`_(Could not read PDF — ${(f.file_size / 1024).toFixed(1)} KB)_\n`);
+                  }
+                }
               } else {
-                // For PDFs and other binary files, note them — the content may already be in RAG
-                results.push(`_(Binary file — ${(f.file_size / 1024).toFixed(1)} KB. Content may be available via RAG search below.)_\n`);
+                results.push(`_(Binary file — ${(f.file_size / 1024).toFixed(1)} KB)_\n`);
               }
             }
           } catch (e) {

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users, Globe } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/command";
 import { buildings } from "@/data/mockData";
 import { usePipeline } from "@/hooks/usePipeline";
+import { supabase } from "@/integrations/supabase/client";
 
 interface ProspectResult {
   label: string;
@@ -23,6 +24,17 @@ export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
   const { pipeline } = usePipeline();
+  const [dbProspects, setDbProspects] = React.useState<any[]>([]);
+
+  // Fetch prospects from Supabase when palette opens
+  React.useEffect(() => {
+    if (!open) return;
+    supabase
+      .from("prospects")
+      .select("id, company_name, website_url, address")
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setDbProspects(data || []));
+  }, [open]);
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,9 +48,18 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // Build searchable list of all prospects/accounts
   const prospects = React.useMemo<ProspectResult[]>(() => {
     const results: ProspectResult[] = [];
+
+    // Prospects from Supabase (the new prospects table)
+    dbProspects.forEach((p) => {
+      results.push({
+        label: p.company_name,
+        subtitle: [p.address, p.website_url].filter(Boolean).join(" · ") || "Prospect",
+        path: `/prospect/${p.id}`,
+        icon: <Globe className="mr-2 h-4 w-4 shrink-0" />,
+      });
+    });
 
     // Tenants from buildings (mock data)
     buildings.forEach((b) => {
@@ -52,12 +73,12 @@ export function CommandPalette() {
       });
     });
 
-    // Pipeline deals (manual prospects from Supabase)
+    // Pipeline deals (manual prospects)
     pipeline.forEach((deal) => {
       if (deal.isManual && deal.prospectCompany) {
         results.push({
           label: deal.prospectCompany,
-          subtitle: `${deal.prospectName || ''} · ${deal.prospectSqft ? deal.prospectSqft.toLocaleString() + ' SF' : 'Pipeline'} · ${deal.stage.replace(/_/g, ' ')}`,
+          subtitle: `${deal.prospectName || ""} · ${deal.prospectSqft ? deal.prospectSqft.toLocaleString() + " SF" : "Pipeline"} · ${deal.stage.replace(/_/g, " ")}`,
           path: `/prospect/${deal.tenantId}`,
           icon: <Users className="mr-2 h-4 w-4 shrink-0" />,
         });
@@ -65,7 +86,7 @@ export function CommandPalette() {
     });
 
     return results;
-  }, [pipeline]);
+  }, [pipeline, dbProspects]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
@@ -74,9 +95,9 @@ export function CommandPalette() {
         <CommandEmpty>No matching prospects found.</CommandEmpty>
 
         <CommandGroup heading="Prospects & Accounts">
-          {prospects.map((p) => (
+          {prospects.map((p, i) => (
             <CommandItem
-              key={p.path}
+              key={`${p.path}-${i}`}
               value={`${p.label} ${p.subtitle}`}
               onSelect={() => {
                 setOpen(false);

@@ -911,6 +911,20 @@ export function useCopilotState() {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
       }
 
+      // Auto-export abstracts/comps/matrices/cashflows to Word — replace chat with short confirmation
+      if (pendingAutoExportRef.current && assistantSoFar.length > 200) {
+        pendingAutoExportRef.current = false;
+        const shortMsg = '✅ Document exported to Word.';
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: shortMsg } : m);
+          }
+          return prev;
+        });
+        setTimeout(() => handleExportWord(assistantSoFar), 300);
+      }
+
       // Fire-and-forget: embed parsed document content for RAG search
       if (assistantSoFar && fileNames.length > 0) {
         for (const fileName of fileNames) {
@@ -1487,9 +1501,18 @@ export function useCopilotState() {
       // Persist assistant message
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
-        if (pendingAutoExportRef.current && isExportableReport(assistantSoFar)) {
+        if (pendingAutoExportRef.current && assistantSoFar.length > 200) {
           pendingAutoExportRef.current = false;
-          setTimeout(() => handleExportWord(assistantSoFar), 500);
+          // Replace chatbot message with a short confirmation instead of the full abstract
+          const shortMsg = '✅ Document exported to Word.';
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last?.role === 'assistant') {
+              return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: shortMsg } : m);
+            }
+            return prev;
+          });
+          setTimeout(() => handleExportWord(assistantSoFar), 300);
         }
       }
 

@@ -89,3 +89,6 @@ verify_jwt = true
 
 [functions.rag-embed]
 verify_jwt = true
+
+[functions.rag-backfill]
+verify_jwt = true

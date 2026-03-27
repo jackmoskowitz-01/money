@@ -1110,6 +1110,40 @@ export function useCopilotState() {
     let assistantSoFar = '';
 
     try {
+      // RAG: retrieve relevant embedded context for this question
+      let ragCtx = '';
+      if (!voiceModeRef.current && orgId) {
+        try {
+          const ragToken = await getAuthToken();
+          const ragResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rag-ask`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${ragToken}`,
+            },
+            body: JSON.stringify({ question: text, topK: 5, threshold: 0.4, retrieveOnly: true }),
+          });
+          if (ragResp.ok) {
+            const ragData = await ragResp.json();
+            if (ragData.chunks?.length > 0) {
+              ragCtx = '\n\n### RAG Retrieved Context (relevant embedded deal data)\nUse this data to give specific, grounded answers. Reference names, numbers, and details from these records.\n' +
+                ragData.chunks.map((c: any, i: number) => {
+                  const meta = c.metadata || {};
+                  const metaParts = [
+                    meta.tenant && `Tenant: ${meta.tenant}`,
+                    meta.stage && `Stage: ${meta.stage}`,
+                    meta.sf && `SF: ${Number(meta.sf).toLocaleString()}`,
+                    meta.category && `Category: ${meta.category}`,
+                  ].filter(Boolean).join(' | ');
+                  return `[${i + 1}] [${c.type.toUpperCase()}]${metaParts ? ` (${metaParts})` : ''} (${Math.round(c.similarity * 100)}% match)\n${c.content}`;
+                }).join('\n\n');
+            }
+          }
+        } catch {
+          // RAG retrieval is best-effort — don't block the copilot
+        }
+      }
+
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
       const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
       const brainCtx = brainEnabled && brainContext ? `\n\n${brainContext}` : '';
@@ -1276,7 +1310,7 @@ export function useCopilotState() {
       }
 
       const intelligenceCtx = intelligenceContext ? `\n\n${intelligenceContext}` : '';
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + ragCtx + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
 
       const authToken = await getAuthToken();
 

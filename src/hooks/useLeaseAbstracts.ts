@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getAuthToken } from '@/lib/getAuthToken';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export interface RentScheduleEntry {
   year: number;
@@ -99,6 +100,10 @@ export function useLeaseAbstracts() {
     }
 
     await fetchAbstracts();
+    // Fire-and-forget: embed for RAG
+    if (data) {
+      embedAfterSave('lease_abstract', (data as any).id, data as Record<string, unknown>);
+    }
     return data as unknown as LeaseAbstract;
   }, [user, fetchAbstracts]);
 

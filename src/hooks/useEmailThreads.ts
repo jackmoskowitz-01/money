@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export type EmailThread = {
   id: string;
@@ -149,9 +150,13 @@ export function useEmailThreads() {
       ...(orgId ? { organization_id: orgId } : {}),
     };
 
-    const { error } = await supabase.from('email_threads').insert(row);
+    const { error, data: insertedEmail } = await supabase.from('email_threads').insert(row).select('id').single();
     if (!error) {
       fetchThreads();
+      // Fire-and-forget: embed for RAG
+      if (insertedEmail) {
+        embedAfterSave('email', insertedEmail.id, row as Record<string, unknown>);
+      }
       // Auto-digest: feed email send to AI brain
       const { digestEvent } = await import('@/lib/autoDigest');
       digestEvent('email_sent', {

@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Users, Trash2 } from 'lucide-react';
+import { Plus, Users, Trash2, Brain, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 type Organization = {
   id: string;
@@ -28,6 +29,7 @@ type OrgMember = {
 
 export default function AdminOrganizations() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [backfilling, setBackfilling] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -242,6 +244,34 @@ export default function AdminOrganizations() {
                       <Users className="h-3 w-3 mr-1" />
                       {org.member_count}
                     </Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-primary hover:text-primary"
+                      title="Backfill RAG embeddings"
+                      disabled={backfilling === org.id}
+                      onClick={async e => {
+                        e.stopPropagation();
+                        setBackfilling(org.id);
+                        try {
+                          const token = await getAuthToken();
+                          const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rag-backfill`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                            body: JSON.stringify({ organizationId: org.id }),
+                          });
+                          const data = await resp.json();
+                          if (resp.ok) {
+                            toast.success(`Embedded ${data.total_embedded} records for ${org.name}`);
+                          } else {
+                            toast.error(data.error || 'Backfill failed');
+                          }
+                        } catch { toast.error('Backfill failed'); }
+                        setBackfilling(null);
+                      }}
+                    >
+                      {backfilling === org.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

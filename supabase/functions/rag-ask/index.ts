@@ -70,7 +70,7 @@ serve(async (req) => {
   }
 
   try {
-    const { question, filterType, topK = 5, threshold = 0.40 } = await req.json();
+    const { question, filterType, topK = 5, threshold = 0.40, retrieveOnly = false } = await req.json();
 
     if (!question?.trim()) {
       return new Response(
@@ -146,11 +146,10 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const retrieveCount = topK * 4; // Retrieve more for re-ranking
+    const retrieveCount = topK * 4;
 
     // Run vector search and full-text search in parallel (hybrid search)
     const [vectorResult, textResult] = await Promise.all([
-      // Vector similarity search
       adminClient.rpc("match_embeddings", {
         query_embedding: queryEmbedding,
         match_org_id: orgId,
@@ -158,7 +157,6 @@ serve(async (req) => {
         match_threshold: threshold,
         filter_type: filterType ?? null,
       }),
-      // Full-text keyword search on content column
       adminClient
         .from("embeddings")
         .select("source_type, source_id, content, metadata, organization_id")
@@ -167,7 +165,7 @@ serve(async (req) => {
         .limit(retrieveCount)
         .then((res: any) => ({
           ...res,
-          data: res.data?.map((r: any) => ({ ...r, similarity: 0.5 })) ?? [], // assign neutral score
+          data: res.data?.map((r: any) => ({ ...r, similarity: 0.5 })) ?? [],
         })),
     ]);
 
@@ -175,7 +173,7 @@ serve(async (req) => {
       throw new Error(`Vector retrieval failed: ${vectorResult.error.message}`);
     }
 
-    // Merge and deduplicate results (vector results take priority for similarity score)
+    // Merge and deduplicate results
     const seen = new Set<string>();
     const allChunks: any[] = [];
 
@@ -200,6 +198,23 @@ serve(async (req) => {
         JSON.stringify({
           answer: "I couldn't find relevant deal data for that question. Try adding more context or make sure your deals and activities have been saved.",
           sources: [],
+          chunks: [],
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If retrieveOnly mode, return raw chunks without calling Claude
+    if (retrieveOnly) {
+      return new Response(
+        JSON.stringify({
+          chunks: allChunks.slice(0, topK).map((c: any) => ({
+            type: c.source_type,
+            id: c.source_id,
+            content: c.content,
+            metadata: c.metadata,
+            similarity: c.similarity,
+          })),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

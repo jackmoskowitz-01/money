@@ -13,7 +13,7 @@ create table if not exists embeddings (
   id              uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
   source_type     text not null check (
-                    source_type in ('deal', 'contact', 'activity', 'scoop', 'document')
+                    source_type in ('deal', 'contact', 'activity', 'scoop', 'document', 'email', 'task', 'critical_date', 'lease_abstract', 'stacking_plan', 'prospect_list', 'brain_fact', 'prospect')
                   ),
   source_id       text not null,
   content         text not null,

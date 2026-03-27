@@ -6,6 +6,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 // Chunkers — convert DealFlow records to embeddable text
 // ============================================================
 
+type ChunkResult = { content: string; metadata: Record<string, unknown> };
+
 // Contextual prefix: provides document-level context for better embedding quality
 // (per Anthropic cookbook contextual-embeddings pattern — 35% fewer retrieval failures)
 function contextPrefix(sourceType: string, record: Record<string, unknown>): string {
@@ -31,6 +33,28 @@ function contextPrefix(sourceType: string, record: Record<string, unknown>): str
       const tenant = record.linked_tenant_name || "";
       return `[CRE Market Intel] This is a ${category} scoop/intelligence item${tenant ? ` related to ${tenant}` : ""} in a commercial real estate brokerage.`;
     }
+    case "email": {
+      const prospect = record.prospect_name || "unknown";
+      return `[CRE Email] This is an outreach email record to ${prospect} in a commercial real estate tenant rep brokerage.`;
+    }
+    case "task": {
+      const title = record.title || "untitled";
+      return `[CRE Task] This is a task "${title}" in a commercial real estate tenant rep brokerage pipeline.`;
+    }
+    case "critical_date": {
+      const prospect = record.prospect_name || "unknown";
+      const dateType = record.date_type ? String(record.date_type).replace(/_/g, " ") : "unknown";
+      return `[CRE Critical Date] This is a ${dateType} date for ${prospect} in a commercial real estate brokerage.`;
+    }
+    case "lease_abstract": {
+      const tenant = record.tenant_name || "unknown";
+      const building = record.building_name || "unknown";
+      return `[CRE Lease Abstract] This is a lease abstract for ${tenant} at ${building} in a commercial real estate brokerage.`;
+    }
+    case "prospect": {
+      const name = record.name || "unknown";
+      return `[CRE Prospect] This is a custom prospect record for ${name} in a commercial real estate tenant rep brokerage.`;
+    }
     case "document": {
       const title = record.title || record.filename || "untitled";
       return `[CRE Document] This is an excerpt from "${title}", a document uploaded to a commercial real estate tenant rep brokerage system.`;
@@ -40,119 +64,206 @@ function contextPrefix(sourceType: string, record: Record<string, unknown>): str
   }
 }
 
-function chunkDeal(record: Record<string, unknown>): { content: string; metadata: Record<string, unknown> } {
+function chunkDeal(r: Record<string, unknown>): ChunkResult {
   const lines: string[] = [];
+  if (r.prospect_name || r.prospect_company) lines.push(`Deal: ${r.prospect_name || r.prospect_company}`);
+  if (r.prospect_company) lines.push(`Company: ${r.prospect_company}`);
+  if (r.stage) lines.push(`Stage: ${r.stage}`);
+  if (r.prospect_sqft) lines.push(`Space Requirement: ${Number(r.prospect_sqft).toLocaleString()} SF`);
+  if (r.prospect_email) lines.push(`Contact Email: ${r.prospect_email}`);
+  if (r.prospect_phone) lines.push(`Contact Phone: ${r.prospect_phone}`);
+  if (r.building_id && r.building_id !== 'manual') lines.push(`Building: ${r.building_id}`);
+  if (Array.isArray(r.notes) && r.notes.length > 0) lines.push(`Notes: ${r.notes.join('; ')}`);
+  if (r.is_manual) lines.push(`Source: Manually added prospect`);
+  if (r.last_activity) lines.push(`Last Activity: ${r.last_activity}`);
+  return {
+    content: lines.join('\n'),
+    metadata: { tenant: r.prospect_name || r.prospect_company, stage: r.stage, sf: r.prospect_sqft, company: r.prospect_company },
+  };
+}
 
-  if (record.prospect_name || record.prospect_company) {
-    lines.push(`Deal: ${record.prospect_name || record.prospect_company}`);
+function chunkContact(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.name) lines.push(`Contact: ${r.name}`);
+  if (r.title) lines.push(`Title: ${r.title}`);
+  if (r.email) lines.push(`Email: ${r.email}`);
+  if (r.direct_phone) lines.push(`Direct Phone: ${r.direct_phone}`);
+  if (r.mobile_phone) lines.push(`Mobile: ${r.mobile_phone}`);
+  if (r.entity_id) lines.push(`Company/Entity: ${r.entity_id}`);
+  return { content: lines.join('\n'), metadata: { full_name: r.name, company: r.entity_id, contact_role: r.title } };
+}
+
+function chunkActivity(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.type) lines.push(`Activity Type: ${String(r.type).charAt(0).toUpperCase() + String(r.type).slice(1)}`);
+  if (r.title) lines.push(`Title: ${r.title}`);
+  if (r.description) lines.push(`Description: ${r.description}`);
+  if (r.tenant_id) lines.push(`Prospect: ${r.tenant_id}`);
+  if (r.timestamp) lines.push(`Date: ${r.timestamp}`);
+  if (r.outreach_reason_used) lines.push(`Outreach Reason: ${r.outreach_reason_used}`);
+  return { content: lines.join('\n'), metadata: { activity_type: r.type, tenant_id: r.tenant_id, date: r.timestamp } };
+}
+
+function chunkScoop(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.category) lines.push(`Scoop Category: ${r.category}`);
+  if (r.content) lines.push(`Intel: ${r.content}`);
+  if (r.linked_tenant_name) lines.push(`Tenant: ${r.linked_tenant_name}`);
+  if (r.linked_building_name) lines.push(`Building: ${r.linked_building_name}`);
+  if (Array.isArray(r.tags) && r.tags.length > 0) lines.push(`Tags: ${r.tags.join(', ')}`);
+  return { content: lines.join('\n'), metadata: { category: r.category, tenant: r.linked_tenant_name, building: r.linked_building_name } };
+}
+
+function chunkEmail(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.prospect_name) lines.push(`Email to: ${r.prospect_name}`);
+  if (r.prospect_email) lines.push(`Email: ${r.prospect_email}`);
+  if (r.subject) lines.push(`Subject: ${r.subject}`);
+  if (r.body_preview) lines.push(`Preview: ${r.body_preview}`);
+  if (r.template_used) lines.push(`Template: ${r.template_used}`);
+  if (r.tone_used) lines.push(`Tone: ${r.tone_used}`);
+  if (r.outreach_reason) lines.push(`Reason: ${r.outreach_reason}`);
+  if (r.industry) lines.push(`Industry: ${r.industry}`);
+  if (r.sent_at) lines.push(`Sent: ${r.sent_at}`);
+  if (r.reply_detected) {
+    lines.push(`Reply: Yes`);
+    if (r.reply_sentiment) lines.push(`Sentiment: ${r.reply_sentiment}`);
+    if (r.reply_content) lines.push(`Reply Content: ${String(r.reply_content).substring(0, 300)}`);
   }
-  if (record.prospect_company) lines.push(`Company: ${record.prospect_company}`);
-  if (record.stage) lines.push(`Stage: ${record.stage}`);
-  if (record.prospect_sqft) lines.push(`Space Requirement: ${Number(record.prospect_sqft).toLocaleString()} SF`);
-  if (record.prospect_email) lines.push(`Contact Email: ${record.prospect_email}`);
-  if (record.prospect_phone) lines.push(`Contact Phone: ${record.prospect_phone}`);
-  if (record.building_id && record.building_id !== 'manual') lines.push(`Building: ${record.building_id}`);
-  if (Array.isArray(record.notes) && record.notes.length > 0) {
-    lines.push(`Notes: ${record.notes.join('; ')}`);
+  if (r.thread_status) lines.push(`Status: ${r.thread_status}`);
+  return { content: lines.join('\n'), metadata: { prospect: r.prospect_name, industry: r.industry, status: r.thread_status, template: r.template_used } };
+}
+
+function chunkTask(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.title) lines.push(`Task: ${r.title}`);
+  if (r.description) lines.push(`Description: ${r.description}`);
+  if (r.type) lines.push(`Type: ${r.type}`);
+  if (r.priority) lines.push(`Priority: ${r.priority}`);
+  if (r.due_date) lines.push(`Due: ${r.due_date}`);
+  if (r.completed !== undefined) lines.push(`Status: ${r.completed ? 'Completed' : 'Open'}`);
+  if (r.assigned_to_name) lines.push(`Assigned to: ${r.assigned_to_name}`);
+  if (r.tenant_id) lines.push(`Prospect: ${r.tenant_id}`);
+  return { content: lines.join('\n'), metadata: { title: r.title, priority: r.priority, type: r.type, completed: r.completed } };
+}
+
+function chunkCriticalDate(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.prospect_name) lines.push(`Prospect: ${r.prospect_name}`);
+  if (r.building_name) lines.push(`Building: ${r.building_name}`);
+  if (r.date_type) lines.push(`Date Type: ${String(r.date_type).replace(/_/g, ' ')}`);
+  if (r.date_value) lines.push(`Date: ${r.date_value}`);
+  if (r.description) lines.push(`Description: ${r.description}`);
+  if (r.remind_days_before) lines.push(`Reminder: ${r.remind_days_before} days before`);
+  if (r.source) lines.push(`Source: ${r.source}`);
+  return { content: lines.join('\n'), metadata: { prospect: r.prospect_name, date_type: r.date_type, date: r.date_value } };
+}
+
+function chunkLeaseAbstract(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.tenant_name) lines.push(`Tenant: ${r.tenant_name}`);
+  if (r.landlord_name) lines.push(`Landlord: ${r.landlord_name}`);
+  if (r.building_name) lines.push(`Building: ${r.building_name}`);
+  if (r.building_address) lines.push(`Address: ${r.building_address}`);
+  if (r.premises_sf) lines.push(`Premises: ${Number(r.premises_sf).toLocaleString()} SF`);
+  if (r.floor_suite) lines.push(`Floor/Suite: ${r.floor_suite}`);
+  if (r.lease_type) lines.push(`Lease Type: ${r.lease_type}`);
+  if (r.commencement_date) lines.push(`Commencement: ${r.commencement_date}`);
+  if (r.expiration_date) lines.push(`Expiration: ${r.expiration_date}`);
+  if (r.term_months) lines.push(`Term: ${r.term_months} months`);
+  if (r.base_rent_psf) lines.push(`Base Rent: $${r.base_rent_psf}/SF`);
+  if (r.escalation_type) lines.push(`Escalation: ${r.escalation_type}${r.escalation_rate ? ` (${r.escalation_rate}%)` : ''}`);
+  if (r.free_rent_months) lines.push(`Free Rent: ${r.free_rent_months} months`);
+  if (r.ti_allowance_psf) lines.push(`TI Allowance: $${r.ti_allowance_psf}/SF`);
+  if (r.operating_expenses) lines.push(`OpEx: ${r.operating_expenses}`);
+  if (r.security_deposit) lines.push(`Security Deposit: ${r.security_deposit}`);
+  if (r.notable_clauses) lines.push(`Notable Clauses: ${r.notable_clauses}`);
+  return { content: lines.join('\n'), metadata: { tenant: r.tenant_name, building: r.building_name, sf: r.premises_sf, rent: r.base_rent_psf } };
+}
+
+function chunkStackingPlan(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.tenant_name) lines.push(`Tenant: ${r.tenant_name}`);
+  if (r.building_id) lines.push(`Building: ${r.building_id}`);
+  if (r.floor) lines.push(`Floor: ${r.floor}`);
+  if (r.sqft) lines.push(`Size: ${Number(r.sqft).toLocaleString()} SF`);
+  if (r.industry) lines.push(`Industry: ${r.industry}`);
+  if (r.lease_expiration) lines.push(`Lease Expiration: ${r.lease_expiration}`);
+  if (r.notes) lines.push(`Notes: ${r.notes}`);
+  return { content: lines.join('\n'), metadata: { tenant: r.tenant_name, building: r.building_id, sf: r.sqft, expiration: r.lease_expiration } };
+}
+
+function chunkProspectList(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.name) lines.push(`Prospect List: ${r.name}`);
+  if (r.industry) lines.push(`Industry Focus: ${r.industry}`);
+  return { content: lines.join('\n'), metadata: { name: r.name, industry: r.industry } };
+}
+
+function chunkBrainFact(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.fact) lines.push(`Fact: ${r.fact}`);
+  if (r.category) lines.push(`Category: ${r.category}`);
+  if (r.context) lines.push(`Context: ${r.context}`);
+  if (r.prospect_name) lines.push(`Prospect: ${r.prospect_name}`);
+  if (r.source) lines.push(`Source: ${r.source}`);
+  return { content: lines.join('\n'), metadata: { category: r.category, prospect: r.prospect_name, confidence: r.confidence } };
+}
+
+function chunkProspect(r: Record<string, unknown>): ChunkResult {
+  const lines: string[] = [];
+  if (r.name) lines.push(`Prospect: ${r.name}`);
+  if (r.address) lines.push(`Address: ${r.address}`);
+  if (r.website) lines.push(`Website: ${r.website}`);
+  const enrichment = r.enrichment as Record<string, unknown> | null;
+  if (enrichment) {
+    if (enrichment.industry) lines.push(`Industry: ${enrichment.industry}`);
+    if (enrichment.employeeCount) lines.push(`Employees: ${enrichment.employeeCount}`);
+    const space = enrichment.spaceDetails as Record<string, unknown> | null;
+    if (space?.currentSqft) lines.push(`Current Space: ${space.currentSqft}`);
+    const contacts = enrichment.keyContacts as Array<Record<string, unknown>> | null;
+    if (contacts?.length) lines.push(`Key Contacts: ${contacts.map(c => `${c.name} (${c.title})`).join(', ')}`);
+    const signals = enrichment.creSignals as string[] | null;
+    if (signals?.length) lines.push(`CRE Signals: ${signals.join('; ')}`);
   }
-  if (record.is_manual) lines.push(`Source: Manually added prospect`);
-
-  return {
-    content: lines.join('\n'),
-    metadata: {
-      tenant: record.prospect_name || record.prospect_company,
-      stage: record.stage,
-      sf: record.prospect_sqft,
-      company: record.prospect_company,
-    },
-  };
+  return { content: lines.join('\n'), metadata: { name: r.name, industry: enrichment?.industry, address: r.address } };
 }
 
-function chunkContact(record: Record<string, unknown>): { content: string; metadata: Record<string, unknown> } {
-  const lines: string[] = [];
+// Chunker dispatcher
+const CHUNKERS: Record<string, (r: Record<string, unknown>) => ChunkResult> = {
+  deal: chunkDeal,
+  contact: chunkContact,
+  activity: chunkActivity,
+  scoop: chunkScoop,
+  email: chunkEmail,
+  task: chunkTask,
+  critical_date: chunkCriticalDate,
+  lease_abstract: chunkLeaseAbstract,
+  stacking_plan: chunkStackingPlan,
+  prospect_list: chunkProspectList,
+  brain_fact: chunkBrainFact,
+  prospect: chunkProspect,
+};
 
-  if (record.name) lines.push(`Contact: ${record.name}`);
-  if (record.title) lines.push(`Title: ${record.title}`);
-  if (record.email) lines.push(`Email: ${record.email}`);
-  if (record.direct_phone) lines.push(`Direct Phone: ${record.direct_phone}`);
-  if (record.mobile_phone) lines.push(`Mobile: ${record.mobile_phone}`);
-  if (record.entity_id) lines.push(`Company/Entity: ${record.entity_id}`);
-
-  return {
-    content: lines.join('\n'),
-    metadata: {
-      full_name: record.name,
-      company: record.entity_id,
-      contact_role: record.title,
-    },
-  };
-}
-
-function chunkActivity(record: Record<string, unknown>): { content: string; metadata: Record<string, unknown> } {
-  const lines: string[] = [];
-
-  if (record.type) lines.push(`Activity Type: ${String(record.type).charAt(0).toUpperCase() + String(record.type).slice(1)}`);
-  if (record.title) lines.push(`Title: ${record.title}`);
-  if (record.description) lines.push(`Description: ${record.description}`);
-  if (record.tenant_id) lines.push(`Prospect: ${record.tenant_id}`);
-  if (record.timestamp) lines.push(`Date: ${record.timestamp}`);
-  if (record.outreach_reason_used) lines.push(`Outreach Reason: ${record.outreach_reason_used}`);
-
-  return {
-    content: lines.join('\n'),
-    metadata: {
-      activity_type: record.type,
-      tenant_id: record.tenant_id,
-      date: record.timestamp,
-    },
-  };
-}
-
-function chunkScoop(record: Record<string, unknown>): { content: string; metadata: Record<string, unknown> } {
-  const lines: string[] = [];
-
-  if (record.category) lines.push(`Scoop Category: ${record.category}`);
-  if (record.content) lines.push(`Intel: ${record.content}`);
-  if (record.linked_tenant_name) lines.push(`Tenant: ${record.linked_tenant_name}`);
-  if (record.linked_building_name) lines.push(`Building: ${record.linked_building_name}`);
-  if (Array.isArray(record.tags) && record.tags.length > 0) {
-    lines.push(`Tags: ${record.tags.join(', ')}`);
-  }
-
-  return {
-    content: lines.join('\n'),
-    metadata: {
-      category: record.category,
-      tenant: record.linked_tenant_name,
-      building: record.linked_building_name,
-    },
-  };
-}
-
-function chunkDocument(record: Record<string, unknown>): { content: string; metadata: Record<string, unknown> }[] {
+// Document chunker — splits long text into overlapping chunks
+function chunkDocument(record: Record<string, unknown>): ChunkResult[] {
   const text = String(record.content || record.text || "");
   const title = String(record.title || record.filename || "document");
   if (!text.trim()) return [];
 
-  // Split into overlapping chunks of ~1500 chars with 200 char overlap
   const CHUNK_SIZE = 1500;
   const OVERLAP = 200;
-  const chunks: { content: string; metadata: Record<string, unknown> }[] = [];
+  const chunks: ChunkResult[] = [];
 
   for (let start = 0; start < text.length; start += CHUNK_SIZE - OVERLAP) {
     const slice = text.slice(start, start + CHUNK_SIZE).trim();
     if (!slice) continue;
     chunks.push({
       content: `Document: ${title}\n\n${slice}`,
-      metadata: {
-        title,
-        chunk_index: chunks.length,
-        total_chunks: -1, // filled below
-      },
+      metadata: { title, chunk_index: chunks.length, total_chunks: -1 },
     });
   }
 
-  // Fill total_chunks
   for (const c of chunks) {
     c.metadata.total_chunks = chunks.length;
   }
@@ -225,31 +336,16 @@ serve(async (req) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      chunks = docChunks.map((c, i) => ({
-        ...c,
-        chunkSourceId: `${sourceId}-chunk-${i}`,
-      }));
+      chunks = docChunks.map((c, i) => ({ ...c, chunkSourceId: `${sourceId}-chunk-${i}` }));
     } else {
-      let chunkResult: { content: string; metadata: Record<string, unknown> };
-      switch (sourceType) {
-        case "deal":
-          chunkResult = chunkDeal(record);
-          break;
-        case "contact":
-          chunkResult = chunkContact(record);
-          break;
-        case "activity":
-          chunkResult = chunkActivity(record);
-          break;
-        case "scoop":
-          chunkResult = chunkScoop(record);
-          break;
-        default:
-          return new Response(
-            JSON.stringify({ error: `Unknown sourceType: ${sourceType}` }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+      const chunker = CHUNKERS[sourceType];
+      if (!chunker) {
+        return new Response(
+          JSON.stringify({ error: `Unknown sourceType: ${sourceType}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
+      const chunkResult = chunker(record);
       if (!chunkResult.content.trim()) {
         return new Response(
           JSON.stringify({ success: true, skipped: true }),

@@ -12,6 +12,7 @@ import { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CAS
 import { parseSSEStream } from '@/lib/parseSSEStream';
 import { getAuthToken } from '@/lib/getAuthToken';
 import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
@@ -847,6 +848,17 @@ export function useCopilotState() {
 
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+      }
+
+      // Fire-and-forget: embed parsed document content for RAG search
+      if (assistantSoFar && fileNames.length > 0) {
+        for (const fileName of fileNames) {
+          embedAfterSave('document', `doc-${fileName}-${Date.now()}`, {
+            content: assistantSoFar,
+            filename: fileName,
+            title: fileName.replace(/\.[^.]+$/, ''),
+          });
+        }
       }
 
       // Auto-save template if this was a template save request

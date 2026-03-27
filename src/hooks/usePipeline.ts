@@ -111,11 +111,13 @@ export function usePipeline() {
 
   const updateStage = useCallback(async (tenantId: string, buildingId: string, stage: PipelineStage) => {
     const item = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('pipeline_deals')
       .update({ stage, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('tenant_id', tenantId)
-      .eq('building_id', buildingId);
+      .eq('building_id', buildingId)
+      .select('id')
+      .single();
 
     if (error) {
       toast.error('Failed to update deal stage');
@@ -127,9 +129,9 @@ export function usePipeline() {
         : p
     ));
     toast.success(`Deal moved to ${stageLabels[stage]}`);
-    // Fire-and-forget: re-embed for RAG with updated stage
+    // Fire-and-forget: re-embed for RAG with updated stage (use DB id for consistent upsert)
     if (item) {
-      embedAfterSave('deal', `${tenantId}-${buildingId}`, {
+      embedAfterSave('deal', data?.id ?? `${tenantId}-${buildingId}`, {
         ...item, stage, last_activity: new Date().toISOString(),
         prospect_name: item.prospectName, prospect_company: item.prospectCompany,
         prospect_sqft: item.prospectSqft, tenant_id: tenantId, building_id: buildingId,

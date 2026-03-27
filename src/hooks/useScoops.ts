@@ -99,14 +99,14 @@ export function useScoops() {
     linked_tenant_name?: string;
     linked_building_name?: string;
   }) => {
-    const { error } = await supabase.from('scoops').insert([{ ...scoop, ...(orgId ? { organization_id: orgId } : {}) }]);
+    const { data, error } = await supabase.from('scoops').insert([{ ...scoop, ...(orgId ? { organization_id: orgId } : {}) }]).select('id').single();
     if (error) {
       toast.error('Failed to post scoop');
       return false;
     }
     await fetchScoops();
-    // Fire-and-forget: embed scoop for RAG
-    embedAfterSave('scoop', `scoop-${Date.now()}`, scoop as Record<string, unknown>);
+    // Fire-and-forget: embed scoop for RAG (use DB id for consistent upsert)
+    embedAfterSave('scoop', data?.id ?? `scoop-${Date.now()}`, scoop as Record<string, unknown>);
     // Auto-digest: feed scoop to AI brain
     const { digestEvent } = await import('@/lib/autoDigest');
     digestEvent('scoop_posted', {

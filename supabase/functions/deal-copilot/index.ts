@@ -61,6 +61,7 @@ You should call ALL of these at once:
 
 ## Available Tools
 You can execute these actions when the user asks:
+- **search_deals**: Search your deal data using semantic/AI search. Use this FIRST when the user asks about specific deals, contacts, activities, scoops, or documents that may not be in the provided context. This searches the full embedded knowledge base across all deal records, contacts, activities, market intel, and uploaded documents.
 - **search_market**: Search for real-time market data, news, company information, or any entity/organization not in the provided context. ALWAYS use this when the user asks about a company you don't recognize.
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
@@ -94,6 +95,22 @@ You can execute these actions when the user asks:
 The user may be viewing a specific page. Use this to provide contextually relevant answers without being asked.`;
 
 const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "search_deals",
+      description: "Search the deal knowledge base using AI-powered semantic search. Searches across all embedded deal records, contacts, activities, market intel/scoops, and uploaded documents. Use this FIRST when the user asks about specific deals, contacts, or activities that may not be in the provided context summary. Returns the most relevant results with similarity scores.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Natural language search query (e.g., 'Deloitte lease details', 'contacts at McKinsey', 'recent meeting notes')" },
+          filter_type: { type: "string", enum: ["deal", "contact", "activity", "scoop", "document"], description: "Optional: filter results to a specific data type" },
+        },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
   {
     type: "function",
     function: {
@@ -694,12 +711,81 @@ async function generatePitchDeck(args: any, context: string): Promise<string> {
   return result;
 }
 
-async function executeTool(name: string, args: any, context?: string, userId?: string | null): Promise<string> {
+// Fire-and-forget: embed a record into the RAG vector store
+async function embedRecord(sourceType: string, sourceId: string, record: Record<string, unknown>, orgId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/rag-embed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ sourceType, sourceId, record, orgId }),
+    });
+  } catch (e) {
+    console.warn("Background RAG embed failed:", e);
+  }
+}
+
+async function executeTool(name: string, args: any, context?: string, userId?: string | null, orgId?: string | null): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
   switch (name) {
+    case "search_deals": {
+      // Call rag-ask internally for semantic search over deal data
+      const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!anthropicKey || !openaiKey) return "Deal search unavailable (API keys not configured).";
+
+      try {
+        // Embed the query
+        const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "text-embedding-3-small", input: args.query }),
+        });
+        if (!embResp.ok) return "Deal search failed (embedding error).";
+        const embData = await embResp.json();
+        const queryEmbedding = embData.data[0].embedding;
+
+        // Vector similarity search
+        const searchOrgId = orgId || null;
+        if (!searchOrgId) return "Deal search unavailable (no organization context).";
+
+        const { data: chunks, error } = await supabase.rpc("match_embeddings", {
+          query_embedding: queryEmbedding,
+          match_org_id: searchOrgId,
+          match_count: 10,
+          match_threshold: 0.35,
+          filter_type: args.filter_type ?? null,
+        });
+
+        if (error || !chunks?.length) return "No matching deal data found for that query.";
+
+        // Format results for the Copilot
+        const results = chunks.map((c: any, i: number) => {
+          const meta = c.metadata || {};
+          const metaParts = [
+            meta.tenant && `Tenant: ${meta.tenant}`,
+            meta.stage && `Stage: ${meta.stage}`,
+            meta.sf && `SF: ${Number(meta.sf).toLocaleString()}`,
+            meta.full_name && `Contact: ${meta.full_name}`,
+            meta.category && `Category: ${meta.category}`,
+          ].filter(Boolean).join(" | ");
+          return `[${i + 1}] [${c.source_type.toUpperCase()}]${metaParts ? ` (${metaParts})` : ""} (relevance: ${Math.round(c.similarity * 100)}%)\n${c.content}`;
+        }).join("\n\n");
+
+        return `## Deal Search Results for: "${args.query}"\n\n${results}`;
+      } catch (e) {
+        console.error("search_deals error:", e);
+        return "Deal search failed.";
+      }
+    }
+
     case "search_market":
       return searchMarket(args.query);
 
@@ -719,29 +805,35 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
       return generatePitchDeck(args, context || "");
 
     case "move_deal_stage": {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("pipeline_deals")
         .update({ stage: args.new_stage, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("tenant_id", args.tenant_id)
-        .eq("building_id", args.building_id);
+        .eq("building_id", args.building_id)
+        .select("*")
+        .single();
       if (error) return `Failed to move deal: ${error.message}`;
+      if (updated && orgId) embedRecord("deal", updated.id, updated, orgId);
       return `✅ Deal moved to **${args.new_stage.replace(/_/g, " ")}** stage.`;
     }
 
     case "add_deal_note": {
       const { data: deal } = await supabase
         .from("pipeline_deals")
-        .select("notes")
+        .select("*")
         .eq("tenant_id", args.tenant_id)
         .eq("building_id", args.building_id)
         .single();
       const notes = [...(deal?.notes || []), args.note];
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("pipeline_deals")
         .update({ notes, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("tenant_id", args.tenant_id)
-        .eq("building_id", args.building_id);
+        .eq("building_id", args.building_id)
+        .select("*")
+        .single();
       if (error) return `Failed to add note: ${error.message}`;
+      if (updated && orgId) embedRecord("deal", updated.id, updated, orgId);
       return `✅ Note added to deal.`;
     }
 
@@ -761,32 +853,34 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
     }
 
     case "log_activity": {
-      const { error } = await supabase.from("activities").insert({
+      const { data: activity, error } = await supabase.from("activities").insert({
         tenant_id: args.tenant_id,
         building_id: args.building_id || "",
         type: args.type,
         title: args.title,
         description: args.description || "",
-      });
+      }).select("*").single();
       if (error) return `Failed to log activity: ${error.message}`;
+      if (activity && orgId) embedRecord("activity", activity.id, activity, orgId);
       return `✅ Activity logged: "${args.title}" (${args.type.replace(/_/g, " ")}).`;
     }
 
     case "add_contact": {
-      const { error } = await supabase.from("company_contacts").insert({
+      const { data: contact, error } = await supabase.from("company_contacts").insert({
         entity_id: args.entity_id,
         name: args.name,
         title: args.title || "",
         email: args.email || "",
         direct_phone: args.direct_phone || null,
         mobile_phone: args.mobile_phone || null,
-      });
+      }).select("*").single();
       if (error) return `Failed to add contact: ${error.message}`;
+      if (contact && orgId) embedRecord("contact", contact.id, contact, orgId);
       return `✅ Contact added: ${args.name}${args.title ? ` (${args.title})` : ""}.`;
     }
 
     case "create_deal": {
-      const { error } = await supabase.from("pipeline_deals").insert({
+      const { data: deal, error } = await supabase.from("pipeline_deals").insert({
         tenant_id: args.tenant_id,
         building_id: args.building_id,
         prospect_name: args.prospect_name || null,
@@ -796,8 +890,9 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         stage: args.stage || "hot_prospect",
         notes: args.notes || [],
         is_manual: true,
-      });
+      }).select("*").single();
       if (error) return `Failed to create deal: ${error.message}`;
+      if (deal && orgId) embedRecord("deal", deal.id, deal, orgId);
       return `✅ Pipeline deal created: ${args.prospect_company || args.tenant_id} → ${(args.stage || "hot_prospect").replace(/_/g, " ")}.`;
     }
 
@@ -856,6 +951,21 @@ serve(async (req) => {
       } catch { /* not a JWT or can't parse */ }
     }
 
+    // Resolve org_id for RAG embedding after tool mutations
+    let currentOrgId: string | null = null;
+    if (currentUserId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const adminClient = createClient(supabaseUrl, serviceKey);
+      const { data: membership } = await adminClient
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", currentUserId)
+        .limit(1)
+        .single();
+      currentOrgId = membership?.organization_id ?? null;
+    }
+
     const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
 
     // Non-streaming mode for tool calling
@@ -895,7 +1005,7 @@ serve(async (req) => {
         const toolResults = await Promise.all(
           toolCalls.map(async (tc: any) => {
             const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-            return executeTool(tc.function.name, args, systemMessage, currentUserId);
+            return executeTool(tc.function.name, args, systemMessage, currentUserId, currentOrgId);
           })
         );
 

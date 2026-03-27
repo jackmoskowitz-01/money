@@ -1320,12 +1320,12 @@ function anthropicStreamToOpenAISSE(anthropicStream: ReadableStream): ReadableSt
   });
 }
 
-// Call Anthropic Messages API (non-streaming, with tools)
+// Call Anthropic Messages API with retry on overload
 async function callAnthropic(systemMessage: string, messages: any[], options: { tools?: boolean; stream?: boolean; voiceMode?: boolean } = {}): Promise<Response> {
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-  const model = options.voiceMode ? "claude-opus-4-20250514" : "claude-opus-4-20250514";
+  const model = "claude-opus-4-20250514";
   const anthropicMessages = toAnthropicMessages(messages);
 
   const body: any = {
@@ -1342,13 +1342,33 @@ async function callAnthropic(systemMessage: string, messages: any[], options: { 
     body.stream = true;
   }
 
+  const headers = {
+    "x-api-key": anthropicKey,
+    "anthropic-version": "2023-06-01",
+    "Content-Type": "application/json",
+  };
+
+  // Retry up to 3 times on 429/529 (overloaded)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 429 || response.status === 529) {
+      console.warn(`Anthropic overloaded (${response.status}), retry ${attempt + 1}/3...`);
+      await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Final attempt
   return fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers: {
-      "x-api-key": anthropicKey,
-      "anthropic-version": "2023-06-01",
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(body),
   });
 }

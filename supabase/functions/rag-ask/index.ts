@@ -27,7 +27,7 @@ async function rerankChunks(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-opus-4-20250514",
+      model: "claude-sonnet-4-20250514",
       max_tokens: 200,
       system: `You are a relevance ranker for a commercial real estate brokerage. Given a broker's question and numbered document chunks, return ONLY a JSON array of the ${topK} most relevant chunk indices, ordered by relevance. Example: [3, 0, 7, 1, 5]. No explanation.`,
       messages: [
@@ -270,7 +270,7 @@ Rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 1000,
         system: [
           {

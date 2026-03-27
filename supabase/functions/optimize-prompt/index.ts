@@ -86,7 +86,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 8000,
         thinking: {
           type: "enabled",

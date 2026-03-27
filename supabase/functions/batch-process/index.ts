@@ -80,7 +80,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-opus-4-20250514",
+                model: "claude-sonnet-4-20250514",
                 max_tokens: 300,
                 system: "You are a CRE deal scorer. Score this deal 1-10 on fit, timing, engagement, and overall. Return JSON: {fit, timing, engagement, overall, recommendation}",
                 messages: [{
@@ -127,7 +127,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-opus-4-20250514",
+              model: "claude-sonnet-4-20250514",
               max_tokens: 200,
               system: "You are a CRE broker assistant. Suggest a specific follow-up action for this stale deal. Be concise — one sentence with the action and reason.",
               messages: [{

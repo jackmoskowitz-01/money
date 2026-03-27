@@ -819,7 +819,7 @@ async function queryDatabase(question: string, orgId: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 500,
         system: `You are a SQL expert. Given a natural language question and a database schema, generate a PostgreSQL SELECT query. Rules:
 - ONLY generate SELECT queries (never INSERT, UPDATE, DELETE, DROP, etc.)
@@ -885,7 +885,7 @@ async function deepAnalyze(question: string, contextData?: string): Promise<stri
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 16000,
         thinking: {
           type: "enabled",
@@ -932,7 +932,7 @@ async function extractLeaseTerms(documentText: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-20250514",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 2000,
         tools: [{
           name: "save_lease_terms",
@@ -1310,7 +1310,7 @@ CRITICAL: Fill in EVERY section. Quote exact dollar amounts, dates, percentages.
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-opus-4-20250514",
+              model: "claude-sonnet-4-20250514",
               max_tokens: 4096,
               system: LEASE_ABSTRACT_TEMPLATE,
               messages: [{ role: "user", content: `Run a complete lease abstract on the following document content:\n\n${fileContent}` }],
@@ -1558,7 +1558,7 @@ async function callAnthropic(systemMessage: string, messages: any[], options: { 
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-  const model = "claude-opus-4-20250514";
+  const model = "claude-sonnet-4-20250514";
   const anthropicMessages = toAnthropicMessages(messages);
 
   const body: any = {

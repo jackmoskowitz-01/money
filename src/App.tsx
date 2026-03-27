@@ -53,9 +53,10 @@ const ProtectedRoutes = () => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/auth" replace />;
-  }
+  // Auth bypass — skip login for local development
+  // if (!user) {
+  //   return <Navigate to="/auth" replace />;
+  // }
 
   return (
     <SidebarProvider defaultOpen={true}>
@@ -66,7 +67,7 @@ const ProtectedRoutes = () => {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Search companies, prospects..."
+              placeholder="Search prospects and accounts..."
               className="h-7 pl-8 text-xs bg-secondary/40 border-transparent focus:border-border"
               onFocus={(e) => {
                 e.target.blur();

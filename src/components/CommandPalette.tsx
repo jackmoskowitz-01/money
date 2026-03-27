@@ -1,16 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  KanbanSquare,
-  Users,
-  Newspaper,
-  Map,
-  CheckSquare,
-  Zap,
-  UserPlus,
-  BarChart2,
-} from "lucide-react";
+import { Building2, Users } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -18,36 +8,21 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
+import { buildings } from "@/data/mockData";
+import { usePipeline } from "@/hooks/usePipeline";
 
-interface PageCommand {
+interface ProspectResult {
   label: string;
+  subtitle: string;
   path: string;
   icon: React.ReactNode;
-  shortcut?: string;
 }
-
-interface ActionCommand {
-  label: string;
-  icon: React.ReactNode;
-  onSelect: () => void;
-}
-
-const PAGE_COMMANDS: PageCommand[] = [
-  { label: "Dashboard", path: "/", icon: <LayoutDashboard className="mr-2 h-4 w-4" /> },
-  { label: "Pipeline", path: "/pipeline", icon: <KanbanSquare className="mr-2 h-4 w-4" /> },
-  { label: "Prospects", path: "/prospects", icon: <Users className="mr-2 h-4 w-4" /> },
-  { label: "News", path: "/news", icon: <Newspaper className="mr-2 h-4 w-4" /> },
-  { label: "Map", path: "/map", icon: <Map className="mr-2 h-4 w-4" /> },
-  { label: "Tasks", path: "/tasks", icon: <CheckSquare className="mr-2 h-4 w-4" /> },
-  { label: "Scoop", path: "/scoop", icon: <Zap className="mr-2 h-4 w-4" /> },
-];
 
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
+  const { pipeline } = usePipeline();
 
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -61,55 +36,58 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const runCommand = React.useCallback((fn: () => void) => {
-    setOpen(false);
-    fn();
-  }, []);
+  // Build searchable list of all prospects/accounts
+  const prospects = React.useMemo<ProspectResult[]>(() => {
+    const results: ProspectResult[] = [];
 
-  const ACTION_COMMANDS: ActionCommand[] = [
-    {
-      label: "Add Prospect",
-      icon: <UserPlus className="mr-2 h-4 w-4" />,
-      onSelect: () => navigate("/prospects?action=add"),
-    },
-    {
-      label: "View Pipeline Stats",
-      icon: <BarChart2 className="mr-2 h-4 w-4" />,
-      onSelect: () => navigate("/pipeline"),
-    },
-  ];
+    // Tenants from buildings (mock data)
+    buildings.forEach((b) => {
+      b.tenants.forEach((t) => {
+        results.push({
+          label: t.name,
+          subtitle: `${b.name} · ${t.sqft.toLocaleString()} SF · ${t.industry}`,
+          path: `/building/${b.id}/tenant/${t.id}`,
+          icon: <Building2 className="mr-2 h-4 w-4 shrink-0" />,
+        });
+      });
+    });
+
+    // Pipeline deals (manual prospects from Supabase)
+    pipeline.forEach((deal) => {
+      if (deal.isManual && deal.prospectCompany) {
+        results.push({
+          label: deal.prospectCompany,
+          subtitle: `${deal.prospectName || ''} · ${deal.prospectSqft ? deal.prospectSqft.toLocaleString() + ' SF' : 'Pipeline'} · ${deal.stage.replace(/_/g, ' ')}`,
+          path: `/prospect/${deal.tenantId}`,
+          icon: <Users className="mr-2 h-4 w-4 shrink-0" />,
+        });
+      }
+    });
+
+    return results;
+  }, [pipeline]);
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <CommandInput placeholder="Type a page or action..." />
+      <CommandInput placeholder="Search prospects and accounts..." />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>No matching prospects found.</CommandEmpty>
 
-        <CommandGroup heading="Pages">
-          {PAGE_COMMANDS.map((cmd) => (
+        <CommandGroup heading="Prospects & Accounts">
+          {prospects.map((p) => (
             <CommandItem
-              key={cmd.path}
-              value={cmd.label}
-              onSelect={() => runCommand(() => navigate(cmd.path))}
+              key={p.path}
+              value={`${p.label} ${p.subtitle}`}
+              onSelect={() => {
+                setOpen(false);
+                navigate(p.path);
+              }}
             >
-              {cmd.icon}
-              {cmd.label}
-              {cmd.shortcut && <CommandShortcut>{cmd.shortcut}</CommandShortcut>}
-            </CommandItem>
-          ))}
-        </CommandGroup>
-
-        <CommandSeparator />
-
-        <CommandGroup heading="Quick Actions">
-          {ACTION_COMMANDS.map((cmd) => (
-            <CommandItem
-              key={cmd.label}
-              value={cmd.label}
-              onSelect={() => runCommand(cmd.onSelect)}
-            >
-              {cmd.icon}
-              {cmd.label}
+              {p.icon}
+              <div className="flex flex-col">
+                <span>{p.label}</span>
+                <span className="text-xs text-muted-foreground">{p.subtitle}</span>
+              </div>
             </CommandItem>
           ))}
         </CommandGroup>

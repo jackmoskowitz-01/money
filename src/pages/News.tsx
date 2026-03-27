@@ -363,13 +363,22 @@ const News = () => {
   }, [activeIndustry, fetchIndustryNews]);
 
   useEffect(() => {
-    if (!cachedLiveNews) fetchLiveNews();
-    if (cachedCompanyNews.length === 0) fetchCompanyNews();
+    // Only fetch if cache is older than 1 hour (or empty)
+    const lastRefreshed = parseInt(localStorage.getItem(LS_LAST_REFRESHED) || '0', 10);
+    const oneHour = 60 * 60 * 1000;
+    const isStale = Date.now() - lastRefreshed > oneHour;
+
+    if (isStale) {
+      if (!cachedLiveNews) fetchLiveNews();
+      if (cachedCompanyNews.length === 0) fetchCompanyNews();
+      localStorage.setItem(LS_LAST_REFRESHED, String(Date.now()));
+    }
 
     const interval = setInterval(() => {
       fetchLiveNews();
       fetchCompanyNews();
-    }, 60 * 60 * 1000);
+      localStorage.setItem(LS_LAST_REFRESHED, String(Date.now()));
+    }, oneHour);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);

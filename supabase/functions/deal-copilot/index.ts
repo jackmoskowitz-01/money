@@ -32,8 +32,8 @@ You should call ALL of these at once:
 1. **Deal Strategy Advice**: Provide specific, actionable next steps based on pipeline stage, lease expiration, and market dynamics.
 2. **Quick Data Lookup**: Answer questions about prospects, buildings, or market data using provided context.
 3. **Outreach Drafting**: Draft concise, professional broker emails. Position as a market advisor, not salesy.
-4. **Market Intelligence**: Answer DC metro CRE market questions. When you need real-time data, use the search_market tool.
-5. **Company Research**: When a user asks about ANY company or organization not found in the provided context, ALWAYS use the search_market tool to look them up. Never say you don't have information — search for it first.
+4. **Internal Data Only**: This is an internal tool. Do NOT search the internet. All data comes from the deal database, uploaded files, and provided context. If you don't have information about a company, use search_deals or query_database to look it up in the internal system.
+5. **File & Document Lookup**: When the user asks to run a lease abstract, analyze a document, or reference a file for a prospect — use the get_prospect_files tool to find their uploaded documents, then analyze the content. NEVER ask the user to upload a file if files already exist for that prospect.
 6. **Pipeline Actions**: Execute actions like moving deal stages, adding notes, creating tasks when the user asks.
 7. **Tour Planning**: Optimize property tour routes. CRITICAL RULE: You must ALWAYS ask the user for their starting point — NEVER assume or guess a starting location (not their office, not a default, not "downtown", not any address). When the user provides addresses for a tour, your ENTIRE response must be ONLY: "Where will you be starting from?" — do NOT acknowledge the addresses, do NOT list them back, do NOT call plan_tour, do NOT provide any other commentary. Just ask that single question and stop. Only after the user explicitly replies with their starting address should you call plan_tour and generate the route.
 8. **Comp Analysis**: When asked to analyze comps or compare lease terms, use the analyze_comps tool. Benchmark deals against recent lease comps by submarket, size, and class.
@@ -66,7 +66,7 @@ You can execute these actions when the user asks:
 - **deep_analyze**: Deep analysis with extended reasoning. Use for complex strategy questions, multi-deal comparisons, or negotiation planning that need careful thought.
 - **extract_lease_terms**: Extract structured lease terms from document text into a clean table + JSON. Use when the broker wants specific terms pulled from a lease/LOI/proposal.
 - **compact_context**: Compress the conversation history when it gets long. Summarize key facts and continue.
-- **search_market**: Search for real-time market data, news, company information, or any entity/organization not in the provided context. ALWAYS use this when the user asks about a company you don't recognize.
+- **get_prospect_files**: Retrieve uploaded files/documents for a prospect. Use FIRST when the user asks to run a lease abstract, analyze a document, or reference files for a company. Returns file names and content.
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
 - **create_task**: Create a new task linked to a prospect
@@ -118,14 +118,14 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "search_market",
-      description: "Search for real-time CRE market data, news, company information, or any organization/entity details using web search. ALWAYS use this when the user mentions a company, organization, or entity not found in the provided context. Use for current market conditions, recent news, company research, or any data you don't have.",
+      name: "get_prospect_files",
+      description: "Retrieve uploaded files and documents for a prospect/company. Use this FIRST when the user asks to run a lease abstract, analyze a document, review files, or reference any uploaded content for a company. Searches by company/prospect name across prospect_files and the RAG document store.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "The search query for market data or news" },
+          prospect_name: { type: "string", description: "Company or prospect name to find files for (e.g., 'Google', 'Deloitte')" },
         },
-        required: ["query"],
+        required: ["prospect_name"],
         additionalProperties: false,
       },
     },
@@ -1099,8 +1099,77 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
     case "compact_context":
       return `✅ Context compacted. Summary preserved:\n\n${args.conversation_summary}`;
 
-    case "search_market":
-      return searchMarket(args.query);
+    case "get_prospect_files": {
+      // Search for files uploaded to a prospect + any embedded documents in RAG
+      const prospectName = args.prospect_name?.toLowerCase() || "";
+      const results: string[] = [];
+
+      // 1. Search prospect_files table
+      const { data: files } = await supabase
+        .from("prospect_files")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const matchedFiles = (files || []).filter((f: any) => {
+        const prospectId = f.prospect_id || "";
+        const fileName = (f.file_name || "").toLowerCase();
+        return fileName.includes(prospectName) || prospectId.includes(prospectName);
+      });
+
+      if (matchedFiles.length > 0) {
+        results.push(`## Uploaded Files for "${args.prospect_name}"\n`);
+        for (const f of matchedFiles) {
+          results.push(`- **${f.file_name}** (${f.file_type || "unknown"}, uploaded ${new Date(f.created_at).toLocaleDateString()} by ${f.uploaded_by_name || "unknown"})`);
+        }
+      }
+
+      // 2. Search RAG embeddings for documents matching this prospect
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (openaiKey && orgId) {
+        try {
+          const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "text-embedding-3-small", input: `${args.prospect_name} lease document` }),
+          });
+          if (embResp.ok) {
+            const embData = await embResp.json();
+            const { data: docs } = await supabase.rpc("match_embeddings", {
+              query_embedding: embData.data[0].embedding,
+              match_org_id: orgId,
+              match_count: 5,
+              match_threshold: 0.3,
+              filter_type: "document",
+            });
+            if (docs?.length > 0) {
+              results.push(`\n## Embedded Documents\n`);
+              for (const doc of docs) {
+                results.push(`---\n**[Document]** (relevance: ${Math.round(doc.similarity * 100)}%)\n${doc.content}`);
+              }
+            }
+          }
+        } catch { /* silent */ }
+      }
+
+      // 3. Also search for any deal/activity mentioning this prospect
+      const { data: deals } = await supabase
+        .from("pipeline_deals")
+        .select("*")
+        .or(`prospect_company.ilike.%${prospectName}%,prospect_name.ilike.%${prospectName}%`);
+
+      if (deals?.length > 0) {
+        results.push(`\n## Pipeline Deals\n`);
+        for (const d of deals) {
+          results.push(`- **${d.prospect_company || d.prospect_name}** — Stage: ${d.stage}, Notes: ${(d.notes || []).join("; ") || "none"}`);
+        }
+      }
+
+      if (results.length === 0) {
+        return `No files or documents found for "${args.prospect_name}". The broker may need to upload the lease first using the file attachment button.`;
+      }
+
+      return results.join("\n");
+    }
 
     case "plan_tour":
       return planTour(args.addresses, args.start_address);

@@ -24,11 +24,14 @@ export function AddProspectDialog() {
   const navigate = useNavigate();
 
   const filteredBuildings = useMemo(() => {
-    const q = form.building_search.toLowerCase();
-    if (!q) return mockBuildings.slice(0, 8);
-    return mockBuildings.filter(
-      b => b.name.toLowerCase().includes(q) || b.address.toLowerCase().includes(q)
-    ).slice(0, 8);
+    const q = form.building_search.toLowerCase().replace(/[,.\s]+/g, ' ').trim();
+    if (!q) return mockBuildings;
+    // Match each word independently so "1100 ny" matches "1100 New York Avenue"
+    const words = q.split(' ').filter(Boolean);
+    return mockBuildings.filter(b => {
+      const haystack = `${b.name} ${b.address}`.toLowerCase();
+      return words.every(w => haystack.includes(w));
+    });
   }, [form.building_search]);
 
   const selectedBuilding = mockBuildings.find(b => b.id === form.building_id);
@@ -137,31 +140,29 @@ export function AddProspectDialog() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search buildings..."
+                    placeholder="Type a building address..."
                     value={form.building_search}
                     onChange={(e) => { setForm(f => ({ ...f, building_search: e.target.value })); setShowBuildingList(true); }}
                     onFocus={() => setShowBuildingList(true)}
+                    onBlur={() => setTimeout(() => setShowBuildingList(false), 200)}
                     className="pl-10 h-9 text-sm"
                   />
-                  {showBuildingList && (
-                    <div className="absolute top-10 left-0 right-0 z-10 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-lg">
-                      {filteredBuildings.length === 0 ? (
-                        <p className="text-xs text-muted-foreground p-3 text-center">No buildings found</p>
-                      ) : (
-                        filteredBuildings.map((b) => (
-                          <button
-                            key={b.id}
-                            className="w-full text-left px-3 py-2 hover:bg-accent transition-colors"
-                            onClick={() => {
-                              setForm(f => ({ ...f, building_id: b.id, building_search: '' }));
-                              setShowBuildingList(false);
-                            }}
-                          >
-                            <p className="text-sm font-medium">{b.name}</p>
-                            <p className="text-xs text-muted-foreground">{b.address} · Class {b.class}</p>
-                          </button>
-                        ))
-                      )}
+                  {showBuildingList && filteredBuildings.length > 0 && (
+                    <div className="absolute top-10 left-0 right-0 z-10 max-h-56 overflow-y-auto rounded-md border bg-popover shadow-lg">
+                      {filteredBuildings.map((b) => (
+                        <button
+                          key={b.id}
+                          className="w-full text-left px-3 py-2 hover:bg-accent transition-colors border-b border-border/30 last:border-0"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setForm(f => ({ ...f, building_id: b.id, building_search: '' }));
+                            setShowBuildingList(false);
+                          }}
+                        >
+                          <p className="text-sm font-medium">{b.name}</p>
+                          <p className="text-xs text-muted-foreground">{b.address} · Class {b.class} · {b.sqft.toLocaleString()} SF</p>
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>

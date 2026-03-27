@@ -10,13 +10,6 @@ import {
   Settings,
   LogOut,
   Shield,
-  Mail,
-  Activity,
-  BarChart3,
-  FileText,
-  LayoutDashboard,
-  Bell,
-  Search,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -36,41 +29,18 @@ import {
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 
-const navGroups = [
-  {
-    label: 'Detect — Find signals',
-    items: [
-      { path: '/news', label: 'News Intel', icon: Newspaper },
-      { path: '/scoop', label: 'Scoop Board', icon: MessageSquare },
-      { path: '/loopnet', label: 'LoopNet Search', icon: Search },
-      { path: '/map', label: 'Map View', icon: Map },
-    ],
-  },
-  {
-    label: 'Engage — Reach out',
-    items: [
-      { path: '/prospect-table', label: 'Prospects CRM', icon: Users },
-      { path: '/email-analytics', label: 'Email Outreach', icon: Mail },
-      { path: '/activities', label: 'Activity Log', icon: Activity },
-    ],
-  },
-  {
-    label: 'Close — Win deals',
-    items: [
-      { path: '/pipeline', label: 'Pipeline', icon: Kanban },
-      { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
-      { path: '/comp-tracker', label: 'Comp Tracker', icon: BarChart3 },
-      { path: '/lease-abstracts', label: 'Lease Abstracts', icon: FileText },
-    ],
-  },
-  {
-    label: 'Utility',
-    items: [
-      { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-      { path: '/alerts', label: 'Alerts', icon: Bell },
-      { path: '/settings', label: 'Settings', icon: Settings },
-    ],
-  },
+const navItems = [
+  { path: '/', label: 'Dashboard', icon: Newspaper },
+  { path: '/news', label: 'News', icon: Building2 },
+  { path: '/map', label: 'Map', icon: Map },
+  { path: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { path: '/prospect-table', label: 'Prospects', icon: Users },
+  { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
+  { path: '/scoop', label: 'Scoop', icon: MessageSquare },
+];
+
+const secondaryItems = [
+  { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
 function BrandHeader() {
@@ -105,41 +75,53 @@ export function AppSidebar() {
       <BrandHeader />
 
       <SidebarContent>
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map(({ path, label, icon: Icon }) => {
-                  const isActive =
-                    path === '/'
-                      ? location.pathname === '/'
-                      : location.pathname.startsWith(path);
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map(({ path, label, icon: Icon }) => {
+                const isActive =
+                  path === '/'
+                    ? location.pathname === '/'
+                    : location.pathname.startsWith(path);
 
-                  return (
-                    <SidebarMenuItem key={path}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={isActive}
-                        tooltip={label}
-                      >
-                        <Link to={path}>
-                          <Icon />
-                          <span>{label}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                return (
+                  <SidebarMenuItem key={path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={label}
+                    >
+                      <Link to={path}>
+                        <Icon />
+                        <span>{label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
         <SidebarSeparatorLine />
         <SidebarMenu>
+          {secondaryItems.map(({ path, label, icon: Icon }) => (
+            <SidebarMenuItem key={path}>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname === path}
+                tooltip={label}
+              >
+                <Link to={path}>
+                  <Icon />
+                  <span>{label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
           {isSuperAdmin && (
             <SidebarMenuItem>
               <SidebarMenuButton

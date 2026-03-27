@@ -54,10 +54,9 @@ const ProtectedRoutes = () => {
     );
   }
 
-  // Auth bypass — skip login for local development
-  // if (!user) {
-  //   return <Navigate to="/auth" replace />;
-  // }
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <SidebarProvider defaultOpen={true}>

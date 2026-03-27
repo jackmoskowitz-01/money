@@ -11,6 +11,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { addActivity } from '@/data/activityData';
 import { toast } from 'sonner';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 interface LogActivityButtonProps {
   tenantId: string;
@@ -44,6 +45,7 @@ const LogActivityButton = ({
   prospectName,
   variant = 'button',
 }: LogActivityButtonProps) => {
+  const orgId = useOrganizationId();
   const [open, setOpen] = useState(false);
   const [activityType, setActivityType] = useState<ActivityTypeValue>('call');
   const [description, setDescription] = useState('');
@@ -80,6 +82,7 @@ const LogActivityButton = ({
       title,
       description: description.trim(),
       timestamp: new Date().toISOString(),
+      ...(orgId ? { organization_id: orgId } : {}),
     }).then(({ error }) => {
       if (error) console.error('Activity DB insert error:', error);
     });

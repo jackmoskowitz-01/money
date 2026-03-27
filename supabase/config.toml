@@ -83,3 +83,9 @@ verify_jwt = true
 
 [functions.parse-lease-abstract]
 verify_jwt = true
+
+[functions.rag-ask]
+verify_jwt = true
+
+[functions.rag-embed]
+verify_jwt = true

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 export type EmailThread = {
   id: string;
@@ -99,6 +100,7 @@ export function useEmailThreads() {
   const { user } = useAuth();
   const [threads, setThreads] = useState<EmailThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchThreads = useCallback(async () => {
     if (!user) return;
@@ -144,6 +146,7 @@ export function useEmailThreads() {
       tenant_id: data.tenantId || null,
       building_id: data.buildingId || null,
       activity_id: data.activityId || null,
+      ...(orgId ? { organization_id: orgId } : {}),
     };
 
     const { error } = await supabase.from('email_threads').insert(row);

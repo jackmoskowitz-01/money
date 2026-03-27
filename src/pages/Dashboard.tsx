@@ -22,6 +22,7 @@ import MeetingsOverview from '@/components/MeetingsOverview';
 import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
+import { DealflowAsk } from '@/components/DealflowAsk';
 import CriticalDatesTracker from '@/components/CriticalDatesTracker';
 import CriticalDatesFullView from '@/components/CriticalDatesFullView';
 import {
@@ -377,6 +378,7 @@ const Dashboard = () => {
 
           {/* ── PERFORMANCE TAB ── */}
           <TabsContent value="performance" className="mt-0 space-y-6">
+            <DealflowAsk />
             <BrokerLeaderboard />
             <div className="grid gap-4 lg:grid-cols-2">
               <DailyBriefing />

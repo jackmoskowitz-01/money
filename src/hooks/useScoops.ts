@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export type ScoopCategory = 'lease_move' | 'rfp' | 'expansion' | 'contraction' | 'personnel' | 'concession' | 'conversion' | 'general';
 
@@ -43,6 +45,7 @@ export function useScoops() {
   const [scoops, setScoops] = useState<Scoop[]>([]);
   const [loading, setLoading] = useState(true);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const orgId = useOrganizationId();
 
   const fetchScoops = useCallback(async () => {
     const { data, error } = await supabase
@@ -96,12 +99,14 @@ export function useScoops() {
     linked_tenant_name?: string;
     linked_building_name?: string;
   }) => {
-    const { error } = await supabase.from('scoops').insert([scoop]);
+    const { error } = await supabase.from('scoops').insert([{ ...scoop, ...(orgId ? { organization_id: orgId } : {}) }]);
     if (error) {
       toast.error('Failed to post scoop');
       return false;
     }
     await fetchScoops();
+    // Fire-and-forget: embed scoop for RAG
+    embedAfterSave('scoop', `scoop-${Date.now()}`, scoop as Record<string, unknown>);
     // Auto-digest: feed scoop to AI brain
     const { digestEvent } = await import('@/lib/autoDigest');
     digestEvent('scoop_posted', {
@@ -177,13 +182,14 @@ export function useScoopComments(scoopId: string | null) {
     return () => { supabase.removeChannel(channel); };
   }, [scoopId, fetchComments]);
 
-  const addComment = async (content: string, authorName: string, authorAvatar: string) => {
+  const addComment = async (content: string, authorName: string, authorAvatar: string, orgIdParam?: string | null) => {
     if (!scoopId) return false;
     const { error } = await supabase.from('scoop_comments').insert([{
       scoop_id: scoopId,
       author_name: authorName,
       author_avatar: authorAvatar,
       content,
+      ...(orgIdParam ? { organization_id: orgIdParam } : {}),
     }]);
     if (error) {
       toast.error('Failed to add comment');

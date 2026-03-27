@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CASHFLOW_TEMPLATE } from '@/lib/copilotTemplates';
 import { parseSSEStream } from '@/lib/parseSSEStream';
 import { getAuthToken } from '@/lib/getAuthToken';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
@@ -46,6 +47,7 @@ export { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CAS
 
 export function useCopilotState() {
   const { user } = useAuth();
+  const orgId = useOrganizationId();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -1400,6 +1402,7 @@ export function useCopilotState() {
                     context: userText.slice(0, 200),
                     source: 'conversation',
                     confidence: 0.8,
+                    ...(orgId ? { organization_id: orgId } : {}),
                   }));
                   await supabase.from('copilot_brain').insert(rows);
                 }

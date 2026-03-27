@@ -5,6 +5,8 @@ import { digestEvent } from '@/lib/autoDigest';
 import { toast } from 'sonner';
 import type { PipelineStage, PipelineItem, Touchpoint } from '@/data/pipelineData';
 import { stageLabels } from '@/data/pipelineData';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 type DbRow = {
   id: string;
@@ -44,6 +46,7 @@ const rowToItem = (r: DbRow): PipelineItem => ({
 export function usePipeline() {
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchPipeline = useCallback(async () => {
     const { data, error } = await supabase
@@ -73,6 +76,7 @@ export function usePipeline() {
         last_activity: new Date().toISOString(),
         is_manual: false,
         sent_touchpoints: [] as any[],
+        ...(orgId ? { organization_id: orgId } : {}),
       }));
 
       if (seedRows.length > 0) {
@@ -123,6 +127,14 @@ export function usePipeline() {
         : p
     ));
     toast.success(`Deal moved to ${stageLabels[stage]}`);
+    // Fire-and-forget: re-embed for RAG with updated stage
+    if (item) {
+      embedAfterSave('deal', `${tenantId}-${buildingId}`, {
+        ...item, stage, last_activity: new Date().toISOString(),
+        prospect_name: item.prospectName, prospect_company: item.prospectCompany,
+        prospect_sqft: item.prospectSqft, tenant_id: tenantId, building_id: buildingId,
+      });
+    }
     // Auto-digest: feed pipeline move to AI brain
     const name = item?.prospectName || item?.prospectCompany || tenantId;
     const prevStage = item?.stage || 'unknown';
@@ -177,6 +189,7 @@ export function usePipeline() {
       prospect_phone: prospect.phone.trim() || null,
       prospect_sqft: prospect.sqft ? parseInt(prospect.sqft) : null,
       sent_touchpoints: [] as any[],
+      ...(orgId ? { organization_id: orgId } : {}),
     };
 
     const { data, error } = await supabase
@@ -191,6 +204,8 @@ export function usePipeline() {
     }
     if (data) {
       setPipeline(prev => [...prev, rowToItem(data as unknown as DbRow)]);
+      // Fire-and-forget: embed for RAG
+      embedAfterSave('deal', data.id, data as Record<string, unknown>);
     }
     toast.success('Prospect added to pipeline');
     return true;

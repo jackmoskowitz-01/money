@@ -28,6 +28,7 @@ import { StageCombobox } from '@/components/pipeline/StageCombobox';
 import { supabase } from '@/integrations/supabase/client';
 import { addActivity } from '@/data/activityData';
 import { toast } from 'sonner';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 interface DealCardProps {
   item: PipelineItem;
@@ -81,6 +82,7 @@ export const DealCard = ({
 }: DealCardProps) => {
   const sentCount = (item.sentTouchpoints || []).length;
   const navigate = useNavigate();
+  const orgId = useOrganizationId();
   const displayName = getDisplayName(item);
 
   // --- Add Note dialog state ---
@@ -125,6 +127,7 @@ export const DealCard = ({
       title,
       description: activityDescription.trim(),
       timestamp: new Date().toISOString(),
+      ...(orgId ? { organization_id: orgId } : {}),
     }).then(({ error }) => {
       if (error) console.error('Activity DB insert error:', error);
     });

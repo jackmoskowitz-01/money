@@ -5,6 +5,7 @@ import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, Chev
 import { toast } from 'sonner';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import { getAuthToken } from '@/lib/getAuthToken';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 const SMART_DRAFT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-drafting`;
@@ -45,6 +46,7 @@ const EmailDisplay = ({
   tenantId, tenantName, industry, buildingId, buildingName, sqft, leaseExpiration, outreachReason,
   onClose, onDismiss, onUpdateEmail,
 }: EmailDisplayProps) => {
+  const orgId = useOrganizationId();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -93,6 +95,7 @@ const EmailDisplay = ({
         tenant_id: tenantId || tenantName || 'unknown',
         building_id: buildingId || buildingName || '',
         outreach_reason_used: outreachReason || null,
+        ...(orgId ? { organization_id: orgId } : {}),
       });
     } catch (err) {
       console.error('Failed to log activity:', err);

@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   LogOut,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -67,7 +68,7 @@ function BrandHeader() {
 
 export function AppSidebar() {
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, isSuperAdmin } = useAuth();
 
   return (
     <Sidebar collapsible="icon" className="border-sidebar-border">
@@ -107,6 +108,20 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarSeparatorLine />
         <SidebarMenu>
+          {isSuperAdmin && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location.pathname.startsWith('/admin')}
+                tooltip="Admin"
+              >
+                <Link to="/admin">
+                  <Shield />
+                  <span>Admin</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
           {secondaryItems.map(({ path, label, icon: Icon }) => (
             <SidebarMenuItem key={path}>
               <SidebarMenuButton

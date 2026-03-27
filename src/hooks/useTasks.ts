@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 export type TaskType = 'follow_up' | 'call' | 'meeting' | 'email' | 'research' | 'other';
@@ -57,6 +59,7 @@ const rowToTask = (r: DbRow): Task => ({
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchTasks = useCallback(async () => {
     // Get current user
@@ -83,9 +86,9 @@ export function useTasks() {
       const today = new Date().toISOString().split('T')[0];
       const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
       const seedRows = [
-        { title: 'Follow up with McKinsey on space study', description: 'Check on their space study progress', type: 'follow_up', priority: 'high', due_date: today, completed: false },
-        { title: 'Prepare meeting brief for Deloitte', description: 'Pull comps and market data', type: 'meeting', priority: 'medium', due_date: tomorrow, completed: false },
-        { title: 'Send lease comp package to Amazon', description: 'Include East End and NoMa options', type: 'email', priority: 'medium', due_date: tomorrow, completed: false },
+        { title: 'Follow up with McKinsey on space study', description: 'Check on their space study progress', type: 'follow_up', priority: 'high', due_date: today, completed: false, ...(orgId ? { organization_id: orgId } : {}) },
+        { title: 'Prepare meeting brief for Deloitte', description: 'Pull comps and market data', type: 'meeting', priority: 'medium', due_date: tomorrow, completed: false, ...(orgId ? { organization_id: orgId } : {}) },
+        { title: 'Send lease comp package to Amazon', description: 'Include East End and NoMa options', type: 'email', priority: 'medium', due_date: tomorrow, completed: false, ...(orgId ? { organization_id: orgId } : {}) },
       ];
 
       const { data: inserted } = await supabase.from('tasks').insert(seedRows).select('*');
@@ -146,6 +149,8 @@ export function useTasks() {
       row.assigned_to_name = task.assignedToName || '';
     }
 
+    if (orgId) row.organization_id = orgId;
+
     const { data, error } = await supabase.from('tasks').insert(row as any).select('*').single();
     if (error) {
       toast.error('Failed to create task');
@@ -154,6 +159,14 @@ export function useTasks() {
     if (data) {
       const newTask = rowToTask(data as unknown as DbRow);
       setTasks(prev => [newTask, ...prev]);
+      // Fire-and-forget: embed for RAG as an activity
+      embedAfterSave('activity', data.id, {
+        type: task.type,
+        title: task.title,
+        description: task.description,
+        tenant_id: task.tenantId,
+        timestamp: new Date().toISOString(),
+      });
       return newTask;
     }
     return null;

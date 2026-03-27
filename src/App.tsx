@@ -31,6 +31,10 @@ import LeaseAbstracts from "./pages/LeaseAbstracts";
 import Landing from "./pages/Landing";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminOverview from "./pages/admin/AdminOverview";
+import AdminOrganizations from "./pages/admin/AdminOrganizations";
+import AdminUsers from "./pages/admin/AdminUsers";
 import NotFound from "./pages/NotFound";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -114,6 +118,11 @@ const AppRoutes = () => {
       <Route path="/landing" element={<Landing />} />
       <Route path="/blog" element={<Blog />} />
       <Route path="/blog/:slug" element={<BlogPost />} />
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminOverview />} />
+        <Route path="organizations" element={<AdminOrganizations />} />
+        <Route path="users" element={<AdminUsers />} />
+      </Route>
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
   );

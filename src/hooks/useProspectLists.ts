@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 export type ProspectListEntry = {
   id: string;
@@ -22,6 +23,7 @@ export function useProspectLists() {
   const { user } = useAuth();
   const [lists, setLists] = useState<ProspectList[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchLists = useCallback(async () => {
     if (!user) { setLists([]); setLoading(false); return; }
@@ -75,7 +77,7 @@ export function useProspectLists() {
     if (!user) return null;
     const { data, error } = await supabase
       .from('prospect_lists')
-      .insert({ user_id: user.id, name, industry: industry || '' })
+      .insert({ user_id: user.id, name, industry: industry || '', ...(orgId ? { organization_id: orgId } : {}) })
       .select()
       .single();
     if (error || !data) return null;

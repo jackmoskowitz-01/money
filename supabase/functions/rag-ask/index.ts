@@ -233,7 +233,19 @@ serve(async (req) => {
       })
       .join("\n\n");
 
-    // Step 5: Ask Claude with re-ranked context
+    // Step 5: Ask Claude with re-ranked context + citations + prompt caching
+    const systemPrompt = `You are a deal intelligence assistant for a commercial real estate tenant representation brokerage.
+
+Your job is to answer broker questions using ONLY the deal data provided in the context below.
+
+Rules:
+- Be specific. Reference deal names, tenant names, contacts, SF requirements, timelines when available.
+- If the data supports a clear answer, give it directly.
+- If the data is incomplete or ambiguous, say what you know and flag what's missing.
+- Never make up information that isn't in the context.
+- Keep answers concise — brokers are busy.
+- CITATIONS: When referencing data from the context, cite the source using [N] notation matching the chunk number. For example: "Deloitte is at the meeting_set stage [1] with 45,000 SF requirement [1]." This helps brokers verify your answers.`;
+
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -244,16 +256,13 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "claude-sonnet-4-5-20250514",
         max_tokens: 1000,
-        system: `You are a deal intelligence assistant for a commercial real estate tenant representation brokerage.
-
-Your job is to answer broker questions using ONLY the deal data provided in the context below.
-
-Rules:
-- Be specific. Reference deal names, tenant names, contacts, SF requirements, timelines when available.
-- If the data supports a clear answer, give it directly.
-- If the data is incomplete or ambiguous, say what you know and flag what's missing.
-- Never make up information that isn't in the context.
-- Keep answers concise — brokers are busy.`,
+        system: [
+          {
+            type: "text",
+            text: systemPrompt,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
         messages: [
           {
             role: "user",

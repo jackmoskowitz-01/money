@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import DealCopilot from "@/components/DealCopilot";
+import { AddProspectDialog } from "@/components/AddProspectDialog";
 import { CommandPalette } from "@/components/CommandPalette";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -75,6 +76,7 @@ const ProtectedRoutes = () => {
               }}
             />
           </div>
+          <AddProspectDialog />
         </header>
         <DealCopilot />
         <CommandPalette />

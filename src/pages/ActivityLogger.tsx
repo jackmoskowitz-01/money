@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Plus, Mail, Phone, Users, StickyNote, Sparkles, RotateCcw, Building2, Calendar, Ban, CalendarCheck, Kanban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -14,6 +14,7 @@ import {
   activityTypeLabels, activityTypeIcons,
   type ActivityType, type ActivityEntry,
 } from '@/data/activityData';
+import { supabase } from '@/integrations/supabase/client';
 import { autoCompleteTasks } from '@/lib/autoCompleteTasks';
 import { digestEvent } from '@/lib/autoDigest';
 import { usePipeline } from '@/hooks/usePipeline';
@@ -40,6 +41,36 @@ const ActivityLogger = () => {
   const [activities, setActivities] = useState<ActivityEntry[]>(() => getActivities());
   const [showForm, setShowForm] = useState(false);
   const [filterType, setFilterType] = useState<string>('all');
+
+  // Also load activities from Supabase and merge with local
+  useEffect(() => {
+    supabase
+      .from('activities')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const dbActivities: ActivityEntry[] = data.map((row: any) => ({
+            id: row.id,
+            tenantId: row.tenant_id || '',
+            buildingId: row.building_id || '',
+            type: (row.type || 'note') as ActivityType,
+            title: row.title || '',
+            description: row.description || '',
+            timestamp: row.created_at,
+            outreachReasonUsed: row.outreach_reason_used || undefined,
+          }));
+          setActivities(prev => {
+            const existingIds = new Set(prev.map(a => a.id));
+            const newOnes = dbActivities.filter(a => !existingIds.has(a.id));
+            if (newOnes.length === 0) return prev;
+            return [...prev, ...newOnes].sort(
+              (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+          });
+        }
+      });
+  }, []);
 
   // Form state
   const [formType, setFormType] = useState<ActivityType>('note');

@@ -30,7 +30,6 @@ import Analytics from "./pages/Analytics";
 import EmailAnalytics from "./pages/EmailAnalytics";
 import ProspectTable from "./pages/ProspectTable";
 import LeaseAbstracts from "./pages/LeaseAbstracts";
-import ProspectDetail from "./pages/ProspectDetail";
 import Landing from "./pages/Landing";
 import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";

@@ -27,7 +27,7 @@ async function rerankChunks(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-haiku-4-5-20241022",
+      model: "claude-opus-4-20250514",
       max_tokens: 200,
       system: `You are a relevance ranker for a commercial real estate brokerage. Given a broker's question and numbered document chunks, return ONLY a JSON array of the ${topK} most relevant chunk indices, ordered by relevance. Example: [3, 0, 7, 1, 5]. No explanation.`,
       messages: [
@@ -96,8 +96,10 @@ serve(async (req) => {
       );
     }
 
-    // Get org_id
-    const { data: membership } = await userClient
+    // Get org_id (use service role to bypass RLS on organization_members)
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: membership } = await adminClient
       .from("organization_members")
       .select("organization_id")
       .eq("user_id", user.id)
@@ -143,8 +145,7 @@ serve(async (req) => {
     const queryEmbedding = embeddingData.data[0].embedding;
 
     // Step 2: Retrieve candidates — fetch 4x topK for re-ranking headroom
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    // (adminClient already created above for org lookup)
 
     const retrieveCount = topK * 4;
 
@@ -269,7 +270,7 @@ Rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250514",
+        model: "claude-opus-4-20250514",
         max_tokens: 1000,
         system: [
           {

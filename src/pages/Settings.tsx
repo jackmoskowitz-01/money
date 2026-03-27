@@ -108,7 +108,7 @@ const Settings = () => {
         .from('user_settings')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (settingsData) {
         const s = settingsData;

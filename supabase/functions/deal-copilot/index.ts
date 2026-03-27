@@ -818,7 +818,7 @@ async function queryDatabase(question: string, orgId: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20241022",
+        model: "claude-opus-4-20250514",
         max_tokens: 500,
         system: `You are a SQL expert. Given a natural language question and a database schema, generate a PostgreSQL SELECT query. Rules:
 - ONLY generate SELECT queries (never INSERT, UPDATE, DELETE, DROP, etc.)
@@ -884,7 +884,7 @@ async function deepAnalyze(question: string, contextData?: string): Promise<stri
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250514",
+        model: "claude-opus-4-20250514",
         max_tokens: 16000,
         thinking: {
           type: "enabled",
@@ -931,7 +931,7 @@ async function extractLeaseTerms(documentText: string): Promise<string> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20241022",
+        model: "claude-opus-4-20250514",
         max_tokens: 2000,
         tools: [{
           name: "save_lease_terms",
@@ -1243,6 +1243,116 @@ CRITICAL RULES FOR VOICE MODE:
 - For numbers, say them naturally: "about 50 thousand square feet" not "50,000 SF".
 - You still have access to tools (search, move deals, create tasks, plan tours). Use them when asked.`;
 
+// Convert OpenAI-style tools to Anthropic format
+function toAnthropicTools(tools: any[]): any[] {
+  return tools.map(t => ({
+    name: t.function.name,
+    description: t.function.description,
+    input_schema: t.function.parameters,
+  }));
+}
+
+// Convert OpenAI-style messages to Anthropic format
+function toAnthropicMessages(msgs: any[]): any[] {
+  return msgs.filter(m => m.role !== "system").map(m => {
+    if (m.role === "tool") {
+      return {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: m.tool_call_id, content: m.content }],
+      };
+    }
+    if (m.tool_calls) {
+      return {
+        role: "assistant",
+        content: m.tool_calls.map((tc: any) => ({
+          type: "tool_use",
+          id: tc.id,
+          name: tc.function.name,
+          input: typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments,
+        })),
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
+// Convert Anthropic streaming response to OpenAI SSE format (for frontend compatibility)
+function anthropicStreamToOpenAISSE(anthropicStream: ReadableStream): ReadableStream {
+  const reader = anthropicStream.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  return new ReadableStream({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+        return;
+      }
+
+      const text = decoder.decode(value);
+      const lines = text.split("\n").filter(l => l.startsWith("data: "));
+
+      for (const line of lines) {
+        const data = line.slice(6).trim();
+        if (!data || data === "[DONE]") continue;
+
+        try {
+          const event = JSON.parse(data);
+          // Convert content_block_delta to OpenAI format
+          if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+            const openaiChunk = {
+              choices: [{
+                delta: { content: event.delta.text },
+                index: 0,
+                finish_reason: null,
+              }],
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+          }
+          if (event.type === "message_stop") {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          }
+        } catch { /* skip unparseable lines */ }
+      }
+    },
+  });
+}
+
+// Call Anthropic Messages API (non-streaming, with tools)
+async function callAnthropic(systemMessage: string, messages: any[], options: { tools?: boolean; stream?: boolean; voiceMode?: boolean } = {}): Promise<Response> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const model = options.voiceMode ? "claude-opus-4-20250514" : "claude-opus-4-20250514";
+  const anthropicMessages = toAnthropicMessages(messages);
+
+  const body: any = {
+    model,
+    max_tokens: 4096,
+    system: systemMessage,
+    messages: anthropicMessages,
+  };
+
+  if (options.tools) {
+    body.tools = toAnthropicTools(TOOLS);
+  }
+  if (options.stream) {
+    body.stream = true;
+  }
+
+  return fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -1250,8 +1360,9 @@ serve(async (req) => {
 
   try {
     const { messages, context, mode, voiceMode } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    console.log("ANTHROPIC_API_KEY present:", !!anthropicKey, "length:", anthropicKey?.length);
+    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     // Extract user_id from JWT for tools that need it (e.g. critical_dates)
     let currentUserId: string | null = null;
@@ -1279,124 +1390,75 @@ serve(async (req) => {
       currentOrgId = membership?.organization_id ?? null;
     }
 
-    const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
+    let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    if (context) systemMessage += "\n\n## Current Context\n" + context;
 
     // Non-streaming mode for tool calling
     if (mode === "tools") {
-      let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
-      if (context) systemMessage += "\n\n## Current Context\n" + context;
-
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "system", content: systemMessage }, ...messages],
-          tools: TOOLS,
-          stream: false,
-        }),
-      });
+      const response = await callAnthropic(systemMessage, messages, { tools: true, voiceMode });
 
       if (!response.ok) {
         const t = await response.text();
-        console.error("AI gateway error:", response.status, t);
-        return new Response(JSON.stringify({ error: "AI service error" }), {
+        console.error("Anthropic error:", response.status, t);
+        return new Response(JSON.stringify({ error: `AI service error: ${response.status} - ${t.slice(0, 200)}` }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const data = await response.json();
-      const choice = data.choices?.[0];
 
-      if (choice?.finish_reason === "tool_calls" || choice?.message?.tool_calls?.length > 0) {
-        const toolCalls = choice.message.tool_calls;
+      // Check if Claude wants to use tools
+      const toolBlocks = data.content?.filter((b: any) => b.type === "tool_use") || [];
 
-        // Execute ALL tool calls in parallel for maximum speed
+      if (toolBlocks.length > 0) {
+        // Execute ALL tool calls in parallel
         const toolResults = await Promise.all(
-          toolCalls.map(async (tc: any) => {
-            const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-            return executeTool(tc.function.name, args, systemMessage, currentUserId, currentOrgId);
-          })
+          toolBlocks.map(async (tb: any) => ({
+            id: tb.id,
+            result: await executeTool(tb.name, tb.input, systemMessage, currentUserId, currentOrgId),
+          }))
         );
 
-        // Second call: feed tool results back to get a natural response
+        // Build follow-up messages with tool results
         const followUpMessages = [
-          { role: "system", content: systemMessage },
           ...messages,
-          choice.message,
-          ...toolCalls.map((tc: any, i: number) => ({
-            role: "tool",
-            tool_call_id: tc.id,
-            content: toolResults[i],
+          { role: "assistant", content: data.content },
+          ...toolResults.map(tr => ({
+            role: "user",
+            content: [{ type: "tool_result", tool_use_id: tr.id, content: tr.result }],
           })),
         ];
 
-        const followUp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: followUpMessages,
-            stream: true,
-          }),
-        });
+        // Second call: stream the response after tool execution
+        const followUp = await callAnthropic(systemMessage, followUpMessages, { stream: true, voiceMode });
 
         if (!followUp.ok) {
-          // Return tool results directly
+          // Return tool results directly as fallback
           return new Response(JSON.stringify({
             type: "tool_results",
-            content: toolResults.join("\n\n"),
-            actions: toolCalls.map((tc: any) => tc.function.name),
+            content: toolResults.map(tr => tr.result).join("\n\n"),
+            actions: toolBlocks.map((tb: any) => tb.name),
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        return new Response(followUp.body, {
+        return new Response(anthropicStreamToOpenAISSE(followUp.body!), {
           headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
         });
       }
 
-      // No tool calls — stream the response
-      // Re-do with streaming for normal responses
-      const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "system", content: systemMessage }, ...messages],
-          stream: true,
-        }),
-      });
-
-      return new Response(streamResp.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      // No tool calls — extract text and stream a follow-up
+      const textBlock = data.content?.find((b: any) => b.type === "text");
+      if (textBlock) {
+        // Re-stream for consistency with frontend expectations
+        const streamResp = await callAnthropic(systemMessage, messages, { stream: true, voiceMode });
+        return new Response(anthropicStreamToOpenAISSE(streamResp.body!), {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
     }
 
-    // Default streaming mode (backwards compat)
-    let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
-    if (context) systemMessage += "\n\n## Current Context\n" + context;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [{ role: "system", content: systemMessage }, ...messages],
-        stream: true,
-      }),
-    });
+    // Default streaming mode
+    const response = await callAnthropic(systemMessage, messages, { stream: true, voiceMode });
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -1404,19 +1466,14 @@ serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Anthropic error:", response.status, t);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    return new Response(anthropicStreamToOpenAISSE(response.body!), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

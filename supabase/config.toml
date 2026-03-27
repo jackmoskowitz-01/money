@@ -1,4 +1,4 @@
-project_id = "fvdncnxgmfzxlqtqxitl"
+project_id = "bxphmuwqqiuhpefjducu"
 
 [functions.generate-outreach]
 verify_jwt = true
@@ -91,4 +91,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.rag-backfill]
+verify_jwt = true
+
+[functions.batch-process]
+verify_jwt = true
+
+[functions.optimize-prompt]
 verify_jwt = true

@@ -151,6 +151,9 @@ const ProspectTable = () => {
     }
   }
 
+  // Note: rows with source 'db' or 'custom' both navigate to /prospect/{id},
+  // which is handled by CustomProspectDetail with dual-source loading.
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6">

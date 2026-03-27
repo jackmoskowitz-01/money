@@ -309,7 +309,9 @@ serve(async (req) => {
         );
       }
 
-      const { data: membership } = await userClient
+      const svcKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const svcClient = createClient(supabaseUrl, svcKey);
+      const { data: membership } = await svcClient
         .from("organization_members")
         .select("organization_id")
         .eq("user_id", user.id)

@@ -79,11 +79,13 @@ const CustomProspectDetail = () => {
   const { prospectId } = useParams();
   const localProspect = prospectId ? getCustomProspect(prospectId) : undefined;
   const [dbProspect, setDbProspect] = useState<ReturnType<typeof getCustomProspect> | undefined>(undefined);
+  const [dbProspectLoading, setDbProspectLoading] = useState(!localProspect && !!prospectId);
   const { user, profile } = useAuth();
 
   // If not found in local/custom_prospects, check the prospects table
   useEffect(() => {
     if (localProspect || !prospectId) return;
+    setDbProspectLoading(true);
     supabase
       .from('prospects')
       .select('*')
@@ -100,6 +102,7 @@ const CustomProspectDetail = () => {
             source: 'prospects',
           });
         }
+        setDbProspectLoading(false);
       });
   }, [prospectId, localProspect]);
 
@@ -253,6 +256,10 @@ const CustomProspectDetail = () => {
     if (!prospectId) return [];
     return prospectContacts.map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
   }, [prospectId, prospectContacts]);
+
+  if (dbProspectLoading) {
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
 
   if (!prospect) {
     return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Prospect not found</p></div>;

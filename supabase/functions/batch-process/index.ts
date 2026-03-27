@@ -26,24 +26,25 @@ serve(async (req) => {
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Auth
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    // Auth: extract user_id from JWT
     const authHeader = req.headers.get("Authorization") ?? "";
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const token = authHeader.replace("Bearer ", "");
+    let userId: string | null = null;
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      userId = payload.sub || null;
+    } catch { /* invalid token */ }
 
-    const { data: { user } } = await userClient.auth.getUser();
-    if (!user) {
+    if (!userId) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: membership } = await userClient
+    const { data: membership } = await supabase
       .from("organization_members")
       .select("organization_id")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .limit(1)
       .single();
 
@@ -79,7 +80,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-haiku-4-5-20241022",
+                model: "claude-opus-4-20250514",
                 max_tokens: 300,
                 system: "You are a CRE deal scorer. Score this deal 1-10 on fit, timing, engagement, and overall. Return JSON: {fit, timing, engagement, overall, recommendation}",
                 messages: [{
@@ -126,7 +127,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-haiku-4-5-20241022",
+              model: "claude-opus-4-20250514",
               max_tokens: 200,
               system: "You are a CRE broker assistant. Suggest a specific follow-up action for this stale deal. Be concise — one sentence with the action and reason.",
               messages: [{

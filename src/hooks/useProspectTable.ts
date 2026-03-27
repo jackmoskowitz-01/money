@@ -14,12 +14,22 @@ import {
 } from '@tanstack/react-table';
 import { buildings } from '@/data/mockData';
 import { getCustomProspectsAsync, type CustomProspect } from '@/data/customProspects';
+import { supabase } from '@/integrations/supabase/client';
 import { usePipeline } from '@/hooks/usePipeline';
 import type { PipelineStage } from '@/data/pipelineData';
 
+type DbProspect = {
+  id: string;
+  company_name: string;
+  website_url: string | null;
+  address: string | null;
+  status: string | null;
+  created_at: string;
+};
+
 export type ProspectRow = {
   id: string;
-  source: 'mock' | 'custom';
+  source: 'mock' | 'custom' | 'db';
   company: string;
   buildingName: string;
   contact: string;
@@ -58,6 +68,8 @@ export function useProspectTable(): ProspectTableReturn {
   const { pipeline, loading: pipelineLoading } = usePipeline();
   const [customProspects, setCustomProspects] = useState<CustomProspect[]>([]);
   const [customLoading, setCustomLoading] = useState(true);
+  const [dbProspects, setDbProspects] = useState<DbProspect[]>([]);
+  const [dbLoading, setDbLoading] = useState(true);
 
   // TanStack table state
   const [sorting, setSorting] = useState<SortingState>([{ id: 'lastActivity', desc: true }]);
@@ -75,6 +87,17 @@ export function useProspectTable(): ProspectTableReturn {
       setCustomProspects(prospects);
       setCustomLoading(false);
     });
+  }, []);
+
+  useEffect(() => {
+    supabase
+      .from('prospects')
+      .select('id, company_name, website_url, address, status, created_at')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setDbProspects((data || []) as unknown as DbProspect[]);
+        setDbLoading(false);
+      });
   }, []);
 
   // Build unified rows from mock + custom sources
@@ -142,8 +165,32 @@ export function useProspectTable(): ProspectTableReturn {
       });
     }
 
+    // Add rows from the prospects table (Supabase)
+    for (const dbp of dbProspects) {
+      // Avoid duplicating if already represented in custom_prospects
+      if (customProspects.some(cp => cp.id === dbp.id)) continue;
+
+      const pipelineItem = pipeline.find(p => p.tenantId === dbp.id);
+      rows.push({
+        id: dbp.id,
+        source: 'db',
+        company: dbp.company_name,
+        buildingName: dbp.address || '',
+        contact: '',
+        contactEmail: '',
+        contactTitle: '',
+        sfNeed: 0,
+        pipelineStage: pipelineItem?.stage ?? null,
+        lastActivity: pipelineItem?.lastActivity ?? dbp.created_at,
+        signals: [],
+        industry: dbp.status || 'Unknown',
+        tenantId: dbp.id,
+        buildingId: '',
+      });
+    }
+
     return rows;
-  }, [pipeline, customProspects]);
+  }, [pipeline, customProspects, dbProspects]);
 
   // Apply faceted filters (stage + industry) before handing to TanStack
   const facetedRows = useMemo(() => {
@@ -262,7 +309,7 @@ export function useProspectTable(): ProspectTableReturn {
 
   return {
     table,
-    loading: pipelineLoading || customLoading,
+    loading: pipelineLoading || customLoading || dbLoading,
     globalFilter,
     setGlobalFilter,
     stageFilter,

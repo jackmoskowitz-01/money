@@ -43,11 +43,11 @@ const ChatMessage = React.memo(function ChatMessage({
           className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
             msg.role === 'user'
               ? 'bg-primary text-primary-foreground rounded-br-md'
-              : 'bg-secondary/50 text-foreground rounded-bl-md'
+              : 'bg-secondary text-secondary-foreground rounded-bl-md'
           }`}
         >
           {msg.role === 'assistant' ? (
-            <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm">
+            <div className="prose prose-sm dark:prose-invert max-w-none text-inherit [&>p]:mb-2 [&>ul]:mb-2 [&>ol]:mb-2 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm [&>p]:text-sm [&>li]:text-sm [&_*]:text-inherit [&_strong]:text-inherit [&_a]:text-primary [&_code]:text-orange-300 dark:[&_code]:text-orange-300">
               <ReactMarkdown>{msg.content}</ReactMarkdown>
               {isLoading && isLast && (
                 <span className="inline-block w-[2px] h-4 bg-primary/70 animate-pulse ml-0.5 align-text-bottom" />

@@ -824,6 +824,8 @@ export function useCopilotState() {
     const isComp = !isMatrix && !isCashflow && (/\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent));
     const fileChips = fileNames.map(n => `**${n}**`).join('\n');
     const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
+    // Auto-export abstracts, comps, matrices, cashflows to Word
+    pendingAutoExportRef.current = isAbstract || isComp || isMatrix || isCashflow;
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
@@ -1150,8 +1152,8 @@ export function useCopilotState() {
     }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
-    const isCompCommand = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim());
-    pendingAutoExportRef.current = isCompCommand;
+    const isAutoExport = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim()) || /abstract/i.test(text.trim()) || /lease\s*summary/i.test(text.trim());
+    pendingAutoExportRef.current = isAutoExport;
     const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);
     setInput('');

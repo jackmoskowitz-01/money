@@ -77,8 +77,33 @@ const formatFileSize = (bytes: number) => {
 
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
-  const prospect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const localProspect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const [dbProspect, setDbProspect] = useState<ReturnType<typeof getCustomProspect> | undefined>(undefined);
   const { user, profile } = useAuth();
+
+  // If not found in local/custom_prospects, check the prospects table
+  useEffect(() => {
+    if (localProspect || !prospectId) return;
+    supabase
+      .from('prospects')
+      .select('*')
+      .eq('id', prospectId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setDbProspect({
+            id: data.id,
+            name: data.company_name,
+            website: data.website_url || '',
+            address: data.address || '',
+            createdAt: data.created_at,
+            source: 'prospects',
+          });
+        }
+      });
+  }, [prospectId, localProspect]);
+
+  const prospect = localProspect || dbProspect;
   const { pipeline, updateStage } = usePipeline();
 
   const pipelineItem = useMemo(() => pipeline.find(p => p.tenantId === prospectId), [pipeline, prospectId]);

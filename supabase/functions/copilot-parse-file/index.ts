@@ -18,10 +18,10 @@ serve(async (req) => {
       });
     }
 
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-    // Build content parts for Anthropic
+    // Build message content from files
     const contentParts: any[] = [];
     let allTextContent = "";
 
@@ -35,28 +35,25 @@ serve(async (req) => {
 
       if (isText) {
         const text = new TextDecoder().decode(bytes);
-        const truncated = text.length > 80000 ? text.slice(0, 80000) + "\n\n[... truncated ...]" : text;
+        const truncated = text.length > 100000 ? text.slice(0, 100000) + "\n\n[... truncated ...]" : text;
         allTextContent += `\n\n--- File: ${fileName} ---\n${truncated}`;
-      } else if (fileType === "application/pdf") {
-        // Anthropic supports PDF via base64
-        const base64 = btoa(String.fromCharCode(...bytes));
-        contentParts.push({
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: base64 },
-        });
       } else if (fileType?.startsWith("image/")) {
         const base64 = btoa(String.fromCharCode(...bytes));
         contentParts.push({
-          type: "image",
-          source: { type: "base64", media_type: fileType, data: base64 },
+          type: "image_url",
+          image_url: { url: `data:${fileType};base64,${base64}` },
         });
       } else {
-        // Unsupported binary — try to read as text
+        // PDF or other binary — try to read as text
         try {
           const text = new TextDecoder().decode(bytes);
-          allTextContent += `\n\n--- File: ${fileName} ---\n${text.slice(0, 40000)}`;
+          if (text.length > 100 && !text.includes('\x00')) {
+            allTextContent += `\n\n--- File: ${fileName} ---\n${text.slice(0, 100000)}`;
+          } else {
+            allTextContent += `\n\n--- File: ${fileName} (binary file, ${(bytes.length / 1024).toFixed(1)} KB) ---`;
+          }
         } catch {
-          allTextContent += `\n\n--- File: ${fileName} (binary, could not read) ---`;
+          allTextContent += `\n\n--- File: ${fileName} (could not read) ---`;
         }
       }
     }
@@ -68,27 +65,28 @@ serve(async (req) => {
 
     const systemPrompt = `You are a CRE document analyst. Extract and analyze commercial real estate documents (leases, LOIs, proposals, abstracts, offer comparisons). Focus on: parties, property address, square footage, rent/SF, TI allowance, free rent, lease term, commencement date, escalations, options, and any notable clauses. When multiple documents are provided, analyze them together and cross-reference data between them. Format your response with clear headers and bullet points.${context ? "\n\nAdditional context:\n" + context : ""}`;
 
-    // Call Anthropic with retry on overload
+    // Use GPT-4o — fast, great at following templates, handles long docs well
     let response: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      response = await fetch("https://api.anthropic.com/v1/messages", {
+      response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          "x-api-key": anthropicKey,
-          "anthropic-version": "2023-06-01",
+          "Authorization": `Bearer ${openaiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{ role: "user", content: contentParts }],
+          model: "gpt-4o",
+          max_tokens: 8192,
           stream: true,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: contentParts.length > 1 ? contentParts : `${allTextContent}\n\n${question}` },
+          ],
         }),
       });
 
-      if (response.status === 429 || response.status === 529) {
-        console.warn(`Anthropic overloaded (${response.status}), retry ${attempt + 1}/3...`);
+      if (response.status === 429) {
+        console.warn(`OpenAI rate limited, retry ${attempt + 1}/3...`);
         await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
         continue;
       }
@@ -102,45 +100,14 @@ serve(async (req) => {
         });
       }
       const t = await response?.text() || "Unknown error";
-      console.error("Anthropic error:", response?.status, t);
+      console.error("GPT-4o error:", response?.status, t);
       return new Response(JSON.stringify({ error: "Failed to analyze document. Please try again." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Convert Anthropic SSE stream to OpenAI-compatible SSE format
-    const reader = response.body!.getReader();
-    const decoder = new TextDecoder();
-    const encoder = new TextEncoder();
-
-    const sseStream = new ReadableStream({
-      async pull(controller) {
-        const { done, value } = await reader.read();
-        if (done) {
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-          return;
-        }
-        const text = decoder.decode(value);
-        for (const line of text.split("\n").filter(l => l.startsWith("data: "))) {
-          const data = line.slice(6).trim();
-          if (!data || data === "[DONE]") continue;
-          try {
-            const event = JSON.parse(data);
-            if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-                choices: [{ delta: { content: event.delta.text }, index: 0, finish_reason: null }],
-              })}\n\n`));
-            }
-            if (event.type === "message_stop") {
-              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-            }
-          } catch { /* skip */ }
-        }
-      },
-    });
-
-    return new Response(sseStream, {
+    // GPT-4o already streams in OpenAI SSE format — pass through directly
+    return new Response(response.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

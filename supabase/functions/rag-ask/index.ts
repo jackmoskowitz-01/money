@@ -19,22 +19,22 @@ async function rerankChunks(
     .map((c: any, i: number) => `[${i}] [${c.source_type.toUpperCase()}] ${c.content}`)
     .join("\n\n");
 
-  const rerankResponse = await fetch("https://api.anthropic.com/v1/messages", {
+  // Use GPT-4o-mini for re-ranking — fast and cheap
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) return chunks.slice(0, topK);
+
+  const rerankResponse = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      "x-api-key": anthropicKey,
-      "anthropic-version": "2023-06-01",
+      "Authorization": `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "gpt-4o-mini",
       max_tokens: 200,
-      system: `You are a relevance ranker for a commercial real estate brokerage. Given a broker's question and numbered document chunks, return ONLY a JSON array of the ${topK} most relevant chunk indices, ordered by relevance. Example: [3, 0, 7, 1, 5]. No explanation.`,
       messages: [
-        {
-          role: "user",
-          content: `Question: ${question}\n\nChunks:\n${numbered}`,
-        },
+        { role: "system", content: `You are a relevance ranker for a commercial real estate brokerage. Given a broker's question and numbered document chunks, return ONLY a JSON array of the ${topK} most relevant chunk indices, ordered by relevance. Example: [3, 0, 7, 1, 5]. No explanation.` },
+        { role: "user", content: `Question: ${question}\n\nChunks:\n${numbered}` },
       ],
     }),
   });
@@ -45,7 +45,7 @@ async function rerankChunks(
   }
 
   const rerankData = await rerankResponse.json();
-  const text = rerankData.content?.[0]?.text || "";
+  const text = rerankData.choices?.[0]?.message?.content || "";
 
   try {
     const indices: number[] = JSON.parse(text);

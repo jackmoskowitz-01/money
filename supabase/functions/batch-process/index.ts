@@ -67,30 +67,30 @@ serve(async (req) => {
 
         if (!deals?.length) return jsonResponse({ results: [], message: "No active deals to score." });
 
+        const openaiKey = Deno.env.get("OPENAI_API_KEY");
+        if (!openaiKey) throw new Error("OPENAI_API_KEY not configured");
+
         const results = [];
-        // Process in batches of 5 to avoid rate limits
         for (let i = 0; i < deals.length; i += 5) {
           const batch = deals.slice(i, i + 5);
           const batchResults = await Promise.all(batch.map(async (deal: any) => {
-            const resp = await fetch("https://api.anthropic.com/v1/messages", {
+            const resp = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
               headers: {
-                "x-api-key": anthropicKey,
-                "anthropic-version": "2023-06-01",
+                "Authorization": `Bearer ${openaiKey}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "claude-sonnet-4-20250514",
+                model: "gpt-4o-mini",
                 max_tokens: 300,
-                system: "You are a CRE deal scorer. Score this deal 1-10 on fit, timing, engagement, and overall. Return JSON: {fit, timing, engagement, overall, recommendation}",
-                messages: [{
-                  role: "user",
-                  content: `Deal: ${deal.prospect_name || deal.prospect_company || deal.tenant_id}\nStage: ${deal.stage}\nSF: ${deal.prospect_sqft || "unknown"}\nNotes: ${(deal.notes || []).slice(-3).join("; ")}\nLast Activity: ${deal.last_activity}\nTouchpoints: ${(deal.sent_touchpoints || []).length}`,
-                }],
+                messages: [
+                  { role: "system", content: "You are a CRE deal scorer. Score this deal 1-10 on fit, timing, engagement, and overall. Return JSON: {fit, timing, engagement, overall, recommendation}" },
+                  { role: "user", content: `Deal: ${deal.prospect_name || deal.prospect_company || deal.tenant_id}\nStage: ${deal.stage}\nSF: ${deal.prospect_sqft || "unknown"}\nNotes: ${(deal.notes || []).slice(-3).join("; ")}\nLast Activity: ${deal.last_activity}\nTouchpoints: ${(deal.sent_touchpoints || []).length}` },
+                ],
               }),
             });
             const data = await resp.json();
-            const text = data.content?.[0]?.text || "{}";
+            const text = data.choices?.[0]?.message?.content || "{}";
             try {
               return { deal: deal.prospect_name || deal.tenant_id, ...JSON.parse(text) };
             } catch {
@@ -118,29 +118,28 @@ serve(async (req) => {
 
         if (!staleDeals?.length) return jsonResponse({ results: [], message: "No stale deals found." });
 
+        const oaiKey = Deno.env.get("OPENAI_API_KEY")!;
         const results = await Promise.all(staleDeals.map(async (deal: any) => {
-          const resp = await fetch("https://api.anthropic.com/v1/messages", {
+          const resp = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
-              "x-api-key": anthropicKey,
-              "anthropic-version": "2023-06-01",
+              "Authorization": `Bearer ${oaiKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
+              model: "gpt-4o-mini",
               max_tokens: 200,
-              system: "You are a CRE broker assistant. Suggest a specific follow-up action for this stale deal. Be concise — one sentence with the action and reason.",
-              messages: [{
-                role: "user",
-                content: `Deal: ${deal.prospect_name || deal.tenant_id}\nCompany: ${deal.prospect_company}\nStage: ${deal.stage}\nSF: ${deal.prospect_sqft || "unknown"}\nLast Activity: ${deal.last_activity}\nDays Stale: ${Math.floor((Date.now() - new Date(deal.last_activity).getTime()) / 86400000)}`,
-              }],
+              messages: [
+                { role: "system", content: "You are a CRE broker assistant. Suggest a specific follow-up action for this stale deal. Be concise — one sentence with the action and reason." },
+                { role: "user", content: `Deal: ${deal.prospect_name || deal.tenant_id}\nCompany: ${deal.prospect_company}\nStage: ${deal.stage}\nSF: ${deal.prospect_sqft || "unknown"}\nLast Activity: ${deal.last_activity}\nDays Stale: ${Math.floor((Date.now() - new Date(deal.last_activity).getTime()) / 86400000)}` },
+              ],
             }),
           });
           const data = await resp.json();
           return {
             deal: deal.prospect_name || deal.tenant_id,
             days_stale: Math.floor((Date.now() - new Date(deal.last_activity).getTime()) / 86400000),
-            suggestion: data.content?.[0]?.text || "Follow up with this prospect.",
+            suggestion: data.choices?.[0]?.message?.content || "Follow up with this prospect.",
           };
         }));
 

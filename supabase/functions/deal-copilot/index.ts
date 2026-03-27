@@ -1391,24 +1391,28 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
 12. If a clause is complex, use sub-bullets to break it down - never collapse detail into a single line.
 13. DO NOT write "See lease for details" - extract and state the actual details.`;
 
-        // Call Claude to run the abstract
+        // Use GPT-4o for abstracts — faster, better at following templates
+        const openaiKey = Deno.env.get("OPENAI_API_KEY");
+        if (!openaiKey) return "Cannot run abstract — OPENAI_API_KEY not configured.";
+
         let abstractResp: Response | null = null;
         for (let attempt = 0; attempt < 3; attempt++) {
-          abstractResp = await fetch("https://api.anthropic.com/v1/messages", {
+          abstractResp = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
-              "x-api-key": anthropicKey,
-              "anthropic-version": "2023-06-01",
+              "Authorization": `Bearer ${openaiKey}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: "claude-sonnet-4-20250514",
-              max_tokens: 4096,
-              system: LEASE_ABSTRACT_TEMPLATE,
-              messages: [{ role: "user", content: `Run a complete lease abstract on the following document content:\n\n${fileContent}` }],
+              model: "gpt-4o",
+              max_tokens: 8192,
+              messages: [
+                { role: "system", content: LEASE_ABSTRACT_TEMPLATE },
+                { role: "user", content: `Run a complete lease abstract on the following document content:\n\n${fileContent}` },
+              ],
             }),
           });
-          if (abstractResp.status === 429 || abstractResp.status === 529) {
+          if (abstractResp.status === 429) {
             await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
             continue;
           }
@@ -1416,11 +1420,13 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
         }
 
         if (!abstractResp?.ok) {
+          const err = await abstractResp?.text();
+          console.error("GPT-4o abstract error:", err);
           return `Found files for ${args.prospect_name} but abstract generation failed. Here are the files:\n\n${fileContent}`;
         }
 
         const abstractData = await abstractResp.json();
-        const abstractText = abstractData.content?.find((b: any) => b.type === "text")?.text;
+        const abstractText = abstractData.choices?.[0]?.message?.content;
         return abstractText || `Abstract generation returned no output. Here are the files:\n\n${fileContent}`;
       }
 

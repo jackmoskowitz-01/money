@@ -1,24 +1,39 @@
 import { useState } from 'react';
-import { Plus, Building2, User, Mail, Phone, Ruler } from 'lucide-react';
+import { Plus, Building2, Globe, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePipeline } from '@/hooks/usePipeline';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export function AddProspectDialog() {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', company: '', email: '', phone: '', sqft: '' });
+  const [form, setForm] = useState({ company_name: '', website_url: '', address: '' });
   const [saving, setSaving] = useState(false);
-  const { addProspect } = usePipeline();
+  const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    if (!form.company.trim()) return;
+    if (!form.company_name.trim()) return;
     setSaving(true);
-    const success = await addProspect(form);
+    const { data, error } = await supabase
+      .from('prospects')
+      .insert({
+        company_name: form.company_name.trim(),
+        website_url: form.website_url.trim() || null,
+        address: form.address.trim() || null,
+      })
+      .select('id')
+      .single();
+
     setSaving(false);
-    if (success) {
-      setForm({ name: '', company: '', email: '', phone: '', sqft: '' });
-      setOpen(false);
+    if (error) {
+      toast.error('Failed to add prospect');
+      return;
     }
+    toast.success(`${form.company_name} added to prospects`);
+    setForm({ company_name: '', website_url: '', address: '' });
+    setOpen(false);
+    navigate('/prospect-table');
   };
 
   if (!open) {
@@ -49,50 +64,31 @@ export function AddProspectDialog() {
               <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Company name *"
-                value={form.company}
-                onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+                value={form.company_name}
+                onChange={(e) => setForm(f => ({ ...f, company_name: e.target.value }))}
                 className="pl-10 h-9 text-sm"
                 autoFocus
-                onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setOpen(false);
+                  if (e.key === 'Enter' && form.company_name.trim()) handleSubmit();
+                }}
               />
             </div>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Contact name"
-                value={form.name}
-                onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Website URL"
+                value={form.website_url}
+                onChange={(e) => setForm(f => ({ ...f, website_url: e.target.value }))}
                 className="pl-10 h-9 text-sm"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                  className="pl-10 h-9 text-sm"
-                />
-              </div>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Phone"
-                  value={form.phone}
-                  onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className="pl-10 h-9 text-sm"
-                />
-              </div>
-            </div>
             <div className="relative">
-              <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="SF requirement (e.g. 15000)"
-                type="number"
-                value={form.sqft}
-                onChange={(e) => setForm(f => ({ ...f, sqft: e.target.value }))}
+                placeholder="Address"
+                value={form.address}
+                onChange={(e) => setForm(f => ({ ...f, address: e.target.value }))}
                 className="pl-10 h-9 text-sm"
               />
             </div>
@@ -105,10 +101,10 @@ export function AddProspectDialog() {
             <Button
               size="sm"
               onClick={handleSubmit}
-              disabled={!form.company.trim() || saving}
+              disabled={!form.company_name.trim() || saving}
               className="text-xs gap-1.5"
             >
-              {saving ? 'Adding...' : 'Add to Pipeline'}
+              {saving ? 'Adding...' : 'Add Prospect'}
             </Button>
           </div>
         </div>

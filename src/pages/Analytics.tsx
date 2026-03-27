@@ -1,11 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
-  Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, ChevronUp, X, DollarSign,
+  Building2, Clock, Target, Zap, CheckCircle2, BarChart3, ChevronDown, DollarSign,
   Timer, TrendingUp, TrendingDown, AlertTriangle, Calendar, Users, Mail, ArrowRight,
-  Phone, FileText, ChevronRight, Flame, MapPin, Inbox, Loader2, Activity, PieChart as PieChartIcon,
-  Search, Send, Sparkles
+  Phone, FileText, Flame, MapPin, Inbox, Loader2, Activity, PieChart as PieChartIcon
 } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import { stageLabels, type PipelineStage } from '@/data/pipelineData';
@@ -24,7 +23,6 @@ import DealVelocity from '@/components/DealVelocity';
 import RevenueForecast from '@/components/RevenueForecast';
 import DailyBriefing from '@/components/DailyBriefing';
 import { DealflowAsk } from '@/components/DealflowAsk';
-import CriticalDatesTracker from '@/components/CriticalDatesTracker';
 import CriticalDatesFullView from '@/components/CriticalDatesFullView';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid
@@ -40,7 +38,7 @@ type ActivityRow = {
   timestamp: string;
 };
 
-const Dashboard = () => {
+const Analytics = () => {
   const [now, setNow] = useState(Date.now());
   const [activities, setActivities] = useState<ActivityRow[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
@@ -71,7 +69,7 @@ const Dashboard = () => {
     fetchActivities();
 
     const channel = supabase
-      .channel('activities-dashboard')
+      .channel('activities-analytics')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, () => {
         fetchActivities();
       })
@@ -110,41 +108,6 @@ const Dashboard = () => {
     ];
   }, [pipeline, activities, tasks, now]);
 
-  // ───── Today's Focus ─────
-  const focusItems = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const items: { id: string; icon: typeof Clock; label: string; detail: string; urgency: 'high' | 'medium' | 'low'; link?: string }[] = [];
-
-    const overdue = tasks.filter(t => !t.completed && t.dueDate < today);
-    if (overdue.length > 0) items.push({ id: 'overdue', icon: AlertTriangle, label: `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`, detail: overdue[0].title, urgency: 'high', link: '/tasks' });
-
-    const dueToday = tasks.filter(t => !t.completed && t.dueDate === today);
-    if (dueToday.length > 0) items.push({ id: 'due-today', icon: Calendar, label: `${dueToday.length} task${dueToday.length > 1 ? 's' : ''} due today`, detail: dueToday[0].title, urgency: 'medium', link: '/tasks' });
-
-    const staleProspects = pipeline.filter(p => {
-      if (['won', 'lost', 'closed'].includes(p.stage)) return false;
-      return (now - new Date(p.lastActivity).getTime()) / (1000 * 60 * 60 * 24) > 14;
-    });
-    if (staleProspects.length > 0) items.push({ id: 'stale', icon: Clock, label: `${staleProspects.length} stale prospect${staleProspects.length > 1 ? 's' : ''}`, detail: 'No activity in 14+ days', urgency: 'medium', link: '/pipeline' });
-
-    const hotCount = pipeline.filter(p => p.stage === 'hot_prospect').length;
-    if (hotCount > 0) items.push({ id: 'hot', icon: Flame, label: `${hotCount} hot prospect${hotCount > 1 ? 's' : ''} need outreach`, detail: 'Move them to meeting set', urgency: 'low', link: '/pipeline' });
-
-    const meetingSet = pipeline.filter(p => p.stage === 'meeting_set').length;
-    if (meetingSet > 0) items.push({ id: 'meetings', icon: Users, label: `${meetingSet} meeting${meetingSet > 1 ? 's' : ''} to prepare for`, detail: 'Review meeting prep briefs', urgency: 'low', link: '/pipeline' });
-
-    // Lease expirations within 90 days
-    const todayDate = new Date();
-    const ninetyDaysOut = new Date(todayDate.getTime() + 90 * 86400000);
-    const expiringLeases = buildings.flatMap(b => b.tenants.filter(t => {
-      const expDate = new Date(t.leaseExpiration);
-      return expDate >= todayDate && expDate <= ninetyDaysOut;
-    }));
-    if (expiringLeases.length > 0) items.push({ id: 'leases', icon: Calendar, label: `${expiringLeases.length} lease${expiringLeases.length > 1 ? 's' : ''} expiring within 90 days`, detail: expiringLeases[0].name + (expiringLeases.length > 1 ? ` + ${expiringLeases.length - 1} more` : ''), urgency: 'medium', link: '/prospect-table' });
-
-    return items.sort((a, b) => ({ high: 0, medium: 1, low: 2 }[a.urgency] - { high: 0, medium: 1, low: 2 }[b.urgency]));
-  }, [tasks, pipeline, now]);
-
   // ───── Pipeline Analytics ─────
   const stageCounts = useMemo(() => {
     const counts: Partial<Record<PipelineStage, number>> = {};
@@ -163,7 +126,7 @@ const Dashboard = () => {
       if (p.stage === 'won') industryStats[industry].won++;
     });
     return Object.entries(industryStats)
-      .map(([industry, { won, total }]) => ({ industry: industry.length > 15 ? industry.slice(0, 13) + '…' : industry, winRate: total > 0 ? Math.round((won / total) * 100) : 0, total, won }))
+      .map(([industry, { won, total }]) => ({ industry: industry.length > 15 ? industry.slice(0, 13) + '\u2026' : industry, winRate: total > 0 ? Math.round((won / total) * 100) : 0, total, won }))
       .filter(d => d.total >= 1)
       .sort((a, b) => b.winRate - a.winRate)
       .slice(0, 6);
@@ -182,11 +145,11 @@ const Dashboard = () => {
 
           {/* Header */}
           <div className="mb-8">
-            <Skeleton className="h-8 w-36 mb-2" />
-            <Skeleton className="h-4 w-52" />
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </div>
 
-          {/* Stat cards — 4 cols matching the real grid */}
+          {/* Stat cards */}
           <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {[0, 1, 2, 3].map(i => (
               <div key={i} className="rounded-xl border border-border bg-card p-4">
@@ -200,43 +163,14 @@ const Dashboard = () => {
             ))}
           </div>
 
-          {/* Today's Focus — 3 skeleton rows */}
-          <div className="mb-8">
-            <div className="flex items-center gap-2.5 mb-4">
-              <Skeleton className="h-7 w-7 rounded-lg" />
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-5 w-12 rounded-full" />
-            </div>
-            <div className="grid gap-2">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
-                  <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
-                  <div className="flex-1 min-w-0">
-                    <Skeleton className="h-3.5 w-48 mb-1.5" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
-                  <Skeleton className="h-5 w-14 rounded-full" />
-                  <Skeleton className="h-3.5 w-3.5 rounded-sm" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Quick actions row */}
-          <div className="mb-8 flex gap-2">
-            <Skeleton className="h-8 w-28 rounded-md" />
-            <Skeleton className="h-8 w-36 rounded-md" />
-            <Skeleton className="h-8 w-28 rounded-md" />
-          </div>
-
           {/* Tab bar */}
           <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 mb-6">
-            {[0, 1, 2, 3, 4].map(i => (
+            {[0, 1, 2, 3, 4, 5].map(i => (
               <Skeleton key={i} className="h-7 flex-1 rounded-md" />
             ))}
           </div>
 
-          {/* Chart area — 3-column card row */}
+          {/* Chart area */}
           <div className="grid gap-4 lg:grid-cols-3">
             {[0, 1, 2].map(i => (
               <div key={i} className="rounded-xl border border-border bg-card p-5">
@@ -258,8 +192,8 @@ const Dashboard = () => {
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-end justify-between">
             <div className="page-header-accent">
-              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="mt-1 text-sm text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Analytics & Reports</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Performance metrics, pipeline insights, and market trends</p>
             </div>
           </div>
         </motion.div>
@@ -302,62 +236,7 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* ═══ Today's Focus — Priority Queue ═══ */}
-        {focusItems.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
-                  <Flame className="h-3.5 w-3.5 text-primary" />
-                </div>
-                <h2 className="text-sm font-semibold text-foreground">Today's Focus</h2>
-                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                  {focusItems.length} item{focusItems.length > 1 ? 's' : ''}
-                </Badge>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              {focusItems.map((item, i) => {
-                const urgencyStyles = {
-                  high: { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-l-destructive', label: 'Urgent' },
-                  medium: { bg: 'bg-warning/10', text: 'text-warning', border: 'border-l-warning', label: 'Today' },
-                  low: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-l-primary', label: 'Action' },
-                }[item.urgency];
-                return (
-                  <Link key={item.id} to={item.link || '/'} className="block">
-                    <motion.div
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + i * 0.04 }}
-                      className={`flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-secondary/30 transition-all group border-l-[3px] ${urgencyStyles.border}`}
-                    >
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${urgencyStyles.bg}`}>
-                        <item.icon className={`h-4 w-4 ${urgencyStyles.text}`} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors">{item.label}</p>
-                        <p className="text-xs text-muted-foreground">{item.detail}</p>
-                      </div>
-                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 shrink-0 border-0 ${urgencyStyles.bg} ${urgencyStyles.text}`}>
-                        {urgencyStyles.label}
-                      </Badge>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
-                    </motion.div>
-                  </Link>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ═══ Quick Actions ═══ */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }} className="mb-8 flex flex-wrap gap-2">
-          <Link to="/activities"><Button variant="outline" size="sm" className="gap-1.5"><Phone className="h-3.5 w-3.5" /> Log Activity</Button></Link>
-          <Link to="/prospect-table"><Button variant="outline" size="sm" className="gap-1.5"><Users className="h-3.5 w-3.5" /> Search Prospects</Button></Link>
-          <Link to="/pipeline"><Button variant="outline" size="sm" className="gap-1.5"><Mail className="h-3.5 w-3.5" /> Draft Outreach</Button></Link>
-        </motion.div>
-
-        {/* ═══ Analytics & Reports ═══ */}
+        {/* ═══ Analytics Tabs ═══ */}
         <Tabs defaultValue="performance" className="w-full">
           <TabsList className="w-full justify-start bg-secondary/30 border border-border rounded-lg p-1 mb-6 gap-0.5">
             <TabsTrigger value="performance" className="text-xs gap-1.5 rounded-md data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">
@@ -536,12 +415,12 @@ const Dashboard = () => {
                 </div>
                 <p className="text-xs font-medium text-foreground">
                   {activities.length > 0 ? (
-                    activities.filter(a => a.type === 'email_sent').length >= activities.filter(a => a.type === 'call_made').length && 
+                    activities.filter(a => a.type === 'email_sent').length >= activities.filter(a => a.type === 'call_made').length &&
                     activities.filter(a => a.type === 'email_sent').length >= activities.filter(a => a.type === 'meeting_held').length
-                      ? '📧 Email Outreach'
+                      ? 'Email Outreach'
                       : activities.filter(a => a.type === 'call_made').length >= activities.filter(a => a.type === 'meeting_held').length
-                        ? '📞 Phone Calls'
-                        : '🤝 Meetings'
+                        ? 'Phone Calls'
+                        : 'Meetings'
                   ) : 'No activity yet'}
                 </p>
                 <p className="text-[10px] text-muted-foreground/70 mt-1">Most used touchpoint</p>
@@ -567,7 +446,7 @@ const Dashboard = () => {
                   {activities.filter(a => {
                     const daysSince = Math.floor((now - new Date(a.timestamp).getTime()) / (24 * 3600000));
                     return daysSince === 0;
-                  }).length > 0 ? '🔥 Active today!' : '📊 Start logging'}
+                  }).length > 0 ? 'Active today!' : 'Start logging'}
                 </p>
                 <p className="text-[10px] text-muted-foreground/70 mt-1">Keep the momentum going</p>
               </Card>
@@ -628,7 +507,7 @@ const Dashboard = () => {
                   {tasks.filter(t => !t.completed).length === 0 ? (
                     <div className="py-8 text-center">
                       <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-success/30" />
-                      <p className="text-xs text-muted-foreground">No pending tasks 🎉</p>
+                      <p className="text-xs text-muted-foreground">No pending tasks</p>
                     </div>
                   ) : (
                     tasks.filter(t => !t.completed).slice(0, 15).map(task => {
@@ -675,4 +554,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Analytics;

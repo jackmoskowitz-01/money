@@ -25,6 +25,7 @@ import ActivityLogger from "./pages/ActivityLogger";
 import Settings from "./pages/Settings";
 import LoopNetSearch from "./pages/LoopNetSearch";
 import LoopNetDetail from "./pages/LoopNetDetail";
+import Analytics from "./pages/Analytics";
 import EmailAnalytics from "./pages/EmailAnalytics";
 import ProspectTable from "./pages/ProspectTable";
 import LeaseAbstracts from "./pages/LeaseAbstracts";
@@ -90,6 +91,7 @@ const ProtectedRoutes = () => {
           <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
           <Route path="/loopnet" element={<ErrorBoundary><LoopNetSearch /></ErrorBoundary>} />
           <Route path="/loopnet/detail" element={<ErrorBoundary><LoopNetDetail /></ErrorBoundary>} />
+          <Route path="/analytics" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
           <Route path="/email-analytics" element={<ErrorBoundary><EmailAnalytics /></ErrorBoundary>} />
           <Route path="/prospect-table" element={<ErrorBoundary><ProspectTable /></ErrorBoundary>} />
           <Route path="/lease-abstracts" element={<ErrorBoundary><LeaseAbstracts /></ErrorBoundary>} />

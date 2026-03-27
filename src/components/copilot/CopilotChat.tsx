@@ -12,7 +12,8 @@ import CopilotSlashCommands from '@/components/copilot/CopilotSlashCommands';
 import { CopilotFileChips, CopilotFileContextIndicator, CopilotDragOverlay } from '@/components/copilot/CopilotFileHandler';
 import ChatMessage from '@/components/copilot/ChatMessage';
 import type { Msg } from '@/hooks/useCopilotState';
-import { SUGGESTIONS } from '@/hooks/useCopilotState';
+import { getSuggestionsForPage } from '@/hooks/useCopilotState';
+import { useLocation } from 'react-router-dom';
 
 interface CopilotChatProps {
   // State
@@ -90,6 +91,9 @@ function CopilotChat(props: CopilotChatProps) {
     toggleVoiceMode, toggleVoice,
     setIsDraggingOver, setShowSlashCommands,
   } = props;
+
+  const location = useLocation();
+  const SUGGESTIONS = getSuggestionsForPage(location.pathname);
 
   return (
     <motion.div

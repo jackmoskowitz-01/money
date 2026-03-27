@@ -19,7 +19,7 @@ const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilo
 
 export type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
-export const SUGGESTIONS = [
+export const DEFAULT_SUGGESTIONS = [
   "What's my best next move with McKinsey?",
   "Draft a check-in email for Deloitte",
   "Analyze comps for McKinsey's deal",
@@ -28,17 +28,76 @@ export const SUGGESTIONS = [
   "Which deals need follow-up?",
 ];
 
+// Backward compatibility alias
+export const SUGGESTIONS = DEFAULT_SUGGESTIONS;
+
+export function getSuggestionsForPage(pathname: string): string[] {
+  return CONTEXTUAL_SUGGESTIONS[pathname] || DEFAULT_SUGGESTIONS;
+}
+
 // Page context mapping
 const PAGE_CONTEXT: Record<string, string> = {
   '/': 'User is on the Dashboard — showing overview of pipeline, tasks, and activity.',
   '/pipeline': 'User is on the Pipeline page — viewing the Kanban board of all deals.',
   '/prospects': 'User is on the Prospects page — browsing prospect lists and search.',
+  '/prospect-table': 'User is on the Prospects CRM table — full book of business view with sorting/filtering.',
   '/map': 'User is on the Map View — exploring DC buildings on an interactive map.',
   '/news': 'User is on the News/Intel page — viewing market news and company intelligence.',
   '/tasks': 'User is on the Tasks page — managing follow-ups and to-dos.',
   '/scoop': 'User is on the Scoop Board — collaborative broker intelligence sharing.',
   '/activities': 'User is on the Activity Logger — tracking calls, tours, emails, meetings.',
+  '/email-analytics': 'User is on Email Analytics — tracking email campaign performance.',
+  '/loopnet': 'User is on LoopNet Search — searching for properties and tenants.',
+  '/comp-tracker': 'User is on the Comp Tracker — monitoring competitive lease transactions.',
+  '/lease-abstracts': 'User is on Lease Abstracts — managing lease document analysis.',
+  '/alerts': 'User is on Alerts — viewing critical dates and notifications.',
+  '/analytics': 'User is on Analytics — reviewing pipeline metrics, trends, and forecasts.',
   '/settings': 'User is on Settings — managing profile and preferences.',
+};
+
+// Proactive contextual suggestions per page
+// (per Anthropic cookbook agent patterns — proactive not passive)
+const CONTEXTUAL_SUGGESTIONS: Record<string, string[]> = {
+  '/': [
+    "Give me a morning briefing — what needs my attention today?",
+    "Which deals are stale and need follow-up?",
+    "Score all my active deals",
+  ],
+  '/pipeline': [
+    "Which deal should I focus on next?",
+    "Compare my top 3 deals",
+    "Any deals stuck in the same stage too long?",
+  ],
+  '/prospect-table': [
+    "Which prospects haven't been touched in 2+ weeks?",
+    "Draft a re-engagement sequence for stale prospects",
+    "Score and rank my prospects by priority",
+  ],
+  '/news': [
+    "Any news signals matching my current prospects?",
+    "Find expansion signals for companies over 20K SF",
+    "Draft outreach based on the latest market news",
+  ],
+  '/scoop': [
+    "Summarize the latest scoops from this week",
+    "Any scoops that match my pipeline deals?",
+    "What intel should I act on first?",
+  ],
+  '/tasks': [
+    "What's overdue and what should I prioritize?",
+    "Draft follow-up emails for my overdue tasks",
+    "Create tasks for all stale deals",
+  ],
+  '/loopnet': [
+    "Search for Class A office buildings in East End",
+    "Find properties matching my 20K+ SF prospects",
+    "Compare this building's comps to market average",
+  ],
+  '/activities': [
+    "Summarize my outreach activity this week",
+    "Which prospects have I not contacted recently?",
+    "Log today's calls and meetings",
+  ],
 };
 
 // Cresa-style lease abstract template structure

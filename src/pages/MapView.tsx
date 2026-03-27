@@ -50,6 +50,7 @@ const MapView = () => {
   const [buildingNotes, setBuildingNotes] = useState<{ id: string; content: string; author_name: string; created_at: string }[]>([]);
   const [newNote, setNewNote] = useState('');
   const [notesLoading, setNotesLoading] = useState(false);
+  const [buildingPanelTab, setBuildingPanelTab] = useState<'details' | 'notes'>('details');
   const { profile } = useAuth();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -248,6 +249,7 @@ const MapView = () => {
     setGeneratedEmails({});
     setGeneratingKeys(new Set());
     setActiveEmailKey(null);
+    setBuildingPanelTab('details');
   }, [selectedBuilding?.id]);
 
   // Fetch building notes when a building is selected
@@ -749,6 +751,28 @@ const MapView = () => {
                 </div>
               </div>
 
+              {/* Tab bar */}
+              <div className="flex gap-1 mb-4 rounded-lg bg-secondary/50 p-0.5">
+                <button
+                  onClick={() => setBuildingPanelTab('details')}
+                  className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${buildingPanelTab === 'details' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Details
+                </button>
+                <button
+                  onClick={() => setBuildingPanelTab('notes')}
+                  className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5 ${buildingPanelTab === 'notes' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Notes
+                  {buildingNotes.length > 0 && (
+                    <span className={`text-[10px] rounded-full px-1.5 py-0 ${buildingPanelTab === 'notes' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {buildingNotes.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {buildingPanelTab === 'details' && <>
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">
                 <div
                   className="rounded-md bg-secondary p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all group"
@@ -872,55 +896,6 @@ const MapView = () => {
 
               <div className="mb-4">
                 <StackingPlan building={selectedBuilding} />
-              </div>
-
-              {/* Building Notes */}
-              <div className="mb-4 rounded-md border border-border bg-secondary/20 p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <h4 className="text-sm font-semibold">Building Notes</h4>
-                  <span className="text-[10px] text-muted-foreground ml-auto">{buildingNotes.length} note{buildingNotes.length !== 1 ? 's' : ''}</span>
-                </div>
-                {/* Add note input */}
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    value={newNote}
-                    onChange={(e) => setNewNote(e.target.value)}
-                    placeholder="Add a note about this building..."
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => { if (e.key === 'Enter') addBuildingNote(); }}
-                  />
-                  <Button
-                    size="sm"
-                    className="h-8 px-3 text-xs shrink-0"
-                    onClick={addBuildingNote}
-                    disabled={!newNote.trim()}
-                  >
-                    <Send className="h-3 w-3" />
-                  </Button>
-                </div>
-                {/* Notes list */}
-                {notesLoading ? (
-                  <div className="flex items-center justify-center py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  </div>
-                ) : buildingNotes.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-2">No notes yet. Be the first to add one.</p>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {buildingNotes.map((note) => (
-                      <div key={note.id} className="rounded-md bg-background/60 p-2 border border-border/50">
-                        <p className="text-xs text-foreground whitespace-pre-wrap">{note.content}</p>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-[10px] text-muted-foreground font-medium">{note.author_name}</span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Auto-Enrich */}
@@ -1091,6 +1066,58 @@ const MapView = () => {
                   );
                 })}
               </div>
+              </>}
+
+              {buildingPanelTab === 'notes' && (
+                <div className="space-y-3">
+                  {/* Add note */}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Add a note about this building..."
+                      className="h-9 text-xs"
+                      onKeyDown={(e) => { if (e.key === 'Enter') addBuildingNote(); }}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 px-3 text-xs shrink-0"
+                      onClick={addBuildingNote}
+                      disabled={!newNote.trim()}
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Notes list */}
+                  {notesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : buildingNotes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No notes yet</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">Add the first note about this building</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {buildingNotes.map((note) => (
+                        <div key={note.id} className="rounded-lg bg-secondary/40 p-3 border border-border/40">
+                          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                            <span className="text-[11px] text-primary/80 font-medium">{note.author_name}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               </div>
             </Card>
           </motion.div>

@@ -69,7 +69,7 @@ export function useAskDealflow(): UseAskDealflowReturn {
 // ============================================================
 
 export async function embedAfterSave(
-  sourceType: 'deal' | 'contact' | 'activity' | 'scoop',
+  sourceType: 'deal' | 'contact' | 'activity' | 'scoop' | 'document',
   sourceId: string,
   record: Record<string, unknown>
 ): Promise<void> {

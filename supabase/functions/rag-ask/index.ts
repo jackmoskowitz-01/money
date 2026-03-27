@@ -2,13 +2,75 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ============================================================
+// Re-ranking: Use Claude to select the most relevant chunks
+// (per Anthropic cookbook RAG guide — improves MRR by ~15-20%)
+// ============================================================
+
+async function rerankChunks(
+  question: string,
+  chunks: any[],
+  topK: number,
+  anthropicKey: string
+): Promise<any[]> {
+  if (chunks.length <= topK) return chunks;
+
+  const numbered = chunks
+    .map((c: any, i: number) => `[${i}] [${c.source_type.toUpperCase()}] ${c.content}`)
+    .join("\n\n");
+
+  const rerankResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": anthropicKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20241022",
+      max_tokens: 200,
+      system: `You are a relevance ranker for a commercial real estate brokerage. Given a broker's question and numbered document chunks, return ONLY a JSON array of the ${topK} most relevant chunk indices, ordered by relevance. Example: [3, 0, 7, 1, 5]. No explanation.`,
+      messages: [
+        {
+          role: "user",
+          content: `Question: ${question}\n\nChunks:\n${numbered}`,
+        },
+      ],
+    }),
+  });
+
+  if (!rerankResponse.ok) {
+    console.warn("Re-ranking failed, falling back to vector similarity order");
+    return chunks.slice(0, topK);
+  }
+
+  const rerankData = await rerankResponse.json();
+  const text = rerankData.content?.[0]?.text || "";
+
+  try {
+    const indices: number[] = JSON.parse(text);
+    const reranked = indices
+      .filter((i: number) => i >= 0 && i < chunks.length)
+      .slice(0, topK)
+      .map((i: number) => chunks[i]);
+    return reranked.length > 0 ? reranked : chunks.slice(0, topK);
+  } catch {
+    console.warn("Failed to parse re-rank indices, falling back to vector order");
+    return chunks.slice(0, topK);
+  }
+}
+
+// ============================================================
+// Main handler
+// ============================================================
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { question, filterType, topK = 5, threshold = 0.45 } = await req.json();
+    const { question, filterType, topK = 5, threshold = 0.40 } = await req.json();
 
     if (!question?.trim()) {
       return new Response(
@@ -80,24 +142,60 @@ serve(async (req) => {
     const embeddingData = await embeddingResponse.json();
     const queryEmbedding = embeddingData.data[0].embedding;
 
-    // Step 2: Similarity search via Supabase RPC
+    // Step 2: Retrieve candidates — fetch 4x topK for re-ranking headroom
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: chunks, error: searchError } = await adminClient.rpc("match_embeddings", {
-      query_embedding: queryEmbedding,
-      match_org_id: orgId,
-      match_count: topK,
-      match_threshold: threshold,
-      filter_type: filterType ?? null,
-    });
+    const retrieveCount = topK * 4; // Retrieve more for re-ranking
 
-    if (searchError) {
-      throw new Error(`Retrieval failed: ${searchError.message}`);
+    // Run vector search and full-text search in parallel (hybrid search)
+    const [vectorResult, textResult] = await Promise.all([
+      // Vector similarity search
+      adminClient.rpc("match_embeddings", {
+        query_embedding: queryEmbedding,
+        match_org_id: orgId,
+        match_count: retrieveCount,
+        match_threshold: threshold,
+        filter_type: filterType ?? null,
+      }),
+      // Full-text keyword search on content column
+      adminClient
+        .from("embeddings")
+        .select("source_type, source_id, content, metadata, organization_id")
+        .eq("organization_id", orgId)
+        .textSearch("content", question.split(/\s+/).filter((w: string) => w.length > 2).join(" & "), { type: "plain" })
+        .limit(retrieveCount)
+        .then((res: any) => ({
+          ...res,
+          data: res.data?.map((r: any) => ({ ...r, similarity: 0.5 })) ?? [], // assign neutral score
+        })),
+    ]);
+
+    if (vectorResult.error) {
+      throw new Error(`Vector retrieval failed: ${vectorResult.error.message}`);
+    }
+
+    // Merge and deduplicate results (vector results take priority for similarity score)
+    const seen = new Set<string>();
+    const allChunks: any[] = [];
+
+    for (const chunk of (vectorResult.data || [])) {
+      const key = `${chunk.source_type}:${chunk.source_id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        allChunks.push(chunk);
+      }
+    }
+    for (const chunk of (textResult.data || [])) {
+      const key = `${chunk.source_type}:${chunk.source_id}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        allChunks.push(chunk);
+      }
     }
 
     // If nothing relevant found
-    if (!chunks || chunks.length === 0) {
+    if (allChunks.length === 0) {
       return new Response(
         JSON.stringify({
           answer: "I couldn't find relevant deal data for that question. Try adding more context or make sure your deals and activities have been saved.",
@@ -107,8 +205,19 @@ serve(async (req) => {
       );
     }
 
-    // Step 3: Build context from retrieved chunks
-    const context = chunks
+    // Step 3: Re-rank with Claude if we have more candidates than needed
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicKey) {
+      return new Response(
+        JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const rankedChunks = await rerankChunks(question, allChunks, topK, anthropicKey);
+
+    // Step 4: Build context from re-ranked chunks
+    const context = rankedChunks
       .map((chunk: any, i: number) => {
         const label = chunk.source_type.toUpperCase();
         const meta = chunk.metadata || {};
@@ -124,15 +233,7 @@ serve(async (req) => {
       })
       .join("\n\n");
 
-    // Step 4: Ask Claude
-    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!anthropicKey) {
-      return new Response(
-        JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Step 5: Ask Claude with re-ranked context
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -175,7 +276,7 @@ Rules:
     return new Response(
       JSON.stringify({
         answer,
-        sources: chunks.map((c: any) => ({
+        sources: rankedChunks.map((c: any) => ({
           type: c.source_type,
           id: c.source_id,
           similarity: c.similarity,

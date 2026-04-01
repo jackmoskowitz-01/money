@@ -69,7 +69,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .single();
 
     if (data) {
-      const orgName = (data as any).organizations?.name ?? '';
+      const orgName =
+        (data as { organizations?: { name?: string } | null }).organizations?.name ?? '';
       setOrganization({
         organization_id: data.organization_id,
         organization_name: orgName,
@@ -82,7 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Auth] state change:', event);
+      if (import.meta.env.DEV) console.log('[Auth] state change:', event);
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {

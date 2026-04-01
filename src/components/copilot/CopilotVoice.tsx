@@ -204,7 +204,11 @@ export function useCopilotVoice({
       setIsRecording(false);
       setInput('');
       if (scribeConnectedRef.current) {
-        try { scribe.disconnect(); } catch {}
+        try {
+          scribe.disconnect();
+        } catch {
+          /* disconnect may throw if already closed */
+        }
         scribeConnectedRef.current = false;
       }
       toast('Voice mode off');

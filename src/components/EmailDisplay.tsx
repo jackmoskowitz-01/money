@@ -318,7 +318,7 @@ const EmailDisplay = ({
     setIsGeneratingAB(false);
   }, [isGeneratingAB, emailContent, tenantName, industry]);
 
-  const useVariant = () => {
+  const applyAbVariant = () => {
     onUpdateEmail(emailKey, abVariant);
     setShowABVariant(false);
     setAbVariant('');
@@ -462,7 +462,11 @@ const EmailDisplay = ({
             )}
             {!isEditing && (
               <button
-                onClick={(e) => { e.stopPropagation(); onDismiss ? onDismiss() : onClose(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDismiss) onDismiss();
+                  else onClose();
+                }}
                 className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
               >
                 <X className="h-3 w-3" />
@@ -548,7 +552,7 @@ const EmailDisplay = ({
                   <div className="flex items-center gap-1">
                     {abVariant && !isGeneratingAB && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); useVariant(); }}
+                        onClick={(e) => { e.stopPropagation(); applyAbVariant(); }}
                         className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
                       >
                         Use This Version

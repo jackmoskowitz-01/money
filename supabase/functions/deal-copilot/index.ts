@@ -801,9 +801,20 @@ Tables:
 - critical_dates (id uuid, prospect_name text, prospect_id text, building_name text, date_type text, date_value date, description text, remind_days_before int, source text, user_id uuid, created_at timestamptz)
 `;
 
+/** Ensures generated SQL scopes to the user's org (defense in depth with exec_readonly_sql). */
+function sqlContainsOrgScope(sql: string, orgId: string): boolean {
+  const q = sql.toLowerCase();
+  const id = orgId.toLowerCase();
+  return q.includes("organization_id") && q.includes(id);
+}
+
 async function queryDatabase(question: string, orgId: string): Promise<string> {
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) return "Database query unavailable (ANTHROPIC_API_KEY not configured).";
+
+  if (!orgId) {
+    return "Database query unavailable (no organization context). Open Copilot while signed in to an account with an organization.";
+  }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -839,8 +850,15 @@ async function queryDatabase(question: string, orgId: string): Promise<string> {
       return "Could not generate a safe query for that question.";
     }
 
-    // Step 2: Execute the query
-    const { data, error } = await supabase.rpc("exec_readonly_sql", { query_text: sql });
+    if (!sqlContainsOrgScope(sql, orgId)) {
+      return "Generated query was rejected because it did not scope results to your organization. Try rephrasing your question.";
+    }
+
+    // Step 2: Execute the query (DB also enforces org text when expected_org_id is set)
+    const { data, error } = await supabase.rpc("exec_readonly_sql", {
+      query_text: sql,
+      expected_org_id: orgId,
+    });
 
     // Fallback: try direct query if RPC doesn't exist
     if (error?.message?.includes("function") && error?.message?.includes("does not exist")) {
@@ -1739,7 +1757,6 @@ serve(async (req) => {
   try {
     const { messages, context, mode, voiceMode } = await req.json();
     const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
-    console.log("ANTHROPIC_API_KEY present:", !!anthropicKey, "length:", anthropicKey?.length);
     if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     // Extract user_id from JWT for tools that need it (e.g. critical_dates)

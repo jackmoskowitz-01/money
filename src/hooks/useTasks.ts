@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOrganizationId } from '@/hooks/useOrganization';
 import { embedAfterSave } from '@/hooks/useAskDealflow';
+import { notifyTaskAssignedEmail } from '@/lib/notifyTaskAssigned';
 
 export type TaskPriority = 'high' | 'medium' | 'low';
 export type TaskType = 'follow_up' | 'call' | 'meeting' | 'email' | 'research' | 'other';
@@ -132,7 +133,7 @@ export function useTasks() {
   }) => {
     const { data: { user } } = await supabase.auth.getUser();
 
-    const row: Record<string, any> = {
+    const row: Record<string, unknown> = {
       title: task.title.trim(),
       description: task.description.trim(),
       type: task.type,
@@ -145,13 +146,15 @@ export function useTasks() {
 
     if (task.assignedTo) {
       row.assigned_to = task.assignedTo;
-      row.assigned_by = user?.id || null;
       row.assigned_to_name = task.assignedToName || '';
+      if (user?.id && task.assignedTo !== user.id) {
+        row.assigned_by = user.id;
+      }
     }
 
     if (orgId) row.organization_id = orgId;
 
-    const { data, error } = await supabase.from('tasks').insert(row as any).select('*').single();
+    const { data, error } = await supabase.from('tasks').insert(row).select('*').single();
     if (error) {
       toast.error('Failed to create task');
       return null;
@@ -159,6 +162,9 @@ export function useTasks() {
     if (data) {
       const newTask = rowToTask(data as unknown as DbRow);
       setTasks(prev => [newTask, ...prev]);
+      if (task.assignedTo && user?.id && task.assignedTo !== user.id) {
+        notifyTaskAssignedEmail(data.id);
+      }
       // Fire-and-forget: embed for RAG as an activity
       embedAfterSave('activity', data.id, {
         type: task.type,
@@ -173,25 +179,50 @@ export function useTasks() {
   }, []);
 
   const updateTask = useCallback(async (id: string, updates: Partial<{ completed: boolean; title: string; description: string; priority: TaskPriority; dueDate: string; assignedTo: string; assignedToName: string }>) => {
-    const dbUpdates: Record<string, any> = {};
+    const dbUpdates: Record<string, unknown> = {};
+    let newAssignedBy: string | undefined;
     if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
     if (updates.title !== undefined) dbUpdates.title = updates.title;
     if (updates.description !== undefined) dbUpdates.description = updates.description;
     if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
     if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
     if (updates.assignedTo !== undefined) {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       dbUpdates.assigned_to = updates.assignedTo || null;
       dbUpdates.assigned_to_name = updates.assignedToName || '';
+      if (updates.assignedTo && currentUser && updates.assignedTo !== currentUser.id) {
+        dbUpdates.assigned_by = currentUser.id;
+        newAssignedBy = currentUser.id;
+      } else {
+        dbUpdates.assigned_by = null;
+        newAssignedBy = undefined;
+      }
     }
 
-    const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', id);
+    const { error } = await supabase.from('tasks').update(dbUpdates as Record<string, unknown>).eq('id', id);
     if (error) {
       toast.error('Failed to update task');
       return;
     }
     {
       const task = tasks.find(t => t.id === id);
-      setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+      setTasks(prev => prev.map(t => {
+        if (t.id !== id) return t;
+        const next = { ...t, ...updates };
+        if (updates.dueDate !== undefined) next.dueDate = updates.dueDate;
+        if (updates.assignedTo !== undefined) {
+          next.assignedTo = updates.assignedTo || undefined;
+          next.assignedToName = updates.assignedToName || undefined;
+          next.assignedBy = newAssignedBy;
+        }
+        return next;
+      }));
+      if (updates.assignedTo !== undefined) {
+        const { data: { user: u } } = await supabase.auth.getUser();
+        if (u && updates.assignedTo && updates.assignedTo !== u.id) {
+          notifyTaskAssignedEmail(id);
+        }
+      }
       // Auto-digest: feed task completion to AI brain
       if (updates.completed === true && task) {
         const { digestEvent } = await import('@/lib/autoDigest');

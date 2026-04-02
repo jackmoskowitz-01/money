@@ -98,3 +98,6 @@ verify_jwt = true
 
 [functions.optimize-prompt]
 verify_jwt = true
+
+[functions.notify-task-assigned]
+verify_jwt = true

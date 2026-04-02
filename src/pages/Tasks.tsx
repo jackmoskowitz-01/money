@@ -73,7 +73,9 @@ const Tasks = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '', assignedTo: '', assignedToName: '' });
   const [prospectSearch, setProspectSearch] = useState('');
   const [assignSearch, setAssignSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'assigned_to_me'>('all');
+  const [filter, setFilter] = useState<
+    'all' | 'pending' | 'completed' | 'assigned_to_me' | 'assigned_by_me' | 'waiting_on'
+  >('all');
   
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({
@@ -110,6 +112,16 @@ const Tasks = () => {
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
     if (filter === 'assigned_to_me') t = t.filter(x => x.assignedTo === user?.id);
+    if (filter === 'assigned_by_me') t = t.filter(x => x.assignedBy === user?.id);
+    if (filter === 'waiting_on') {
+      t = t.filter(
+        x =>
+          x.assignedBy === user?.id &&
+          !!x.assignedTo &&
+          x.assignedTo !== user?.id &&
+          !x.completed,
+      );
+    }
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
     return t.sort((a, b) => {
       const pa = priorityConfig[a.priority || 'medium'].sortOrder;
@@ -378,6 +390,12 @@ const Tasks = () => {
                 )}
               </div>
               {task.description && <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>}
+              {task.assignedTo === user?.id && task.assignedBy && task.assignedBy !== user?.id && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  <span className="text-foreground/80">From</span>{' '}
+                  {teamMembers.find(m => m.id === task.assignedBy)?.fullName || 'Teammate'}
+                </p>
+              )}
               <div className="mt-1.5 flex items-center gap-3 text-[11px]">
                 <span className={isOverdue ? 'font-medium text-destructive' : 'text-muted-foreground'}>
                   {isOverdue ? '⚠ Overdue: ' : ''}{format(new Date(task.dueDate + 'T12:00:00'), 'EEE, MMM d')}
@@ -500,9 +518,35 @@ const Tasks = () => {
               {renderTaskForm()}
 
               <div className="mb-4 flex items-center gap-2 flex-wrap">
-                {(['all', 'pending', 'completed', 'assigned_to_me'] as const).map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f === 'assigned_to_me' ? 'My Assignments' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
-                ))}
+                {(
+                  [
+                    'all',
+                    'pending',
+                    'completed',
+                    'assigned_to_me',
+                    'assigned_by_me',
+                    'waiting_on',
+                  ] as const
+                ).map(f => {
+                  const label =
+                    f === 'assigned_to_me'
+                      ? 'Assigned to me'
+                      : f === 'assigned_by_me'
+                        ? 'I assigned'
+                        : f === 'waiting_on'
+                          ? 'Waiting on them'
+                          : f.charAt(0).toUpperCase() + f.slice(1);
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFilter(f)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
                 {selectedDate && (
                   <div className="ml-auto flex items-center gap-2">
                     <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5">
@@ -519,8 +563,22 @@ const Tasks = () => {
                 {filteredTasks.length === 0 ? (
                   <Card className="border-border bg-card p-12 text-center">
                     <Inbox className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
-                    <p className="text-sm font-medium text-muted-foreground">{selectedDate ? 'No tasks for this date' : filter === 'completed' ? 'No completed tasks yet' : 'All caught up!'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground/60">{selectedDate ? 'Try selecting a different date' : 'Click "New Task" to create one'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {selectedDate
+                        ? 'No tasks for this date'
+                        : filter === 'completed'
+                          ? 'No completed tasks yet'
+                          : filter === 'assigned_to_me'
+                            ? 'Nothing assigned to you'
+                            : filter === 'assigned_by_me'
+                              ? "You haven't delegated any tasks yet"
+                              : filter === 'waiting_on'
+                                ? 'No open tasks waiting on teammates'
+                                : 'All caught up!'}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground/60">
+                      {selectedDate ? 'Try selecting a different date' : 'Click "New Task" to create one'}
+                    </p>
                   </Card>
                 ) : filteredTasks.map((task, i) => renderTaskCard(task, i))}
               </div>

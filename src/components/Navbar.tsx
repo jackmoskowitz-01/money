@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Building2, Map, Newspaper, MessageSquare, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3, Users } from 'lucide-react';
+import { Building2, Map, Newspaper, Kanban, CalendarCheck, Menu, X, Settings, LogOut, Search, BarChart3, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ProspectSearch from './ProspectSearch';
 import dealflowLogo from '@/assets/dealflow-logo.jpg';
@@ -17,9 +17,7 @@ const navItems = [
   { path: '/news', label: 'News', icon: Building2 },
   { path: '/map', label: 'Map', icon: Map },
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
-  { path: '/prospect-table', label: 'Prospects', icon: Users },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
-  { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 
 const Navbar = () => {

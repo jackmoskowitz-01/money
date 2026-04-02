@@ -17,7 +17,7 @@ import Dashboard from "./pages/Dashboard";
 import MapView from "./pages/MapView";
 import TenantDetail from "./pages/TenantDetail";
 import CustomProspectDetail from "./pages/CustomProspectDetail";
-import ScoopBoard from "./pages/ScoopBoard";
+
 import Pipeline from "./pages/Pipeline";
 import News from "./pages/News";
 import Tasks from "./pages/Tasks";
@@ -85,7 +85,7 @@ const ProtectedRoutes = () => {
           <Route path="/news" element={<ErrorBoundary><News /></ErrorBoundary>} />
           <Route path="/building/:buildingId/tenant/:tenantId" element={<ErrorBoundary><TenantDetail /></ErrorBoundary>} />
           <Route path="/prospect/:prospectId" element={<ErrorBoundary><CustomProspectDetail /></ErrorBoundary>} />
-          <Route path="/scoop" element={<ErrorBoundary><ScoopBoard /></ErrorBoundary>} />
+
           <Route path="/pipeline" element={<ErrorBoundary><Pipeline /></ErrorBoundary>} />
           <Route path="/tasks" element={<ErrorBoundary><Tasks /></ErrorBoundary>} />
           <Route path="/prospects" element={<ErrorBoundary><Prospects /></ErrorBoundary>} />

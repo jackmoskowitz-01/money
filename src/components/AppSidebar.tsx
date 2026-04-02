@@ -3,7 +3,7 @@ import {
   Building2,
   Map,
   Newspaper,
-  MessageSquare,
+
   Kanban,
   CalendarCheck,
   Users,
@@ -34,9 +34,7 @@ const navItems = [
   { path: '/news', label: 'News', icon: Building2 },
   { path: '/map', label: 'Map', icon: Map },
   { path: '/pipeline', label: 'Pipeline', icon: Kanban },
-  { path: '/prospect-table', label: 'Prospects', icon: Users },
   { path: '/tasks', label: 'Tasks', icon: CalendarCheck },
-  { path: '/scoop', label: 'Scoop', icon: MessageSquare },
 ];
 
 const secondaryItems = [

@@ -169,7 +169,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a new task, optionally linked to a tenant/building",
+      description: "Create a new task, optionally linked to a tenant/building. Can assign to a team member by name.",
       parameters: {
         type: "object",
         properties: {
@@ -179,6 +179,7 @@ const TOOLS = [
           due_days: { type: "number", description: "Days from now for the due date" },
           tenant_id: { type: "string", description: "Optional tenant ID to link" },
           building_id: { type: "string", description: "Optional building ID to link" },
+          assign_to_name: { type: "string", description: "Team member name to assign the task to (e.g. 'Sarah'). Fuzzy matched against org members." },
         },
         required: ["title", "description", "priority", "due_days"],
         additionalProperties: false,
@@ -1528,7 +1529,7 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
 
     case "create_task": {
       const dueDate = new Date(Date.now() + (args.due_days || 7) * 86400000).toISOString();
-      const { error } = await supabase.from("tasks").insert({
+      const taskRow: Record<string, unknown> = {
         title: args.title,
         description: args.description,
         priority: args.priority,
@@ -1536,9 +1537,46 @@ CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
         tenant_id: args.tenant_id || null,
         building_id: args.building_id || null,
         type: "follow_up",
-      });
+        status: "not_started",
+      };
+      if (orgId) taskRow.organization_id = orgId;
+
+      let assigneeName = "";
+      if (args.assign_to_name) {
+        // Fuzzy match team member by name
+        const { data: members } = orgId
+          ? await supabase.from("organization_members").select("user_id, profiles(id, full_name)").eq("organization_id", orgId)
+          : await supabase.from("profiles").select("id, full_name");
+
+        const needle = (args.assign_to_name as string).toLowerCase();
+        const match = (members || []).find((m: any) => {
+          const name = (m.profiles?.full_name || m.full_name || "").toLowerCase();
+          return name.includes(needle) || needle.includes(name.split(" ")[0]);
+        });
+
+        if (match) {
+          const mid = match.profiles?.id || match.user_id || match.id;
+          const mname = match.profiles?.full_name || match.full_name || args.assign_to_name;
+          taskRow.assigned_to = mid;
+          taskRow.assigned_to_name = mname;
+          taskRow.assigned_by = userId;
+          assigneeName = mname;
+        }
+      }
+
+      const { data: taskData, error } = await supabase.from("tasks").insert(taskRow).select("id").single();
       if (error) return `Failed to create task: ${error.message}`;
-      return `✅ Task created: "${args.title}" (due ${new Date(dueDate).toLocaleDateString()}).`;
+
+      // Log activity
+      if (taskData) {
+        await supabase.from("task_activity").insert({ task_id: taskData.id, user_id: userId, user_name: "", action: "created", detail: { title: args.title } });
+        if (assigneeName) {
+          await supabase.from("task_activity").insert({ task_id: taskData.id, user_id: userId, user_name: "", action: "assigned", detail: { assigned_to_name: assigneeName } });
+        }
+      }
+
+      const assignMsg = assigneeName ? ` Assigned to ${assigneeName}.` : "";
+      return `✅ Task created: "${args.title}" (due ${new Date(dueDate).toLocaleDateString()}).${assignMsg}`;
     }
 
     case "log_activity": {

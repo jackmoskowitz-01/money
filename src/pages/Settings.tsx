@@ -9,13 +9,15 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain, Target, Sparkles } from 'lucide-react';
+import { User, Mail, Bell, Workflow, Palette, Download, Loader2, Zap, Calendar, Brain, Target, Sparkles, BellRing } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const Settings = () => {
   const { user } = useAuth();
+  const { supported: pushSupported, subscribed: pushSubscribed, loading: pushLoading, subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } = usePushNotifications();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -631,6 +633,34 @@ const Settings = () => {
                     />
                   </div>
                 ))}
+                {pushSupported && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <BellRing className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-foreground">Push notifications</p>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Get browser/device notifications when tasks are assigned to you</p>
+                      </div>
+                      <Switch
+                        checked={pushSubscribed}
+                        disabled={pushLoading}
+                        onCheckedChange={async (v) => {
+                          if (v) {
+                            const ok = await pushSubscribe();
+                            if (ok) toast.success('Push notifications enabled');
+                            else toast.error('Could not enable push notifications');
+                          } else {
+                            await pushUnsubscribe();
+                            toast.success('Push notifications disabled');
+                          }
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
                 <Button onClick={() => saveAll('Notification')} className="mt-2" disabled={saving}>
                   {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
                   Save Notifications

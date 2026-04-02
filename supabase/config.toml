@@ -101,3 +101,6 @@ verify_jwt = true
 
 [functions.notify-task-assigned]
 verify_jwt = true
+
+[functions.task-due-reminders]
+verify_jwt = false

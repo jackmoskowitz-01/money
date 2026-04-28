@@ -1,7 +1,6 @@
 import { corsHeaders } from "../_shared/cors.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -19,13 +18,11 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!geminiKey) throw new Error("GOOGLE_AI_API_KEY is not configured");
 
-    // Build content parts from all files
-    const contentParts: any[] = [];
-    let allTextContent = "";
-    let hasBinaryFiles = false;
+    // Build Gemini content parts from files
+    const parts: any[] = [];
 
     for (const file of files) {
       const bytes = new Uint8Array(await file.arrayBuffer());
@@ -37,70 +34,87 @@ serve(async (req) => {
 
       if (isText) {
         const text = new TextDecoder().decode(bytes);
-        const truncated = text.length > 80000 ? text.slice(0, 80000) + "\n\n[... truncated ...]" : text;
-        allTextContent += `\n\n--- File: ${fileName} ---\n${truncated}`;
+        const truncated = text.length > 200000 ? text.slice(0, 200000) + "\n\n[... truncated ...]" : text;
+        parts.push({ text: `--- File: ${fileName} ---\n${truncated}` });
       } else {
-        hasBinaryFiles = true;
+        // PDF, images, etc — Gemini handles all of these natively via inline_data
         const base64 = btoa(String.fromCharCode(...bytes));
-        contentParts.push({
-          type: "file",
-          file: {
-            filename: fileName,
-            file_data: `data:${fileType || "application/octet-stream"};base64,${base64}`,
-          },
+        const mimeType = fileType || (fileName.endsWith(".pdf") ? "application/pdf" : "application/octet-stream");
+        parts.push({
+          inline_data: { mime_type: mimeType, data: base64 },
         });
       }
-    }
-
-    // Add text content as a text part if any
-    if (allTextContent) {
-      contentParts.push({ type: "text", text: allTextContent });
     }
 
     // Add the question
-    contentParts.push({ type: "text", text: question });
-
-    const fileNames = files.map(f => f.name).join(", ");
     const systemPrompt = `You are a CRE document analyst. Extract and analyze commercial real estate documents (leases, LOIs, proposals, abstracts, offer comparisons). Focus on: parties, property address, square footage, rent/SF, TI allowance, free rent, lease term, commencement date, escalations, options, and any notable clauses. When multiple documents are provided, analyze them together and cross-reference data between them. Format your response with clear headers and bullet points.${context ? "\n\nAdditional context:\n" + context : ""}`;
 
-    // Use multimodal if there are binary files, otherwise text-only
-    const model = "google/gemini-2.5-flash";
+    parts.push({ text: `${systemPrompt}\n\n${question}` });
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: hasBinaryFiles ? contentParts : `${allTextContent}\n\n${question}` },
-        ],
-        stream: true,
-      }),
-    });
+    // Call Gemini 2.5 Flash — fast, 1M context, native PDF support
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { maxOutputTokens: 16384 },
+          }),
+        }
+      );
 
-    if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        console.warn(`Gemini rate limited, retry ${attempt + 1}/3...`);
+        await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+        continue;
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage credits exhausted." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI error:", response.status, t);
-      return new Response(JSON.stringify({ error: "Failed to analyze document" }), {
+      break;
+    }
+
+    if (!response || !response.ok) {
+      const err = await response?.text() || "Unknown error";
+      console.error("Gemini error:", response?.status, err);
+      return new Response(JSON.stringify({ error: "Failed to analyze document. Please try again." }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    // Convert Gemini SSE stream to OpenAI-compatible SSE format (for frontend)
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+
+    const sseStream = new ReadableStream({
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+          return;
+        }
+        for (const line of decoder.decode(value).split("\n").filter(l => l.startsWith("data: "))) {
+          const data = line.slice(6).trim();
+          if (!data) continue;
+          try {
+            const event = JSON.parse(data);
+            const text = event.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+                choices: [{ delta: { content: text }, index: 0, finish_reason: null }],
+              })}\n\n`));
+            }
+            if (event.candidates?.[0]?.finishReason === "STOP") {
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            }
+          } catch { /* skip */ }
+        }
+      },
+    });
+
+    return new Response(sseStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

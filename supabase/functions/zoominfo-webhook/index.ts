@@ -11,14 +11,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const sb = createClient(supabaseUrl, supabaseKey);
 
-    // Webhook secret validation (optional - skip if not configured)
     const webhookSecret = Deno.env.get("WEBHOOK_SECRET");
+    const allowUnauthenticatedWebhook = Deno.env.get("ALLOW_ZOOMINFO_WEBHOOK_WITHOUT_SECRET") === "true";
+
+    if (!webhookSecret && !allowUnauthenticatedWebhook) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Server misconfiguration: set WEBHOOK_SECRET and send it as header x-webhook-secret, or set ALLOW_ZOOMINFO_WEBHOOK_WITHOUT_SECRET=true for local/dev only.",
+        }),
+        { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     if (webhookSecret) {
       const providedSecret = req.headers.get("x-webhook-secret");
       if (providedSecret !== webhookSecret) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
     }

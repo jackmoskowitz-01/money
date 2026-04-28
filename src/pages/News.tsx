@@ -21,6 +21,7 @@ import EmailDisplay from '@/components/EmailDisplay';
 import { getContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import AddToProspectsButton from '@/components/AddToProspectsButton';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const categories = ['all', 'lease', 'sale', 'expansion', 'vacancy', 'market', 'contraction'] as const;
 
@@ -72,7 +73,11 @@ const loadFromLS = <T,>(key: string, fallback: T): T => {
 };
 
 const saveToLS = (key: string, value: unknown) => {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // ignore localStorage write errors (private mode/quota)
+  }
 };
 
 let cachedLiveNews: NewsItem[] | null = loadFromLS<NewsItem[] | null>(LS_LIVE_NEWS, null);
@@ -81,7 +86,7 @@ let cachedLastRefreshed: Date | null = (() => {
   const v = localStorage.getItem(LS_LAST_REFRESHED);
   return v ? new Date(JSON.parse(v)) : null;
 })();
-let newsHistory: Map<string, NewsItem> = new Map(
+const newsHistory: Map<string, NewsItem> = new Map(
   loadFromLS<[string, NewsItem][]>(LS_NEWS_HISTORY, [])
 );
 
@@ -176,6 +181,8 @@ const getCategorySemanticColor = (category: string) => {
 };
 
 const News = () => {
+  const [newsTab, setNewsTab] = useState<'all' | 'tracked' | 'market' | 'alerts'>('all');
+  const [newsSearch, setNewsSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeIndustry, setActiveIndustry] = useState<string>('all');
   const [showIndustryFilter, setShowIndustryFilter] = useState(false);
@@ -247,7 +254,7 @@ const News = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ companies }),
       });
@@ -284,7 +291,7 @@ const News = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({}),
       });
@@ -321,7 +328,7 @@ const News = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ industry: ind }),
       });
@@ -362,13 +369,22 @@ const News = () => {
   }, [activeIndustry, fetchIndustryNews]);
 
   useEffect(() => {
-    if (!cachedLiveNews) fetchLiveNews();
-    if (cachedCompanyNews.length === 0) fetchCompanyNews();
+    // Only fetch if cache is older than 1 hour (or empty)
+    const lastRefreshed = parseInt(localStorage.getItem(LS_LAST_REFRESHED) || '0', 10);
+    const oneHour = 60 * 60 * 1000;
+    const isStale = Date.now() - lastRefreshed > oneHour;
+
+    if (isStale) {
+      if (!cachedLiveNews) fetchLiveNews();
+      if (cachedCompanyNews.length === 0) fetchCompanyNews();
+      localStorage.setItem(LS_LAST_REFRESHED, String(Date.now()));
+    }
 
     const interval = setInterval(() => {
       fetchLiveNews();
       fetchCompanyNews();
-    }, 60 * 60 * 1000);
+      localStorage.setItem(LS_LAST_REFRESHED, String(Date.now()));
+    }, oneHour);
 
     return () => clearInterval(interval);
   }, [fetchLiveNews, fetchCompanyNews]);
@@ -450,6 +466,52 @@ const News = () => {
     { label: 'Companies Scanned', value: companiesScanned, icon: Building2, color: 'text-success bg-success/10' },
     { label: 'Bookmarked', value: bookmarkedIds.size, icon: Bookmark, color: 'text-warning bg-warning/10' },
   ], [currentNews.length, signalCount, hotSignalCount, companiesScanned, bookmarkedIds.size]);
+
+  const marketNews = useMemo(
+    () => filteredNews.filter(n => ['market', 'lease', 'vacancy'].includes(n.category)),
+    [filteredNews],
+  );
+  const trackedNews = useMemo(
+    () =>
+      filteredNews.filter(
+        n =>
+          n.id.startsWith('cn') ||
+          (n.relatedTenants && n.relatedTenants.length > 0) ||
+          (n.relatedBuildings && n.relatedBuildings.length > 0),
+      ),
+    [filteredNews],
+  );
+  const alertNews = useMemo(
+    () => filteredNews.filter(n => bookmarkedIds.has(n.id) || !readIds.has(n.id)),
+    [filteredNews, bookmarkedIds, readIds],
+  );
+  const activeTabNews = useMemo(() => {
+    switch (newsTab) {
+      case 'tracked':
+        return trackedNews;
+      case 'market':
+        return marketNews;
+      case 'alerts':
+        return alertNews;
+      default:
+        return filteredNews;
+    }
+  }, [alertNews, filteredNews, marketNews, newsTab, trackedNews]);
+  const visibleNews = useMemo(() => {
+    const q = newsSearch.trim().toLowerCase();
+    if (!q) return activeTabNews;
+    return activeTabNews.filter(
+      n =>
+        n.title.toLowerCase().includes(q) ||
+        n.summary.toLowerCase().includes(q) ||
+        n.source.toLowerCase().includes(q),
+    );
+  }, [activeTabNews, newsSearch]);
+  const selectedNews = useMemo(() => {
+    if (visibleNews.length === 0) return null;
+    const found = visibleNews.find(n => n.id === expandedNewsId);
+    return found || visibleNews[0];
+  }, [visibleNews, expandedNewsId]);
 
   const allNonClientProspects = useMemo(() => {
     const results: ProspectMatch[] = [];
@@ -612,7 +674,7 @@ const News = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,
@@ -684,7 +746,7 @@ const News = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: customName,
@@ -1301,238 +1363,253 @@ const News = () => {
   );
 
   return (
-    <div className="min-h-screen pt-12">
-      <div className="mx-auto max-w-7xl px-3 sm:px-4 py-4 sm:py-8">
-        {/* Header */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
-          <div className="flex items-end justify-between">
+    <div className="min-h-screen bg-[#030b1f] text-slate-100">
+      <div className="mx-auto max-w-[1400px] px-4 py-5">
+        <div className="rounded-xl border border-[#123257] bg-[#06142e]/90 p-4 shadow-[0_0_0_1px_rgba(18,50,87,0.35)]">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight">Market Intelligence</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Real-time news matched to your prospect universe</p>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-100">News</h1>
+              <p className="mt-1 text-xs text-slate-400">Market intelligence and company news that matters to your book.</p>
             </div>
             <div className="flex items-center gap-2">
-              {lastRefreshed && (
-                <span className="text-[10px] text-muted-foreground">
-                  Updated {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
+              <div className="relative w-[360px]">
+                <Search className="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-500" />
+                <Input
+                  value={newsSearch}
+                  onChange={(e) => setNewsSearch(e.target.value)}
+                  placeholder="Search news, companies, or topics..."
+                  className="h-8 border-[#183b66] bg-[#071a38] pl-8 text-xs text-slate-200 placeholder:text-slate-500"
+                />
+              </div>
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={fetchCompanyNews}
-                disabled={companyNewsLoading}
-              >
-                <Search className={`h-3.5 w-3.5 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
-                <span className="hidden sm:inline">Scan Companies</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 text-xs"
-                onClick={() => { fetchLiveNews(); fetchCompanyNews(); }}
+                className="h-8 border-[#204672] bg-[#0a2144] px-3 text-xs text-slate-200 hover:bg-[#102c56]"
+                onClick={() => {
+                  fetchLiveNews();
+                  fetchCompanyNews();
+                }}
                 disabled={newsLoading || companyNewsLoading}
               >
-                <RefreshCw className={`h-3.5 w-3.5 ${newsLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Refresh All</span>
+                <Filter className="mr-1.5 h-3.5 w-3.5" />
+                Filters
               </Button>
             </div>
           </div>
-        </motion.div>
 
-        {/* ═══ Custom Intel (Dialog) ═══ */}
-        <div className="mb-6">
-          <Dialog open={showCustomIntel} onOpenChange={setShowCustomIntel}>
-            <DialogTrigger asChild>
-              <button className="flex w-full items-center gap-2 rounded-lg border border-dashed border-border p-3 text-left transition-colors hover:border-primary/30 hover:bg-primary/5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-                  <FileText className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-semibold text-foreground">Drop in your own intel</p>
-                  <p className="text-[10px] text-muted-foreground">Paste a news article or type custom market intelligence to generate outreach</p>
-                </div>
-                <Plus className="h-4 w-4 text-muted-foreground" />
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            {([
+              ['all', 'All News'],
+              ['tracked', 'Tracked Companies'],
+              ['market', 'Market News'],
+              ['alerts', 'My Alerts'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setNewsTab(id)}
+                className={`rounded-md border px-3 py-1.5 text-[11px] font-medium transition-colors ${
+                  newsTab === id
+                    ? 'border-[#4b6ea1] bg-[#10294f] text-slate-100'
+                    : 'border-[#1b3d67] bg-[#091d3b] text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {label}
               </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Custom Intel
-                </DialogTitle>
-              </DialogHeader>
-              <p className="text-xs text-muted-foreground">
-                Paste a news article, market data, or type your own intel. This becomes an outreach trigger you can generate emails from.
-              </p>
-              <textarea
-                value={customIntelInput}
-                onChange={e => setCustomIntelInput(e.target.value)}
-                placeholder={"Paste an article, URL, or type market intelligence here...\n\nExample: 'The American Bar Association is reportedly exploring a move from their current 50,000 SF space at 1050 Connecticut Ave as their lease expires in Q2 2026...'"}
-                className="w-full min-h-[160px] rounded-md border border-input bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
-                autoFocus
-              />
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] text-muted-foreground">
-                  {customIntelInput.trim().length > 0 ? `${customIntelInput.trim().length} chars` : 'Start typing or paste content'}
-                </p>
-                <Button
-                  size="sm"
-                  className="text-xs"
-                  onClick={addCustomIntel}
-                  disabled={!customIntelInput.trim()}
-                >
-                  <Sparkles className="mr-1 h-3 w-3" /> Create Outreach Trigger
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* ═══ Loading indicator ═══ */}
-        {(newsLoading || companyNewsLoading || industryNewsLoading) && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5">
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-            <span className="text-xs text-primary">
-              {industryNewsLoading
-                ? `Searching latest ${activeIndustry} industry news...`
-                : newsLoading && companyNewsLoading
-                ? 'Searching real-time market news & scanning your companies...'
-                : newsLoading
-                ? 'Searching real-time market news via Perplexity...'
-                : 'Scanning your companies for recent news...'}
-            </span>
+            ))}
           </div>
-        )}
 
-        {/* ═══ Tabbed Sections ═══ */}
-        <Tabs defaultValue="feed" className="w-full">
-          <TabsList className="w-full justify-start bg-secondary/30 border border-border rounded-lg p-1 mb-6">
-            <TabsTrigger value="feed" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-              <Rss className="h-3 w-3" /> Feed
-              {unreadCount > 0 && (
-                <Badge className="ml-1 bg-primary/15 text-primary border-0 text-[9px] px-1.5 py-0 font-bold">{unreadCount}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="bookmarked" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-              <Bookmark className="h-3 w-3" /> Bookmarked
-              {bookmarkedIds.size > 0 && (
-                <Badge className="ml-1 bg-warning/15 text-warning border-0 text-[9px] px-1.5 py-0 font-bold">{bookmarkedIds.size}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="company" className="text-xs gap-1.5 data-[state=active]:bg-card data-[state=active]:shadow-sm">
-              <Building2 className="h-3 w-3" /> Company Scans
-              {companyOnlyNews.length > 0 && (
-                <Badge className="ml-1 bg-success/15 text-success border-0 text-[9px] px-1.5 py-0 font-bold">{companyOnlyNews.length}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <button className="rounded-md border border-[#1b3d67] bg-[#091d3b] px-2.5 py-1 text-[10px] text-slate-300">All Signal Types</button>
+            <button className="rounded-md border border-[#1b3d67] bg-[#091d3b] px-2.5 py-1 text-[10px] text-slate-300">All Companies</button>
+            <button className="rounded-md border border-[#1b3d67] bg-[#091d3b] px-2.5 py-1 text-[10px] text-slate-300">All Submarkets</button>
+            <button className="rounded-md border border-[#1b3d67] bg-[#091d3b] px-2.5 py-1 text-[10px] text-slate-300">Last 7 Days</button>
+            {(activeCategory !== 'all' || activeIndustry !== 'all') && (
+              <button
+                className="px-1.5 text-[10px] text-[#6ea7ff] hover:underline"
+                onClick={() => {
+                  setActiveCategory('all');
+                  setActiveIndustry('all');
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
 
-          {/* ── FEED TAB ── */}
-          <TabsContent value="feed" className="mt-0">
-            {/* Filters */}
-            <div className="mb-5 flex flex-wrap items-center gap-2">
-              {categories.map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-all ${
-                    activeCategory === cat
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
+          {(newsLoading || companyNewsLoading || industryNewsLoading) && (
+            <div className="mb-3 flex items-center gap-2 rounded-md border border-[#1a4f8a] bg-[#0b2a53] px-3 py-2 text-[11px] text-sky-200">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Refreshing market and company signals...
+            </div>
+          )}
 
-              <div className="ml-auto relative">
-                <button
-                  onClick={() => setShowIndustryFilter(!showIndustryFilter)}
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    activeIndustry !== 'all'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                  }`}
-                >
-                  <Filter className="h-3 w-3" />
-                  {activeIndustry === 'all' ? 'Industry' : activeIndustry}
-                  <ChevronDown className={`h-3 w-3 transition-transform ${showIndustryFilter ? 'rotate-180' : ''}`} />
-                </button>
-
-                <AnimatePresence>
-                  {showIndustryFilter && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -5 }}
-                      className="absolute right-0 top-full mt-1 z-50 w-56 rounded-lg border border-border bg-card shadow-lg overflow-hidden"
-                    >
-                      <div className="max-h-64 overflow-y-auto p-1">
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 lg:col-span-8">
+              <div className="overflow-hidden rounded-lg border border-[#163b67] bg-[#05152f]">
+                {visibleNews.length === 0 ? (
+                  <div className="flex min-h-[300px] flex-col items-center justify-center px-4 py-16 text-center">
+                    <Newspaper className="mb-3 h-10 w-10 text-slate-600" />
+                    <p className="text-sm text-slate-300">No articles found</p>
+                    <p className="mt-1 text-xs text-slate-500">Try a different tab or search term.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#123257]">
+                    {visibleNews.map((news) => {
+                      const isSelected = selectedNews?.id === news.id;
+                      const isRead = readIds.has(news.id);
+                      const relatedBuilding = news.relatedBuildings?.[0]
+                        ? buildings.find((b) => b.id === news.relatedBuildings?.[0])
+                        : null;
+                      const relatedTenant = news.relatedTenants?.[0]
+                        ? buildings.flatMap((b) => b.tenants).find((t) => t.id === news.relatedTenants?.[0])
+                        : null;
+                      return (
                         <button
-                          onClick={() => { setActiveIndustry('all'); setShowIndustryFilter(false); }}
-                          className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
-                            activeIndustry === 'all' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-secondary'
+                          key={news.id}
+                          type="button"
+                          onClick={() => {
+                            setExpandedNewsId(news.id);
+                            markAsRead(news.id);
+                          }}
+                          className={`flex w-full items-start gap-3 px-3 py-3 text-left transition-colors ${
+                            isSelected ? 'bg-[#0b2347]' : 'hover:bg-[#081d3d]'
                           }`}
                         >
-                          All Industries
+                          <div className="h-[70px] w-[112px] shrink-0 overflow-hidden rounded-md border border-[#244d79] bg-[#0d2748]">
+                            {relatedBuilding?.photoUrl ? (
+                              <img src={relatedBuilding.photoUrl} alt={news.title} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-500">No image</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center gap-2">
+                              <span className="rounded bg-[#113b68] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-sky-200">
+                                {news.category}
+                              </span>
+                              <span className="text-[10px] text-slate-500">{getTimeSince(news.date)}</span>
+                            </div>
+                            <p className={`line-clamp-1 text-sm font-semibold ${isRead ? 'text-slate-300' : 'text-slate-100'}`}>{news.title}</p>
+                            <p className="mt-1 line-clamp-2 text-[11px] leading-5 text-slate-400">{news.summary}</p>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              {news.source}
+                              {relatedTenant ? ` · ${relatedTenant.name}` : ''}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1 pt-0.5">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleBookmark(news.id);
+                              }}
+                              className="rounded p-1 text-slate-500 hover:bg-[#123257] hover:text-slate-200"
+                            >
+                              {bookmarkedIds.has(news.id) ? <BookmarkCheck className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                dismissNews(news.id);
+                              }}
+                              className="rounded p-1 text-slate-500 hover:bg-[#123257] hover:text-slate-200"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </button>
-                        {allIndustries.map(ind => (
-                          <button
-                            key={ind}
-                            onClick={() => { setActiveIndustry(ind); setShowIndustryFilter(false); }}
-                            className={`w-full text-left rounded-md px-3 py-1.5 text-xs transition-colors ${
-                              activeIndustry === ind ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-secondary'
-                            }`}
-                          >
-                            {ind}
-                          </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="col-span-12 lg:col-span-4">
+              <div className="sticky top-16 rounded-lg border border-[#163b67] bg-[#06162f] p-4">
+                {selectedNews ? (
+                  <>
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="rounded bg-[#103d6d] px-2 py-0.5 text-[9px] font-semibold uppercase text-sky-200">
+                        {selectedNews.category}
+                      </span>
+                      <span className="text-[10px] text-slate-500">{getTimeSince(selectedNews.date)}</span>
+                    </div>
+                    <h2 className="text-2xl font-semibold leading-tight text-slate-100">{selectedNews.title}</h2>
+                    <p className="mt-1 text-[11px] text-slate-400">{selectedNews.source}</p>
+                    <div className="mt-3 overflow-hidden rounded-md border border-[#224b78] bg-[#0d2748]">
+                      {(() => {
+                        const b = selectedNews.relatedBuildings?.[0]
+                          ? buildings.find((x) => x.id === selectedNews.relatedBuildings?.[0])
+                          : null;
+                        return b?.photoUrl ? (
+                          <img src={b.photoUrl} alt={selectedNews.title} className="h-[190px] w-full object-cover" />
+                        ) : (
+                          <div className="flex h-[190px] items-center justify-center text-xs text-slate-500">No image available</div>
+                        );
+                      })()}
+                    </div>
+
+                    <p className="mt-3 text-[12px] leading-6 text-slate-300">{selectedNews.summary}</p>
+                    <div className="mt-4 border-t border-[#123257] pt-3">
+                      <p className="text-xs font-semibold text-slate-200">Why this matters</p>
+                      <p className="mt-1 text-[11px] leading-5 text-slate-400">
+                        {selectedNews.id.startsWith('cn')
+                          ? 'This signal was matched directly to one of your tracked prospects.'
+                          : 'This story may create a timely outreach angle for active tenant conversations.'}
+                      </p>
+                    </div>
+
+                    <div className="mt-4 border-t border-[#123257] pt-3">
+                      <p className="text-[11px] font-semibold text-slate-300">Related to</p>
+                      <div className="mt-2 space-y-2">
+                        {selectedNews.relatedTenants?.slice(0, 1).map((tenantId) => {
+                          const tenant = buildings.flatMap((b) => b.tenants).find((t) => t.id === tenantId);
+                          if (!tenant) return null;
+                          return (
+                            <div key={tenantId} className="flex items-center justify-between rounded-md border border-[#1b3d67] bg-[#081d3d] px-2.5 py-2">
+                              <div>
+                                <p className="text-[11px] text-slate-200">{tenant.name}</p>
+                                <p className="text-[10px] text-slate-500">Prospect</p>
+                              </div>
+                              <Link to="/prospect-table" className="text-[10px] text-[#6ea7ff] hover:underline">View Prospect</Link>
+                            </div>
+                          );
+                        })}
+                        {selectedNews.relatedBuildings?.slice(0, 1).map((buildingId) => {
+                          const b = buildings.find((x) => x.id === buildingId);
+                          if (!b) return null;
+                          return (
+                            <div key={buildingId} className="flex items-center justify-between rounded-md border border-[#1b3d67] bg-[#081d3d] px-2.5 py-2">
+                              <div>
+                                <p className="text-[11px] text-slate-200">{b.name}</p>
+                                <p className="text-[10px] text-slate-500">{b.address}</p>
+                              </div>
+                              <Link to="/map" className="text-[10px] text-[#6ea7ff] hover:underline">View Building</Link>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-[#123257] pt-3">
+                      <p className="mb-2 text-[11px] font-semibold text-slate-300">Tags</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[selectedNews.category, selectedNews.source, 'Leasing Activity'].map((tag) => (
+                          <span key={tag} className="rounded-md border border-[#1b3d67] bg-[#081d3d] px-2 py-0.5 text-[10px] text-slate-400">
+                            {tag}
+                          </span>
                         ))}
                       </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex min-h-[420px] items-center justify-center text-sm text-slate-500">Select an article to view details.</div>
+                )}
               </div>
-              {activeIndustry !== 'all' && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1 text-[10px] text-primary"
-                  onClick={() => fetchIndustryNews(activeIndustry)}
-                  disabled={industryNewsLoading}
-                >
-                  <RefreshCw className={`h-3 w-3 ${industryNewsLoading ? 'animate-spin' : ''}`} />
-                  Refresh {activeIndustry}
-                </Button>
-              )}
             </div>
-
-            {renderTimeline(filteredNews)}
-          </TabsContent>
-
-          {/* ── BOOKMARKED TAB ── */}
-          <TabsContent value="bookmarked" className="mt-0">
-            {renderTimeline(bookmarkedNews)}
-          </TabsContent>
-
-          {/* ── COMPANY SCANS TAB ── */}
-          <TabsContent value="company" className="mt-0">
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">News discovered by scanning your prospect companies</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={fetchCompanyNews}
-                disabled={companyNewsLoading}
-              >
-                <Search className={`h-3 w-3 ${companyNewsLoading ? 'animate-pulse' : ''}`} />
-                Re-scan
-              </Button>
-            </div>
-            {renderTimeline(companyOnlyNews)}
-          </TabsContent>
-        </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   );

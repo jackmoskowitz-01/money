@@ -29,7 +29,7 @@ export default function PitchDeckViewer({ slides, onClose }: Props) {
   };
 
   const containerClass = fullscreen
-    ? 'fixed inset-0 z-[100] bg-black flex flex-col'
+    ? 'absolute inset-0 z-[100] bg-black flex flex-col'
     : 'flex flex-col w-full rounded-xl overflow-hidden border border-border bg-card';
 
   return (

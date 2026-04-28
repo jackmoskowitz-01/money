@@ -2,6 +2,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Mail, User, Building2, Clock, Copy, Check, AlertTriangle, Loader2, X, Plus, Send, Newspaper, MessageCircle, Eye, CheckCircle, Zap, Info, Calendar, Briefcase, TrendingUp, ChevronDown, ExternalLink, FileText } from 'lucide-react';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import EmailDisplay from '@/components/EmailDisplay';
 import { buildings, newsItems, getUrgencyColor, scoopPosts, type OutreachReason } from '@/data/mockData';
 import { updatePipelineStage, getOrCreatePipelineItem, stageLabels, stageColors, type PipelineStage } from '@/data/pipelineData';
@@ -25,6 +33,7 @@ import MeetingPrepBrief from '@/components/MeetingPrepBrief';
 import CompanyNewsCard from '@/components/CompanyNewsCard';
 import { useContacts } from '@/hooks/useContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -105,7 +114,7 @@ const TenantDetail = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,
@@ -204,7 +213,7 @@ const TenantDetail = () => {
 
   if (!building || !tenant) {
     return (
-      <div className="flex min-h-screen items-center justify-center pt-12">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Tenant not found</p>
       </div>
     );
@@ -262,11 +271,33 @@ const TenantDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <Link to="/map" className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to Map
-        </Link>
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/pipeline">Pipeline</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/map">{building.name}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{tenant.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}

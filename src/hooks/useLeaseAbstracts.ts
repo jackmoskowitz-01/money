@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getAuthToken } from '@/lib/getAuthToken';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export interface RentScheduleEntry {
   year: number;
@@ -98,6 +100,10 @@ export function useLeaseAbstracts() {
     }
 
     await fetchAbstracts();
+    // Fire-and-forget: embed for RAG
+    if (data) {
+      embedAfterSave('lease_abstract', (data as any).id, data as Record<string, unknown>);
+    }
     return data as unknown as LeaseAbstract;
   }, [user, fetchAbstracts]);
 
@@ -149,7 +155,7 @@ export function useLeaseAbstracts() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           abstractText,

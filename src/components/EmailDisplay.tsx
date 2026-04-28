@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Copy, Check, X, Loader2, Pencil, Sparkles, Send, Type, Hash, ChevronDown, FlipHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
+import { getAuthToken } from '@/lib/getAuthToken';
+import { useOrganizationId } from '@/hooks/useOrganization';
 
 const REFINE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/refine-email`;
 const SMART_DRAFT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-drafting`;
@@ -44,6 +46,7 @@ const EmailDisplay = ({
   tenantId, tenantName, industry, buildingId, buildingName, sqft, leaseExpiration, outreachReason,
   onClose, onDismiss, onUpdateEmail,
 }: EmailDisplayProps) => {
+  const orgId = useOrganizationId();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -92,6 +95,7 @@ const EmailDisplay = ({
         tenant_id: tenantId || tenantName || 'unknown',
         building_id: buildingId || buildingName || '',
         outreach_reason_used: outreachReason || null,
+        ...(orgId ? { organization_id: orgId } : {}),
       });
     } catch (err) {
       console.error('Failed to log activity:', err);
@@ -131,7 +135,7 @@ const EmailDisplay = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ currentEmail: emailContent, instruction: refineInput.trim() }),
       });
@@ -180,7 +184,7 @@ const EmailDisplay = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({ action: 'rewrite_tone', currentEmail: emailContent, tone }),
       });
@@ -227,7 +231,7 @@ const EmailDisplay = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           action: 'subject_lines',
@@ -268,7 +272,7 @@ const EmailDisplay = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           action: 'ab_variant',
@@ -314,7 +318,7 @@ const EmailDisplay = ({
     setIsGeneratingAB(false);
   }, [isGeneratingAB, emailContent, tenantName, industry]);
 
-  const useVariant = () => {
+  const applyAbVariant = () => {
     onUpdateEmail(emailKey, abVariant);
     setShowABVariant(false);
     setAbVariant('');
@@ -458,7 +462,11 @@ const EmailDisplay = ({
             )}
             {!isEditing && (
               <button
-                onClick={(e) => { e.stopPropagation(); onDismiss ? onDismiss() : onClose(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onDismiss) onDismiss();
+                  else onClose();
+                }}
                 className="rounded p-0.5 text-muted-foreground hover:bg-secondary"
               >
                 <X className="h-3 w-3" />
@@ -544,7 +552,7 @@ const EmailDisplay = ({
                   <div className="flex items-center gap-1">
                     {abVariant && !isGeneratingAB && (
                       <button
-                        onClick={(e) => { e.stopPropagation(); useVariant(); }}
+                        onClick={(e) => { e.stopPropagation(); applyAbVariant(); }}
                         className="flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium text-primary-foreground bg-primary hover:bg-primary/90"
                       >
                         Use This Version

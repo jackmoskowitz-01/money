@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus, Building2, User } from 'lucide-react';
+import { Plus, Check, Trash2, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Phone, Mail, Users, Search, StickyNote, MoreHorizontal, List, AlertTriangle, ArrowRight, ArrowDown, X, Loader2, Inbox, CornerDownRight, Clock, CheckCircle2, UserPlus, Building2, User, Circle, Play, AlertOctagon, CheckSquare, Square } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addDays } from 'date-fns';
 
 import { Card } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { buildings } from '@/data/mockData';
 import { useBuildings } from '@/hooks/useBuildings';
-import { useTasks, type TaskPriority, type TaskType, type Task } from '@/hooks/useTasks';
+import { useTasks, type TaskPriority, type TaskType, type TaskStatus, type Task } from '@/hooks/useTasks';
 import { getCustomProspects } from '@/data/customProspects';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -26,6 +26,7 @@ import ProspectLists from '@/components/ProspectLists';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import TaskComments from '@/components/TaskComments';
+import TaskActivityFeed from '@/components/TaskActivityFeed';
 import { useToast } from '@/hooks/use-toast';
 
 const taskTypeIcons: Record<string, typeof Phone> = {
@@ -43,13 +44,20 @@ const priorityConfig: Record<TaskPriority, { icon: typeof AlertTriangle; label: 
   low: { icon: ArrowDown, label: 'Low', class: 'text-muted-foreground bg-muted border-border', sortOrder: 2 },
 };
 
+const statusConfig: Record<TaskStatus, { icon: typeof Circle; label: string; class: string }> = {
+  not_started: { icon: Circle, label: 'Not started', class: 'text-muted-foreground bg-muted border-border' },
+  in_progress: { icon: Play, label: 'In progress', class: 'text-info bg-info/10 border-info/30' },
+  blocked: { icon: AlertOctagon, label: 'Blocked', class: 'text-destructive bg-destructive/10 border-destructive/30' },
+  completed: { icon: CheckCircle2, label: 'Completed', class: 'text-success bg-success/10 border-success/30' },
+};
+
 const nextTypeMap: Record<string, TaskType> = { email: 'call', call: 'meeting', meeting: 'follow_up', follow_up: 'call', research: 'email', other: 'follow_up' };
 const followUpDaysMap: Record<string, number> = { call: 3, email: 2, meeting: 7, follow_up: 3, research: 1, other: 3 };
 
 const Tasks = () => {
   const { buildings: allBuildings } = useBuildings();
   const navigate = useNavigate();
-  const { tasks, loading, addTask, updateTask, deleteTask } = useTasks();
+  const { tasks, loading, addTask, updateTask, deleteTask, bulkAssign } = useTasks();
   const { members: teamMembers } = useTeamMembers();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -73,8 +81,13 @@ const Tasks = () => {
   const [newTask, setNewTask] = useState({ title: '', description: '', type: 'follow_up' as TaskType, priority: 'medium' as TaskPriority, dueDate: format(new Date(), 'yyyy-MM-dd'), tenantId: '', buildingId: '', assignedTo: '', assignedToName: '' });
   const [prospectSearch, setProspectSearch] = useState('');
   const [assignSearch, setAssignSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'completed' | 'assigned_to_me'>('all');
+  const [filter, setFilter] = useState<
+    'all' | 'pending' | 'completed' | 'assigned_to_me' | 'assigned_by_me' | 'waiting_on'
+  >('all');
   
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [bulkAssignSearch, setBulkAssignSearch] = useState('');
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [followUpTaskId, setFollowUpTaskId] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState<{ title: string; description: string; type: TaskType; priority: TaskPriority; dueDate: string }>({
     title: '', description: '', type: 'call', priority: 'medium', dueDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'),
@@ -110,6 +123,16 @@ const Tasks = () => {
     if (filter === 'pending') t = t.filter(x => !x.completed);
     if (filter === 'completed') t = t.filter(x => x.completed);
     if (filter === 'assigned_to_me') t = t.filter(x => x.assignedTo === user?.id);
+    if (filter === 'assigned_by_me') t = t.filter(x => x.assignedBy === user?.id);
+    if (filter === 'waiting_on') {
+      t = t.filter(
+        x =>
+          x.assignedBy === user?.id &&
+          !!x.assignedTo &&
+          x.assignedTo !== user?.id &&
+          !x.completed,
+      );
+    }
     if (selectedDate) t = t.filter(x => x.dueDate.startsWith(format(selectedDate, 'yyyy-MM-dd')));
     return t.sort((a, b) => {
       const pa = priorityConfig[a.priority || 'medium'].sortOrder;
@@ -177,7 +200,7 @@ const Tasks = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-12">
+      <div className="min-h-screen">
         <div className="mx-auto max-w-7xl px-4 py-8">
           <Skeleton className="h-10 w-64 mb-6" />
           <div className="grid grid-cols-3 gap-3 mb-6">{[1,2,3].map(i => <Skeleton key={i} className="h-20" />)}</div>
@@ -339,10 +362,21 @@ const Tasks = () => {
     const info = getTenantInfo(task);
     const isOverdue = !task.completed && task.dueDate < format(new Date(), 'yyyy-MM-dd');
     const showFollowUp = followUpTaskId === task.id;
+    const isSelected = selectedTaskIds.has(task.id);
+    const status = task.status || (task.completed ? 'completed' : 'not_started');
+    const sCfg = statusConfig[status as TaskStatus] || statusConfig.not_started;
 
     return (
       <motion.div key={task.id} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}>
-        <Card className={`border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30 ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''}`} onClick={() => {
+        <Card className={`border-border bg-card p-3 transition-colors cursor-pointer hover:border-primary/30 ${task.completed ? 'opacity-60' : ''} ${isOverdue ? 'border-destructive/30' : ''} ${isSelected ? 'ring-1 ring-primary' : ''}`} onClick={() => {
+          if (selectedTaskIds.size > 0) {
+            setSelectedTaskIds(prev => {
+              const next = new Set(prev);
+              next.has(task.id) ? next.delete(task.id) : next.add(task.id);
+              return next;
+            });
+            return;
+          }
           if (info) {
             navigate(`/building/${info.building!.id}/tenant/${info.tenant.id}`);
           } else if (task.tenantId && (task.buildingId === 'custom' || task.buildingId === 'manual')) {
@@ -352,6 +386,12 @@ const Tasks = () => {
           }
         }}>
           <div className="flex items-start gap-3">
+            {/* Selection checkbox (visible when bulk mode active) */}
+            {selectedTaskIds.size > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); setSelectedTaskIds(prev => { const next = new Set(prev); next.has(task.id) ? next.delete(task.id) : next.add(task.id); return next; }); }} className="mt-0.5 shrink-0">
+                {isSelected ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4 text-muted-foreground" />}
+              </button>
+            )}
             <button onClick={(e) => { e.stopPropagation(); handleToggle(task.id); }} className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-colors ${task.completed ? 'border-success bg-success/20 text-success' : 'border-border hover:border-primary'}`}>
               {task.completed && <Check className="h-3 w-3" />}
             </button>
@@ -360,6 +400,21 @@ const Tasks = () => {
                 <p className={`text-sm font-medium ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{task.title}</p>
                 <Badge variant="outline" className={`text-[10px] ${taskTypeColors[task.type]}`}><Icon className="mr-1 h-2.5 w-2.5" />{task.type.replace('_', ' ')}</Badge>
                 {(() => { const p = priorityConfig[task.priority || 'medium']; const PIcon = p.icon; return <Badge variant="outline" className={`text-[10px] ${p.class}`}><PIcon className="mr-1 h-2.5 w-2.5" />{p.label}</Badge>; })()}
+                {/* Status selector */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button onClick={(e) => e.stopPropagation()} className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors ${sCfg.class}`}>
+                      <sCfg.icon className="h-2.5 w-2.5" />{sCfg.label}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-36 p-1" align="start" onClick={(e) => e.stopPropagation()}>
+                    {(Object.entries(statusConfig) as [TaskStatus, typeof sCfg][]).map(([key, cfg]) => (
+                      <button key={key} onClick={() => updateTask(task.id, { status: key })} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs transition-colors hover:bg-secondary ${status === key ? 'bg-secondary font-medium' : ''}`}>
+                        <cfg.icon className={`h-3 w-3 ${cfg.class.split(' ')[0]}`} />{cfg.label}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
                 {task.assignedToName && (
                   <TooltipProvider>
                     <Tooltip>
@@ -376,15 +431,51 @@ const Tasks = () => {
                     </Tooltip>
                   </TooltipProvider>
                 )}
+                {/* Reassign button */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+                      <UserPlus className="h-2.5 w-2.5" />{task.assignedTo ? 'Reassign' : 'Assign'}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-52 p-2" align="start" onClick={(e) => e.stopPropagation()}>
+                    <Input placeholder="Search team..." className="h-7 text-xs mb-1" onChange={(e) => {
+                      const q = e.target.value.toLowerCase();
+                      e.currentTarget.setAttribute('data-q', q);
+                    }} />
+                    <div className="max-h-32 overflow-y-auto space-y-0.5">
+                      {teamMembers.filter(m => m.id !== task.assignedTo).map(m => (
+                        <button key={m.id} onClick={() => updateTask(task.id, { assignedTo: m.id, assignedToName: m.fullName })} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-secondary transition-colors">
+                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">{m.avatarInitials}</div>
+                          <span className="truncate">{m.fullName}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {task.assignedTo && (
+                      <button onClick={() => updateTask(task.id, { assignedTo: '', assignedToName: '' })} className="mt-1 w-full rounded-md px-2 py-1.5 text-xs text-destructive hover:bg-destructive/10 transition-colors">
+                        Unassign
+                      </button>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
               {task.description && <p className="mt-0.5 text-xs text-muted-foreground">{task.description}</p>}
+              {task.assignedTo === user?.id && task.assignedBy && task.assignedBy !== user?.id && (
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  <span className="text-foreground/80">From</span>{' '}
+                  {teamMembers.find(m => m.id === task.assignedBy)?.fullName || 'Teammate'}
+                </p>
+              )}
               <div className="mt-1.5 flex items-center gap-3 text-[11px]">
                 <span className={isOverdue ? 'font-medium text-destructive' : 'text-muted-foreground'}>
                   {isOverdue ? '⚠ Overdue: ' : ''}{format(new Date(task.dueDate + 'T12:00:00'), 'EEE, MMM d')}
                 </span>
                 {info && <span className="text-muted-foreground/60">{info.tenant.name} · {info.building!.name}</span>}
               </div>
-              <TaskComments taskId={task.id} />
+              <div className="flex items-center gap-3">
+                <TaskComments taskId={task.id} />
+                <TaskActivityFeed taskId={task.id} />
+              </div>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }} className="rounded-md p-1 text-muted-foreground/40 transition-colors hover:bg-destructive/10 hover:text-destructive">
               <Trash2 className="h-3.5 w-3.5" />
@@ -427,7 +518,7 @@ const Tasks = () => {
   };
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* Header */}
@@ -500,9 +591,35 @@ const Tasks = () => {
               {renderTaskForm()}
 
               <div className="mb-4 flex items-center gap-2 flex-wrap">
-                {(['all', 'pending', 'completed', 'assigned_to_me'] as const).map(f => (
-                  <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>{f === 'assigned_to_me' ? 'My Assignments' : f.charAt(0).toUpperCase() + f.slice(1)}</button>
-                ))}
+                {(
+                  [
+                    'all',
+                    'pending',
+                    'completed',
+                    'assigned_to_me',
+                    'assigned_by_me',
+                    'waiting_on',
+                  ] as const
+                ).map(f => {
+                  const label =
+                    f === 'assigned_to_me'
+                      ? 'Assigned to me'
+                      : f === 'assigned_by_me'
+                        ? 'I assigned'
+                        : f === 'waiting_on'
+                          ? 'Waiting on them'
+                          : f.charAt(0).toUpperCase() + f.slice(1);
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setFilter(f)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
                 {selectedDate && (
                   <div className="ml-auto flex items-center gap-2">
                     <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5">
@@ -515,12 +632,62 @@ const Tasks = () => {
                 )}
               </div>
 
+              {/* Bulk assign bar */}
+              {selectedTaskIds.size > 0 && (
+                <Card className="mb-3 border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-primary">{selectedTaskIds.size} selected</span>
+                    <Popover open={showBulkAssign} onOpenChange={setShowBulkAssign}>
+                      <PopoverTrigger asChild>
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"><UserPlus className="h-3 w-3" /> Assign to...</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-52 p-2" align="start">
+                        <Input placeholder="Search team..." value={bulkAssignSearch} onChange={e => setBulkAssignSearch(e.target.value)} className="h-7 text-xs mb-1" />
+                        <div className="max-h-40 overflow-y-auto space-y-0.5">
+                          {teamMembers.filter(m => m.id !== user?.id && (bulkAssignSearch.length < 1 || m.fullName.toLowerCase().includes(bulkAssignSearch.toLowerCase()))).map(m => (
+                            <button key={m.id} onClick={async () => { await bulkAssign([...selectedTaskIds], m.id, m.fullName); setSelectedTaskIds(new Set()); setShowBulkAssign(false); setBulkAssignSearch(''); }} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-secondary transition-colors">
+                              <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[9px] font-bold text-primary">{m.avatarInitials}</div>
+                              <span className="truncate">{m.fullName}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedTaskIds(new Set())}>Cancel</Button>
+                    <button onClick={() => { const allIds = new Set(filteredTasks.map(t => t.id)); setSelectedTaskIds(prev => prev.size === allIds.size ? new Set() : allIds); }} className="ml-auto text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                      {selectedTaskIds.size === filteredTasks.length ? 'Deselect all' : 'Select all'}
+                    </button>
+                  </div>
+                </Card>
+              )}
+              {selectedTaskIds.size === 0 && (
+                <div className="mb-2 flex justify-end">
+                  <button onClick={() => { setSelectedTaskIds(new Set([filteredTasks[0]?.id].filter(Boolean))); }} className="text-[11px] text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                    <CheckSquare className="h-3 w-3" /> Select tasks
+                  </button>
+                </div>
+              )}
+
               <div className="space-y-2">
                 {filteredTasks.length === 0 ? (
                   <Card className="border-border bg-card p-12 text-center">
                     <Inbox className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
-                    <p className="text-sm font-medium text-muted-foreground">{selectedDate ? 'No tasks for this date' : filter === 'completed' ? 'No completed tasks yet' : 'All caught up!'}</p>
-                    <p className="mt-1 text-xs text-muted-foreground/60">{selectedDate ? 'Try selecting a different date' : 'Click "New Task" to create one'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {selectedDate
+                        ? 'No tasks for this date'
+                        : filter === 'completed'
+                          ? 'No completed tasks yet'
+                          : filter === 'assigned_to_me'
+                            ? 'Nothing assigned to you'
+                            : filter === 'assigned_by_me'
+                              ? "You haven't delegated any tasks yet"
+                              : filter === 'waiting_on'
+                                ? 'No open tasks waiting on teammates'
+                                : 'All caught up!'}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground/60">
+                      {selectedDate ? 'Try selecting a different date' : 'Click "New Task" to create one'}
+                    </p>
                   </Card>
                 ) : filteredTasks.map((task, i) => renderTaskCard(task, i))}
               </div>

@@ -32,8 +32,8 @@ You should call ALL of these at once:
 1. **Deal Strategy Advice**: Provide specific, actionable next steps based on pipeline stage, lease expiration, and market dynamics.
 2. **Quick Data Lookup**: Answer questions about prospects, buildings, or market data using provided context.
 3. **Outreach Drafting**: Draft concise, professional broker emails. Position as a market advisor, not salesy.
-4. **Market Intelligence**: Answer DC metro CRE market questions. When you need real-time data, use the search_market tool.
-5. **Company Research**: When a user asks about ANY company or organization not found in the provided context, ALWAYS use the search_market tool to look them up. Never say you don't have information — search for it first.
+4. **Internal Data Only**: This is an internal tool. Do NOT search the internet. All data comes from the deal database, uploaded files, and provided context. If you don't have information about a company, use search_deals or query_database to look it up in the internal system.
+5. **File & Document Lookup**: When the user asks to run a lease abstract, analyze a document, or reference a file for a prospect — use the get_prospect_files tool. CRITICAL: When the user says "run a lease abstract for [company]" or "/abstract for [company]", call get_prospect_files with action="abstract" and the company name. This automatically finds their files AND runs the abstract in one step. For just viewing files, use action="read". NEVER ask the user to upload a file if files already exist for that prospect.
 6. **Pipeline Actions**: Execute actions like moving deal stages, adding notes, creating tasks when the user asks.
 7. **Tour Planning**: Optimize property tour routes. CRITICAL RULE: You must ALWAYS ask the user for their starting point — NEVER assume or guess a starting location (not their office, not a default, not "downtown", not any address). When the user provides addresses for a tour, your ENTIRE response must be ONLY: "Where will you be starting from?" — do NOT acknowledge the addresses, do NOT list them back, do NOT call plan_tour, do NOT provide any other commentary. Just ask that single question and stop. Only after the user explicitly replies with their starting address should you call plan_tour and generate the route.
 8. **Comp Analysis**: When asked to analyze comps or compare lease terms, use the analyze_comps tool. Benchmark deals against recent lease comps by submarket, size, and class.
@@ -61,7 +61,12 @@ You should call ALL of these at once:
 
 ## Available Tools
 You can execute these actions when the user asks:
-- **search_market**: Search for real-time market data, news, company information, or any entity/organization not in the provided context. ALWAYS use this when the user asks about a company you don't recognize.
+- **search_deals**: Search your deal data using semantic/AI search. Use this FIRST when the user asks about specific deals, contacts, activities, scoops, or documents that may not be in the provided context. This searches the full embedded knowledge base across all deal records, contacts, activities, market intel, and uploaded documents.
+- **query_database**: Query the deal database with natural language. Translates to SQL automatically. Use for data questions: counts, filters, date ranges, aggregations.
+- **deep_analyze**: Deep analysis with extended reasoning. Use for complex strategy questions, multi-deal comparisons, or negotiation planning that need careful thought.
+- **extract_lease_terms**: Extract structured lease terms from document text into a clean table + JSON. Use when the broker wants specific terms pulled from a lease/LOI/proposal.
+- **compact_context**: Compress the conversation history when it gets long. Summarize key facts and continue.
+- **get_prospect_files**: Retrieve uploaded files/documents for a prospect. Use FIRST when the user asks to run a lease abstract, analyze a document, or reference files for a company. Returns file names and content.
 - **move_deal_stage**: Move a prospect to a different pipeline stage
 - **add_deal_note**: Add a note to a pipeline deal
 - **create_task**: Create a new task linked to a prospect
@@ -97,14 +102,31 @@ const TOOLS = [
   {
     type: "function",
     function: {
-      name: "search_market",
-      description: "Search for real-time CRE market data, news, company information, or any organization/entity details using web search. ALWAYS use this when the user mentions a company, organization, or entity not found in the provided context. Use for current market conditions, recent news, company research, or any data you don't have.",
+      name: "search_deals",
+      description: "Search the deal knowledge base using AI-powered semantic search. Searches across all embedded deal records, contacts, activities, market intel/scoops, and uploaded documents. Use this FIRST when the user asks about specific deals, contacts, or activities that may not be in the provided context summary. Returns the most relevant results with similarity scores.",
       parameters: {
         type: "object",
         properties: {
-          query: { type: "string", description: "The search query for market data or news" },
+          query: { type: "string", description: "Natural language search query (e.g., 'Deloitte lease details', 'contacts at McKinsey', 'recent meeting notes')" },
+          filter_type: { type: "string", enum: ["deal", "contact", "activity", "scoop", "document"], description: "Optional: filter results to a specific data type" },
         },
         required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_prospect_files",
+      description: "Retrieve and optionally analyze uploaded files for a prospect. Use when the user asks to run a lease abstract, analyze a document, or reference files for a company. When action is 'abstract', it automatically runs a full lease abstract on the file content. When action is 'list', it just lists the files. When action is 'read', it returns the file content.",
+      parameters: {
+        type: "object",
+        properties: {
+          prospect_name: { type: "string", description: "Company or prospect name (e.g., 'Google', 'Deloitte')" },
+          action: { type: "string", enum: ["abstract", "read", "list"], description: "What to do: 'abstract' runs a full lease abstract, 'read' returns file content, 'list' just lists files. Default: 'read'" },
+        },
+        required: ["prospect_name"],
         additionalProperties: false,
       },
     },
@@ -147,7 +169,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a new task, optionally linked to a tenant/building",
+      description: "Create a new task, optionally linked to a tenant/building. Can assign to a team member by name.",
       parameters: {
         type: "object",
         properties: {
@@ -157,6 +179,7 @@ const TOOLS = [
           due_days: { type: "number", description: "Days from now for the due date" },
           tenant_id: { type: "string", description: "Optional tenant ID to link" },
           building_id: { type: "string", description: "Optional building ID to link" },
+          assign_to_name: { type: "string", description: "Team member name to assign the task to (e.g. 'Sarah'). Fuzzy matched against org members." },
         },
         required: ["title", "description", "priority", "due_days"],
         additionalProperties: false,
@@ -330,6 +353,67 @@ const TOOLS = [
           remind_days_before: { type: "number", description: "Days before the date to send a reminder (default 30)" },
         },
         required: ["prospect_name", "date_type", "date_value"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "query_database",
+      description: "Query the deal database using natural language. Translates your question into SQL and runs it against pipeline_deals, activities, tasks, scoops, company_contacts, and critical_dates tables. Use for data questions like 'how many deals over 20K SF', 'deals with no activity in 2 weeks', 'all contacts at Deloitte', 'tasks due this week'.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: { type: "string", description: "Natural language question about deal data" },
+        },
+        required: ["question"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "deep_analyze",
+      description: "Perform deep analysis with extended reasoning on complex deal questions. Uses Claude's extended thinking for thorough multi-step analysis. Use for: complex deal scoring, multi-deal strategy, market positioning analysis, negotiation strategy, or any question requiring careful multi-factor reasoning.",
+      parameters: {
+        type: "object",
+        properties: {
+          question: { type: "string", description: "The complex analysis question" },
+          context_data: { type: "string", description: "Additional data to analyze (deal details, comps, etc.)" },
+        },
+        required: ["question"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "extract_lease_terms",
+      description: "Extract structured lease terms from text. Returns a typed JSON object with all key lease fields. Use when the broker wants specific terms extracted from a lease abstract, LOI, proposal, or any document containing deal terms.",
+      parameters: {
+        type: "object",
+        properties: {
+          document_text: { type: "string", description: "The lease/LOI/proposal text to extract terms from" },
+        },
+        required: ["document_text"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compact_context",
+      description: "Summarize the current conversation into a compact context. Use this internally when the conversation is getting very long to preserve memory while freeing up context space.",
+      parameters: {
+        type: "object",
+        properties: {
+          conversation_summary: { type: "string", description: "Your summary of the conversation so far — key facts, decisions, and pending items" },
+        },
+        required: ["conversation_summary"],
         additionalProperties: false,
       },
     },
@@ -694,14 +778,706 @@ async function generatePitchDeck(args: any, context: string): Promise<string> {
   return result;
 }
 
-async function executeTool(name: string, args: any, context?: string, userId?: string | null): Promise<string> {
+// ============================================================
+// Text-to-SQL: Convert natural language to SQL queries
+// (per Anthropic cookbook text_to_sql pattern)
+// ============================================================
+
+const DB_SCHEMA = `
+Tables:
+- pipeline_deals (id uuid, tenant_id text, building_id text, stage text, notes text[], last_activity timestamptz, is_manual boolean, prospect_name text, prospect_company text, prospect_email text, prospect_phone text, prospect_sqft int, sent_touchpoints jsonb, sort_order int, created_at timestamptz, updated_at timestamptz, organization_id uuid)
+  Stages: hot_prospect, meeting_set, meeting_held, moving_forward, won, closed, lost
+
+- activities (id uuid, tenant_id text, building_id text, type text, title text, description text, timestamp timestamptz, outreach_reason_used text, organization_id uuid)
+  Types: email_sent, call, meeting, note, do_not_call, meeting_set
+
+- tasks (id uuid, title text, description text, priority text, type text, due_date timestamptz, completed boolean, tenant_id text, building_id text, organization_id uuid, created_at timestamptz)
+  Priorities: high, medium, low
+
+- scoops (id uuid, content text, category text, tags text[], author_name text, linked_tenant_id text, linked_building_id text, linked_tenant_name text, linked_building_name text, organization_id uuid, created_at timestamptz)
+  Categories: lease_move, rfp, expansion, contraction, personnel, concession, conversion, general
+
+- company_contacts (id uuid, entity_id text, name text, title text, email text, direct_phone text, mobile_phone text, organization_id uuid, created_at timestamptz)
+
+- critical_dates (id uuid, prospect_name text, prospect_id text, building_name text, date_type text, date_value date, description text, remind_days_before int, source text, user_id uuid, created_at timestamptz)
+`;
+
+/** Ensures generated SQL scopes to the user's org (defense in depth with exec_readonly_sql). */
+function sqlContainsOrgScope(sql: string, orgId: string): boolean {
+  const q = sql.toLowerCase();
+  const id = orgId.toLowerCase();
+  return q.includes("organization_id") && q.includes(id);
+}
+
+async function queryDatabase(question: string, orgId: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Database query unavailable (ANTHROPIC_API_KEY not configured).";
+
+  if (!orgId) {
+    return "Database query unavailable (no organization context). Open Copilot while signed in to an account with an organization.";
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  try {
+    // Step 1: Generate SQL from natural language
+    const sqlResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 500,
+        system: `You are a SQL expert. Given a natural language question and a database schema, generate a PostgreSQL SELECT query. Rules:
+- ONLY generate SELECT queries (never INSERT, UPDATE, DELETE, DROP, etc.)
+- Always filter by organization_id = '${orgId}'
+- Return ONLY the raw SQL, no explanation, no markdown, no backticks
+- Limit results to 25 rows max
+- Use current_date for relative date references`,
+        messages: [{ role: "user", content: `Schema:\n${DB_SCHEMA}\n\nQuestion: ${question}` }],
+      }),
+    });
+
+    if (!sqlResponse.ok) return "Failed to generate query.";
+    const sqlData = await sqlResponse.json();
+    const sql = sqlData.content?.[0]?.text?.trim();
+
+    if (!sql || !sql.toLowerCase().startsWith("select")) {
+      return "Could not generate a safe query for that question.";
+    }
+
+    if (!sqlContainsOrgScope(sql, orgId)) {
+      return "Generated query was rejected because it did not scope results to your organization. Try rephrasing your question.";
+    }
+
+    // Step 2: Execute the query (DB also enforces org text when expected_org_id is set)
+    const { data, error } = await supabase.rpc("exec_readonly_sql", {
+      query_text: sql,
+      expected_org_id: orgId,
+    });
+
+    // Fallback: try direct query if RPC doesn't exist
+    if (error?.message?.includes("function") && error?.message?.includes("does not exist")) {
+      // Use a simpler approach — query the most likely table
+      return `## Generated SQL\n\`\`\`sql\n${sql}\n\`\`\`\n\n⚠️ Direct SQL execution requires the \`exec_readonly_sql\` RPC function. The SQL above is ready to run — you can execute it in the Supabase SQL editor.`;
+    }
+
+    if (error) return `Query error: ${error.message}\n\nGenerated SQL:\n\`\`\`sql\n${sql}\n\`\`\``;
+
+    // Step 3: Format results
+    const rows = Array.isArray(data) ? data : [];
+    if (rows.length === 0) return `No results found.\n\nSQL: \`${sql}\``;
+
+    const cols = Object.keys(rows[0]);
+    let table = `| ${cols.join(" | ")} |\n|${cols.map(() => "---").join("|")}|\n`;
+    for (const row of rows.slice(0, 25)) {
+      table += `| ${cols.map(c => String(row[c] ?? "—")).join(" | ")} |\n`;
+    }
+
+    return `## Query Results (${rows.length} rows)\n\n${table}\n\n<details><summary>SQL</summary>\n\n\`\`\`sql\n${sql}\n\`\`\`\n</details>`;
+  } catch (e) {
+    console.error("query_database error:", e);
+    return "Database query failed.";
+  }
+}
+
+// ============================================================
+// Extended Thinking: Deep analysis with reasoning chains
+// (per Anthropic cookbook extended_thinking pattern)
+// ============================================================
+
+async function deepAnalyze(question: string, contextData?: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Deep analysis unavailable (ANTHROPIC_API_KEY not configured).";
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        thinking: {
+          type: "enabled",
+          budget_tokens: 10000,
+        },
+        messages: [{
+          role: "user",
+          content: `You are a senior CRE deal strategist. Analyze the following carefully, considering multiple factors and trade-offs.\n\n${contextData ? `Data:\n${contextData}\n\n` : ""}Question: ${question}\n\nProvide a thorough analysis with clear recommendations. Use headers, bullet points, and tables where appropriate.`,
+        }],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.text();
+      console.error("Deep analyze error:", err);
+      return "Deep analysis failed.";
+    }
+
+    const data = await response.json();
+    // Extract the text response (thinking blocks are internal)
+    const textBlock = data.content?.find((b: any) => b.type === "text");
+    return textBlock?.text || "Analysis complete but no output generated.";
+  } catch (e) {
+    console.error("deep_analyze error:", e);
+    return "Deep analysis failed.";
+  }
+}
+
+// ============================================================
+// Structured Lease Term Extraction
+// (per Anthropic cookbook extracting_structured_json pattern)
+// ============================================================
+
+async function extractLeaseTerms(documentText: string): Promise<string> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) return "Extraction unavailable (ANTHROPIC_API_KEY not configured).";
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": anthropicKey,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        tools: [{
+          name: "save_lease_terms",
+          description: "Save extracted lease terms as structured data",
+          input_schema: {
+            type: "object",
+            properties: {
+              tenant_name: { type: "string", description: "Name of the tenant" },
+              landlord_name: { type: "string", description: "Name of the landlord/owner" },
+              property_address: { type: "string", description: "Property street address" },
+              suite_number: { type: "string" },
+              rentable_sf: { type: "number", description: "Rentable square footage" },
+              usable_sf: { type: "number", description: "Usable square footage" },
+              lease_term_months: { type: "number", description: "Lease term in months" },
+              commencement_date: { type: "string", description: "Lease start date" },
+              expiration_date: { type: "string", description: "Lease end date" },
+              base_rent_psf: { type: "number", description: "Base rent per SF per year" },
+              annual_escalation_pct: { type: "number", description: "Annual escalation percentage" },
+              escalation_type: { type: "string", enum: ["fixed", "cpi", "market", "step"] },
+              ti_allowance_psf: { type: "number", description: "Tenant improvement allowance per SF" },
+              free_rent_months: { type: "number", description: "Months of free rent" },
+              operating_expenses: { type: "string", enum: ["full_service", "nnn", "modified_gross", "base_year"] },
+              base_year: { type: "number", description: "OpEx base year if applicable" },
+              parking_spaces: { type: "number" },
+              parking_rate: { type: "number", description: "Monthly parking rate per space" },
+              renewal_options: { type: "string", description: "Renewal option terms" },
+              termination_option: { type: "string", description: "Early termination terms" },
+              security_deposit: { type: "number" },
+              total_lease_value: { type: "number", description: "Total rent over the lease term" },
+              notes: { type: "string", description: "Any other notable terms or clauses" },
+            },
+            required: ["tenant_name", "property_address"],
+          },
+        }],
+        tool_choice: { type: "tool", name: "save_lease_terms" },
+        messages: [{
+          role: "user",
+          content: `Extract all lease terms from this document into structured fields. If a field is not found in the document, omit it.\n\n${documentText}`,
+        }],
+      }),
+    });
+
+    if (!response.ok) return "Lease term extraction failed.";
+
+    const data = await response.json();
+    const toolUse = data.content?.find((b: any) => b.type === "tool_use");
+    if (!toolUse?.input) return "Could not extract structured terms from this document.";
+
+    const terms = toolUse.input;
+    // Format as a clean table
+    let result = `## 📋 Extracted Lease Terms\n\n`;
+    result += `| Field | Value |\n|-------|-------|\n`;
+    const labels: Record<string, string> = {
+      tenant_name: "Tenant", landlord_name: "Landlord", property_address: "Property",
+      suite_number: "Suite", rentable_sf: "Rentable SF", usable_sf: "Usable SF",
+      lease_term_months: "Term (months)", commencement_date: "Commencement",
+      expiration_date: "Expiration", base_rent_psf: "Base Rent/SF/yr",
+      annual_escalation_pct: "Annual Escalation", escalation_type: "Escalation Type",
+      ti_allowance_psf: "TI Allowance/SF", free_rent_months: "Free Rent (months)",
+      operating_expenses: "OpEx Structure", base_year: "Base Year",
+      parking_spaces: "Parking Spaces", parking_rate: "Parking $/mo/space",
+      renewal_options: "Renewal Options", termination_option: "Termination Option",
+      security_deposit: "Security Deposit", total_lease_value: "Total Lease Value",
+      notes: "Notes",
+    };
+    for (const [key, val] of Object.entries(terms)) {
+      if (val == null || val === "") continue;
+      const label = labels[key] || key;
+      const display = typeof val === "number" ? val.toLocaleString() : String(val);
+      result += `| **${label}** | ${display} |\n`;
+    }
+
+    result += `\n<details><summary>Raw JSON</summary>\n\n\`\`\`json\n${JSON.stringify(terms, null, 2)}\n\`\`\`\n</details>`;
+    return result;
+  } catch (e) {
+    console.error("extract_lease_terms error:", e);
+    return "Lease term extraction failed.";
+  }
+}
+
+// Fire-and-forget: embed a record into the RAG vector store
+async function embedRecord(sourceType: string, sourceId: string, record: Record<string, unknown>, orgId: string): Promise<void> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/rag-embed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ sourceType, sourceId, record, orgId }),
+    });
+  } catch (e) {
+    console.warn("Background RAG embed failed:", e);
+  }
+}
+
+async function executeTool(name: string, args: any, context?: string, userId?: string | null, orgId?: string | null): Promise<string> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceKey);
 
   switch (name) {
-    case "search_market":
-      return searchMarket(args.query);
+    case "search_deals": {
+      // Call rag-ask internally for semantic search over deal data
+      const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (!anthropicKey || !openaiKey) return "Deal search unavailable (API keys not configured).";
+
+      try {
+        // Embed the query
+        const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ model: "text-embedding-3-small", input: args.query }),
+        });
+        if (!embResp.ok) return "Deal search failed (embedding error).";
+        const embData = await embResp.json();
+        const queryEmbedding = embData.data[0].embedding;
+
+        // Vector similarity search
+        const searchOrgId = orgId || null;
+        if (!searchOrgId) return "Deal search unavailable (no organization context).";
+
+        const { data: chunks, error } = await supabase.rpc("match_embeddings", {
+          query_embedding: queryEmbedding,
+          match_org_id: searchOrgId,
+          match_count: 10,
+          match_threshold: 0.35,
+          filter_type: args.filter_type ?? null,
+        });
+
+        if (error || !chunks?.length) return "No matching deal data found for that query.";
+
+        // Format results for the Copilot
+        const results = chunks.map((c: any, i: number) => {
+          const meta = c.metadata || {};
+          const metaParts = [
+            meta.tenant && `Tenant: ${meta.tenant}`,
+            meta.stage && `Stage: ${meta.stage}`,
+            meta.sf && `SF: ${Number(meta.sf).toLocaleString()}`,
+            meta.full_name && `Contact: ${meta.full_name}`,
+            meta.category && `Category: ${meta.category}`,
+          ].filter(Boolean).join(" | ");
+          return `[${i + 1}] [${c.source_type.toUpperCase()}]${metaParts ? ` (${metaParts})` : ""} (relevance: ${Math.round(c.similarity * 100)}%)\n${c.content}`;
+        }).join("\n\n");
+
+        return `## Deal Search Results for: "${args.query}"\n\n${results}`;
+      } catch (e) {
+        console.error("search_deals error:", e);
+        return "Deal search failed.";
+      }
+    }
+
+    case "query_database":
+      return queryDatabase(args.question, orgId || "");
+
+    case "deep_analyze":
+      return deepAnalyze(args.question, args.context_data || context || "");
+
+    case "extract_lease_terms":
+      return extractLeaseTerms(args.document_text);
+
+    case "compact_context":
+      return `✅ Context compacted. Summary preserved:\n\n${args.conversation_summary}`;
+
+    case "get_prospect_files": {
+      const prospectName = args.prospect_name?.toLowerCase() || "";
+      const results: string[] = [];
+
+      // Step 1: Find the prospect(s) by name across all tables
+      const { data: dbProspects } = await supabase
+        .from("prospects")
+        .select("id, company_name")
+        .ilike("company_name", `%${prospectName}%`);
+
+      const { data: customProspects } = await supabase
+        .from("custom_prospects")
+        .select("id, name")
+        .ilike("name", `%${prospectName}%`);
+
+      const { data: pipelineDeals } = await supabase
+        .from("pipeline_deals")
+        .select("tenant_id, prospect_company, prospect_name, notes, stage")
+        .or(`prospect_company.ilike.%${prospectName}%,prospect_name.ilike.%${prospectName}%`);
+
+      // Collect all matching prospect IDs
+      const prospectIds = new Set<string>();
+      (dbProspects || []).forEach((p: any) => prospectIds.add(p.id));
+      (customProspects || []).forEach((p: any) => prospectIds.add(p.id));
+      (pipelineDeals || []).forEach((p: any) => prospectIds.add(p.tenant_id));
+
+      if (prospectIds.size === 0) {
+        return `No prospect found matching "${args.prospect_name}". Check the company name and try again.`;
+      }
+
+      // Step 2: Get all files for these prospect IDs
+      const allFiles: any[] = [];
+      for (const pid of prospectIds) {
+        const { data: files } = await supabase
+          .from("prospect_files")
+          .select("*")
+          .eq("prospect_id", pid)
+          .order("created_at", { ascending: false });
+        if (files) allFiles.push(...files);
+      }
+
+      // Also search by filename containing the prospect name
+      const { data: nameMatchFiles } = await supabase
+        .from("prospect_files")
+        .select("*")
+        .ilike("file_name", `%${prospectName}%`);
+      if (nameMatchFiles) {
+        const existingIds = new Set(allFiles.map((f: any) => f.id));
+        nameMatchFiles.forEach((f: any) => { if (!existingIds.has(f.id)) allFiles.push(f); });
+      }
+
+      // Step 3: Download and read file contents
+      if (allFiles.length > 0) {
+        results.push(`## Files for "${args.prospect_name}" (${allFiles.length} found)\n`);
+
+        for (const f of allFiles.slice(0, 5)) { // Limit to 5 files
+          results.push(`### ${f.file_name}`);
+          results.push(`Type: ${f.file_type || "unknown"} | Uploaded: ${new Date(f.created_at).toLocaleDateString()} by ${f.uploaded_by_name || "unknown"}\n`);
+
+          // Download file content from Supabase Storage
+          try {
+            const { data: fileData } = await supabase.storage
+              .from("prospect-files")
+              .download(f.file_path);
+
+            if (fileData) {
+              const isPdf = f.file_type === "application/pdf" || f.file_name?.endsWith(".pdf");
+              const isText = f.file_type?.includes("text") || f.file_name?.endsWith(".txt") || f.file_name?.endsWith(".csv") || f.file_name?.endsWith(".md");
+
+              if (isText) {
+                const text = await fileData.text();
+                const truncated = text.length > 30000 ? text.slice(0, 30000) + "\n\n[... truncated ...]" : text;
+                results.push("```\n" + truncated + "\n```\n");
+              } else if (isPdf) {
+                // Send PDF to Gemini for native reading — fast, 1M context
+                const pdfGeminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+                if (pdfGeminiKey) {
+                  const bytes = new Uint8Array(await fileData.arrayBuffer());
+                  const base64 = btoa(String.fromCharCode(...bytes));
+                  const pdfResp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${pdfGeminiKey}`,
+                    {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        contents: [{ parts: [
+                          { inline_data: { mime_type: "application/pdf", data: base64 } },
+                          { text: "Extract the full text content of this document. Preserve all details, numbers, dates, and formatting." },
+                        ] }],
+                        generationConfig: { maxOutputTokens: 16384 },
+                      }),
+                    }
+                  );
+                  if (pdfResp.ok) {
+                    const pdfData = await pdfResp.json();
+                    const pdfText = pdfData.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (pdfText) {
+                      results.push("**[PDF Content Extracted]**\n\n" + pdfText + "\n");
+                    }
+                  } else {
+                    results.push(`_(Could not read PDF — ${(f.file_size / 1024).toFixed(1)} KB)_\n`);
+                  }
+                }
+              } else {
+                results.push(`_(Binary file — ${(f.file_size / 1024).toFixed(1)} KB)_\n`);
+              }
+            }
+          } catch (e) {
+            results.push(`_(Could not download file: ${e.message})_\n`);
+          }
+        }
+      }
+
+      // Step 4: Search RAG embeddings for any embedded document content
+      const openaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (openaiKey && orgId) {
+        try {
+          const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "text-embedding-3-small", input: `${args.prospect_name} lease document abstract` }),
+          });
+          if (embResp.ok) {
+            const embData = await embResp.json();
+            const { data: docs } = await supabase.rpc("match_embeddings", {
+              query_embedding: embData.data[0].embedding,
+              match_org_id: orgId,
+              match_count: 5,
+              match_threshold: 0.25,
+              filter_type: null,
+            });
+            if (docs?.length > 0) {
+              results.push(`\n## Related Data from Knowledge Base\n`);
+              for (const doc of docs) {
+                results.push(`**[${doc.source_type.toUpperCase()}]** (${Math.round(doc.similarity * 100)}% match)\n${doc.content}\n`);
+              }
+            }
+          }
+        } catch { /* silent */ }
+      }
+
+      // Step 5: Add pipeline context
+      if (pipelineDeals?.length) {
+        results.push(`\n## Pipeline Context\n`);
+        for (const d of pipelineDeals) {
+          results.push(`- **${d.prospect_company || d.prospect_name}** — Stage: ${d.stage}, Notes: ${(d.notes || []).join("; ") || "none"}`);
+        }
+      }
+
+      if (results.length === 0) {
+        return `No files or documents found for "${args.prospect_name}". The broker needs to upload the lease to the company's Files section first.`;
+      }
+
+      const fileContent = results.join("\n");
+
+      // If action is "abstract", run a full lease abstract on the file content using Claude
+      if (args.action === "abstract") {
+        const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+        if (!anthropicKey) return "Cannot run abstract — ANTHROPIC_API_KEY not configured.";
+
+        const LEASE_ABSTRACT_TEMPLATE = `You are producing a professional Lease Summary / Abstract. Follow this EXACT structure and section order. Fill in every field from the lease document. If a field is not found in the lease, write "Silent in Lease."
+
+## FORMAT:
+---
+# Lease Summary
+
+**Company Name:** [Tenant Company]
+**Building Name:** [Building/Property Name]
+**Address:** [Full Address]
+**Lease Type:** [Renewal / Expansion / New Lease]
+**Abstract Date:** ${new Date().toLocaleDateString()}
+
+---
+
+### Premises
+- [X] rentable square feet
+- Method of Measurement: [if stated]
+
+### Amendments
+List each amendment with page references and bullet-point summaries. If none, state "No amendments."
+
+### Landlord
+[Landlord entity name] | [City, ST]
+
+### Term
+- Duration: [X years]
+- Commencement Date: [date]
+- Expiration Date: [date]
+- Article/Section/Page reference if available
+
+### Size
+[Rentable SF and Usable SF if stated]
+
+### Rent Schedule
+
+| Period | Rent/SF | Rent/Month | Rent/Year |
+|--------|---------|------------|-----------|
+| Year 1 | $XX.XX  | $XX,XXX.XX | $XXX,XXX.XX |
+| Year 2 | ... | ... | ... |
+[Continue for all years]
+
+### Rent Payment Address
+[Address or "Silent in Lease"]
+
+### Lease Type
+[Full Service / Net / Modified Gross / etc.]
+
+### Electricity
+[Included or separately metered, details]
+
+### Abandonment
+[Terms or "Silent in Lease"]
+
+### Additional Provisions
+[Key provisions or "Silent in Lease"]
+
+### Alterations & Additions
+[Terms or "Silent in Lease"]
+
+### Landlord Services
+[Services provided or "Silent in Lease"]
+
+### Operating Expenses & Taxes
+[Base year, cap, pass-through details or "Silent in Lease"]
+
+### Exhibits
+[List all exhibits referenced]
+
+### Improvements / Tenant Improvements
+[TI allowance, details or "Silent in Lease"]
+
+### Parking
+[Ratio, cost, reserved/unreserved or "Silent in Lease"]
+
+### Right of Refusal
+[Terms or "Silent in Lease"]
+
+### Extension Option
+[Terms, notice period, rent basis or "Silent in Lease"]
+
+### Expansion Option
+[Terms or "Silent in Lease"]
+
+### Cancellation Option
+[Terms, penalty or "Silent in Lease"]
+
+### Holdover
+[Rate, terms or "Silent in Lease"]
+
+### Insurance - Landlord
+[Requirements or "Silent in Lease"]
+
+### Insurance - Tenant
+[Requirements or "Silent in Lease"]
+
+### Late Charge
+[Percentage, grace period or "Silent in Lease"]
+
+### Maintenance - Landlord
+[Responsibilities or "Silent in Lease"]
+
+### Maintenance - Tenant
+[Responsibilities or "Silent in Lease"]
+
+### Non-Disturbance
+[Terms or "Silent in Lease"]
+
+### Permitted Uses
+[Permitted uses or "Silent in Lease"]
+
+### Relocation
+[Terms or "Silent in Lease"]
+
+### Restoration
+[Terms or "Silent in Lease"]
+
+### Right to Audit
+[Terms or "Silent in Lease"]
+
+### Right to Offset
+[Terms or "Silent in Lease"]
+
+### Self-Help
+[Terms or "Silent in Lease"]
+
+### Assignment & Subletting
+[Terms, consent requirements or "Silent in Lease"]
+
+### Signage
+[Terms or "Silent in Lease"]
+
+### Security Deposit
+[Amount, terms or "Silent in Lease"]
+
+### Building Hours and Holidays
+[Hours, holiday schedule or "Silent in Lease"]
+
+### Notice to Landlord
+[Notice address or "Silent in Lease"]
+
+### Additional Lease Comments
+[Any other notable terms]
+
+---
+*This document has been prepared based on available information and professional interpretation. Reasonable care has been taken to ensure its accuracy. We encourage every client to review the information prior to relying on it for action or decision-making.*
+---
+
+CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
+1. Fill in EVERY section above. Do NOT skip or summarize - provide the FULL detail from the lease for each field.
+2. For rent schedules: list EVERY year of the term with Rent/SF, Rent/Month, and Rent/Year. Calculate monthly and annual amounts if only per-SF rates are given. Show escalation percentages.
+3. For each section, include the Article #, Section #, and Page # references from the lease when available.
+4. Quote exact dollar amounts, dates, percentages, and square footage numbers - never round or approximate.
+5. For options (extension, expansion, cancellation, ROFO/ROFR): include ALL details - notice periods, pricing mechanisms, number of options, option term lengths, and any conditions.
+6. For insurance: list exact coverage types and minimum amounts required.
+7. For operating expenses: include base year, cap rates, exclusions, gross-up provisions, and audit rights.
+8. For TI/improvements: include exact allowance per SF, total amount, construction timeline, and any landlord contribution details.
+9. For assignment/subletting: include consent requirements, recapture rights, profit sharing, and any pre-approved transfers.
+10. List ALL exhibits and addenda referenced in the lease with brief descriptions.
+11. Include any guarantor information, renewal rights, co-tenancy clauses, exclusive use provisions, or other non-standard terms under "Additional Lease Comments."
+12. If a clause is complex, use sub-bullets to break it down - never collapse detail into a single line.
+13. DO NOT write "See lease for details" - extract and state the actual details.`;
+
+        // Use Gemini 2.5 Flash for abstracts — fastest, follows templates, 1M context
+        const geminiKey = Deno.env.get("GOOGLE_AI_API_KEY");
+        if (!geminiKey) return "Cannot run abstract — GOOGLE_AI_API_KEY not configured.";
+
+        let abstractResp: Response | null = null;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          abstractResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: `${LEASE_ABSTRACT_TEMPLATE}\n\nRun a complete lease abstract on the following document content:\n\n${fileContent}` }] }],
+                generationConfig: { maxOutputTokens: 16384 },
+              }),
+            }
+          );
+          if (abstractResp.status === 429) {
+            await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+            continue;
+          }
+          break;
+        }
+
+        if (!abstractResp?.ok) {
+          const err = await abstractResp?.text();
+          console.error("Gemini abstract error:", err);
+          return `Found files for ${args.prospect_name} but abstract generation failed. Here are the files:\n\n${fileContent}`;
+        }
+
+        const abstractData = await abstractResp.json();
+        const abstractText = abstractData.candidates?.[0]?.content?.parts?.[0]?.text;
+        return abstractText || `Abstract generation returned no output. Here are the files:\n\n${fileContent}`;
+      }
+
+      return fileContent;
+    }
 
     case "plan_tour":
       return planTour(args.addresses, args.start_address);
@@ -719,35 +1495,41 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
       return generatePitchDeck(args, context || "");
 
     case "move_deal_stage": {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("pipeline_deals")
         .update({ stage: args.new_stage, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("tenant_id", args.tenant_id)
-        .eq("building_id", args.building_id);
+        .eq("building_id", args.building_id)
+        .select("*")
+        .single();
       if (error) return `Failed to move deal: ${error.message}`;
+      if (updated && orgId) embedRecord("deal", updated.id, updated, orgId);
       return `✅ Deal moved to **${args.new_stage.replace(/_/g, " ")}** stage.`;
     }
 
     case "add_deal_note": {
       const { data: deal } = await supabase
         .from("pipeline_deals")
-        .select("notes")
+        .select("*")
         .eq("tenant_id", args.tenant_id)
         .eq("building_id", args.building_id)
         .single();
       const notes = [...(deal?.notes || []), args.note];
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("pipeline_deals")
         .update({ notes, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq("tenant_id", args.tenant_id)
-        .eq("building_id", args.building_id);
+        .eq("building_id", args.building_id)
+        .select("*")
+        .single();
       if (error) return `Failed to add note: ${error.message}`;
+      if (updated && orgId) embedRecord("deal", updated.id, updated, orgId);
       return `✅ Note added to deal.`;
     }
 
     case "create_task": {
       const dueDate = new Date(Date.now() + (args.due_days || 7) * 86400000).toISOString();
-      const { error } = await supabase.from("tasks").insert({
+      const taskRow: Record<string, unknown> = {
         title: args.title,
         description: args.description,
         priority: args.priority,
@@ -755,38 +1537,77 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         tenant_id: args.tenant_id || null,
         building_id: args.building_id || null,
         type: "follow_up",
-      });
+        status: "not_started",
+      };
+      if (orgId) taskRow.organization_id = orgId;
+
+      let assigneeName = "";
+      if (args.assign_to_name) {
+        // Fuzzy match team member by name
+        const { data: members } = orgId
+          ? await supabase.from("organization_members").select("user_id, profiles(id, full_name)").eq("organization_id", orgId)
+          : await supabase.from("profiles").select("id, full_name");
+
+        const needle = (args.assign_to_name as string).toLowerCase();
+        const match = (members || []).find((m: any) => {
+          const name = (m.profiles?.full_name || m.full_name || "").toLowerCase();
+          return name.includes(needle) || needle.includes(name.split(" ")[0]);
+        });
+
+        if (match) {
+          const mid = match.profiles?.id || match.user_id || match.id;
+          const mname = match.profiles?.full_name || match.full_name || args.assign_to_name;
+          taskRow.assigned_to = mid;
+          taskRow.assigned_to_name = mname;
+          taskRow.assigned_by = userId;
+          assigneeName = mname;
+        }
+      }
+
+      const { data: taskData, error } = await supabase.from("tasks").insert(taskRow).select("id").single();
       if (error) return `Failed to create task: ${error.message}`;
-      return `✅ Task created: "${args.title}" (due ${new Date(dueDate).toLocaleDateString()}).`;
+
+      // Log activity
+      if (taskData) {
+        await supabase.from("task_activity").insert({ task_id: taskData.id, user_id: userId, user_name: "", action: "created", detail: { title: args.title } });
+        if (assigneeName) {
+          await supabase.from("task_activity").insert({ task_id: taskData.id, user_id: userId, user_name: "", action: "assigned", detail: { assigned_to_name: assigneeName } });
+        }
+      }
+
+      const assignMsg = assigneeName ? ` Assigned to ${assigneeName}.` : "";
+      return `✅ Task created: "${args.title}" (due ${new Date(dueDate).toLocaleDateString()}).${assignMsg}`;
     }
 
     case "log_activity": {
-      const { error } = await supabase.from("activities").insert({
+      const { data: activity, error } = await supabase.from("activities").insert({
         tenant_id: args.tenant_id,
         building_id: args.building_id || "",
         type: args.type,
         title: args.title,
         description: args.description || "",
-      });
+      }).select("*").single();
       if (error) return `Failed to log activity: ${error.message}`;
+      if (activity && orgId) embedRecord("activity", activity.id, activity, orgId);
       return `✅ Activity logged: "${args.title}" (${args.type.replace(/_/g, " ")}).`;
     }
 
     case "add_contact": {
-      const { error } = await supabase.from("company_contacts").insert({
+      const { data: contact, error } = await supabase.from("company_contacts").insert({
         entity_id: args.entity_id,
         name: args.name,
         title: args.title || "",
         email: args.email || "",
         direct_phone: args.direct_phone || null,
         mobile_phone: args.mobile_phone || null,
-      });
+      }).select("*").single();
       if (error) return `Failed to add contact: ${error.message}`;
+      if (contact && orgId) embedRecord("contact", contact.id, contact, orgId);
       return `✅ Contact added: ${args.name}${args.title ? ` (${args.title})` : ""}.`;
     }
 
     case "create_deal": {
-      const { error } = await supabase.from("pipeline_deals").insert({
+      const { data: deal, error } = await supabase.from("pipeline_deals").insert({
         tenant_id: args.tenant_id,
         building_id: args.building_id,
         prospect_name: args.prospect_name || null,
@@ -796,8 +1617,9 @@ async function executeTool(name: string, args: any, context?: string, userId?: s
         stage: args.stage || "hot_prospect",
         notes: args.notes || [],
         is_manual: true,
-      });
+      }).select("*").single();
       if (error) return `Failed to create deal: ${error.message}`;
+      if (deal && orgId) embedRecord("deal", deal.id, deal, orgId);
       return `✅ Pipeline deal created: ${args.prospect_company || args.tenant_id} → ${(args.stage || "hot_prospect").replace(/_/g, " ")}.`;
     }
 
@@ -835,6 +1657,136 @@ CRITICAL RULES FOR VOICE MODE:
 - For numbers, say them naturally: "about 50 thousand square feet" not "50,000 SF".
 - You still have access to tools (search, move deals, create tasks, plan tours). Use them when asked.`;
 
+// Convert OpenAI-style tools to Anthropic format
+function toAnthropicTools(tools: any[]): any[] {
+  return tools.map(t => ({
+    name: t.function.name,
+    description: t.function.description,
+    input_schema: t.function.parameters,
+  }));
+}
+
+// Convert OpenAI-style messages to Anthropic format
+function toAnthropicMessages(msgs: any[]): any[] {
+  return msgs.filter(m => m.role !== "system").map(m => {
+    if (m.role === "tool") {
+      return {
+        role: "user",
+        content: [{ type: "tool_result", tool_use_id: m.tool_call_id, content: m.content }],
+      };
+    }
+    if (m.tool_calls) {
+      return {
+        role: "assistant",
+        content: m.tool_calls.map((tc: any) => ({
+          type: "tool_use",
+          id: tc.id,
+          name: tc.function.name,
+          input: typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments,
+        })),
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
+// Convert Anthropic streaming response to OpenAI SSE format (for frontend compatibility)
+function anthropicStreamToOpenAISSE(anthropicStream: ReadableStream): ReadableStream {
+  const reader = anthropicStream.getReader();
+  const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
+
+  return new ReadableStream({
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) {
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+        return;
+      }
+
+      const text = decoder.decode(value);
+      const lines = text.split("\n").filter(l => l.startsWith("data: "));
+
+      for (const line of lines) {
+        const data = line.slice(6).trim();
+        if (!data || data === "[DONE]") continue;
+
+        try {
+          const event = JSON.parse(data);
+          // Convert content_block_delta to OpenAI format
+          if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+            const openaiChunk = {
+              choices: [{
+                delta: { content: event.delta.text },
+                index: 0,
+                finish_reason: null,
+              }],
+            };
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+          }
+          if (event.type === "message_stop") {
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          }
+        } catch { /* skip unparseable lines */ }
+      }
+    },
+  });
+}
+
+// Call Anthropic Messages API with retry on overload
+async function callAnthropic(systemMessage: string, messages: any[], options: { tools?: boolean; stream?: boolean; voiceMode?: boolean } = {}): Promise<Response> {
+  const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
+
+  const model = "claude-sonnet-4-20250514";
+  const anthropicMessages = toAnthropicMessages(messages);
+
+  const body: any = {
+    model,
+    max_tokens: 4096,
+    system: systemMessage,
+    messages: anthropicMessages,
+  };
+
+  if (options.tools) {
+    body.tools = toAnthropicTools(TOOLS);
+  }
+  if (options.stream) {
+    body.stream = true;
+  }
+
+  const headers = {
+    "x-api-key": anthropicKey,
+    "anthropic-version": "2023-06-01",
+    "Content-Type": "application/json",
+  };
+
+  // Retry up to 3 times on 429/529 (overloaded)
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (response.status === 429 || response.status === 529) {
+      console.warn(`Anthropic overloaded (${response.status}), retry ${attempt + 1}/3...`);
+      await new Promise(r => setTimeout(r, (attempt + 1) * 2000));
+      continue;
+    }
+
+    return response;
+  }
+
+  // Final attempt
+  return fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -842,8 +1794,8 @@ serve(async (req) => {
 
   try {
     const { messages, context, mode, voiceMode } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     // Extract user_id from JWT for tools that need it (e.g. critical_dates)
     let currentUserId: string | null = null;
@@ -856,124 +1808,90 @@ serve(async (req) => {
       } catch { /* not a JWT or can't parse */ }
     }
 
-    const selectedModel = voiceMode ? "google/gemini-2.5-flash" : "google/gemini-2.5-pro";
+    // Resolve org_id for RAG embedding after tool mutations
+    let currentOrgId: string | null = null;
+    if (currentUserId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const adminClient = createClient(supabaseUrl, serviceKey);
+      const { data: membership } = await adminClient
+        .from("organization_members")
+        .select("organization_id")
+        .eq("user_id", currentUserId)
+        .limit(1)
+        .single();
+      currentOrgId = membership?.organization_id ?? null;
+    }
+
+    let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
+    if (context) systemMessage += "\n\n## Current Context\n" + context;
 
     // Non-streaming mode for tool calling
     if (mode === "tools") {
-      let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
-      if (context) systemMessage += "\n\n## Current Context\n" + context;
-
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "system", content: systemMessage }, ...messages],
-          tools: TOOLS,
-          stream: false,
-        }),
-      });
+      const response = await callAnthropic(systemMessage, messages, { tools: true, voiceMode });
 
       if (!response.ok) {
         const t = await response.text();
-        console.error("AI gateway error:", response.status, t);
-        return new Response(JSON.stringify({ error: "AI service error" }), {
+        console.error("Anthropic error:", response.status, t);
+        return new Response(JSON.stringify({ error: `AI service error: ${response.status} - ${t.slice(0, 200)}` }), {
           status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
       const data = await response.json();
-      const choice = data.choices?.[0];
 
-      if (choice?.finish_reason === "tool_calls" || choice?.message?.tool_calls?.length > 0) {
-        const toolCalls = choice.message.tool_calls;
+      // Check if Claude wants to use tools
+      const toolBlocks = data.content?.filter((b: any) => b.type === "tool_use") || [];
 
-        // Execute ALL tool calls in parallel for maximum speed
+      if (toolBlocks.length > 0) {
+        // Execute ALL tool calls in parallel
         const toolResults = await Promise.all(
-          toolCalls.map(async (tc: any) => {
-            const args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments;
-            return executeTool(tc.function.name, args, systemMessage, currentUserId);
-          })
+          toolBlocks.map(async (tb: any) => ({
+            id: tb.id,
+            result: await executeTool(tb.name, tb.input, systemMessage, currentUserId, currentOrgId),
+          }))
         );
 
-        // Second call: feed tool results back to get a natural response
+        // Build follow-up messages with tool results
         const followUpMessages = [
-          { role: "system", content: systemMessage },
           ...messages,
-          choice.message,
-          ...toolCalls.map((tc: any, i: number) => ({
-            role: "tool",
-            tool_call_id: tc.id,
-            content: toolResults[i],
+          { role: "assistant", content: data.content },
+          ...toolResults.map(tr => ({
+            role: "user",
+            content: [{ type: "tool_result", tool_use_id: tr.id, content: tr.result }],
           })),
         ];
 
-        const followUp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: selectedModel,
-            messages: followUpMessages,
-            stream: true,
-          }),
-        });
+        // Second call: stream the response after tool execution
+        const followUp = await callAnthropic(systemMessage, followUpMessages, { stream: true, voiceMode });
 
         if (!followUp.ok) {
-          // Return tool results directly
+          // Return tool results directly as fallback
           return new Response(JSON.stringify({
             type: "tool_results",
-            content: toolResults.join("\n\n"),
-            actions: toolCalls.map((tc: any) => tc.function.name),
+            content: toolResults.map(tr => tr.result).join("\n\n"),
+            actions: toolBlocks.map((tb: any) => tb.name),
           }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
 
-        return new Response(followUp.body, {
+        return new Response(anthropicStreamToOpenAISSE(followUp.body!), {
           headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
         });
       }
 
-      // No tool calls — stream the response
-      // Re-do with streaming for normal responses
-      const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages: [{ role: "system", content: systemMessage }, ...messages],
-          stream: true,
-        }),
-      });
-
-      return new Response(streamResp.body, {
-        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
-      });
+      // No tool calls — extract text and stream a follow-up
+      const textBlock = data.content?.find((b: any) => b.type === "text");
+      if (textBlock) {
+        // Re-stream for consistency with frontend expectations
+        const streamResp = await callAnthropic(systemMessage, messages, { stream: true, voiceMode });
+        return new Response(anthropicStreamToOpenAISSE(streamResp.body!), {
+          headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+        });
+      }
     }
 
-    // Default streaming mode (backwards compat)
-    let systemMessage = voiceMode ? VOICE_SYSTEM_PROMPT : SYSTEM_PROMPT;
-    if (context) systemMessage += "\n\n## Current Context\n" + context;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: selectedModel,
-        messages: [{ role: "system", content: systemMessage }, ...messages],
-        stream: true,
-      }),
-    });
+    // Default streaming mode
+    const response = await callAnthropic(systemMessage, messages, { stream: true, voiceMode });
 
     if (!response.ok) {
       if (response.status === 429) {
@@ -981,19 +1899,14 @@ serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Usage credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Anthropic error:", response.status, t);
       return new Response(JSON.stringify({ error: "AI service error" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(response.body, {
+    return new Response(anthropicStreamToOpenAISSE(response.body!), {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

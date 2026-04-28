@@ -153,6 +153,22 @@ export const stageColors: Record<PipelineStage, string> = {
   lost: 'bg-destructive/20 text-destructive',
 };
 
+export const stageHues: Record<PipelineStage, string> = {
+  hot_prospect: '213 94% 58%',
+  meeting_set: '255 88% 66%',
+  meeting_held: '230 86% 64%',
+  moving_forward: '320 84% 64%',
+  won: '28 92% 60%',
+  closed: '152 70% 50%',
+  lost: '217 12% 48%',
+};
+
+export const stagePillClass =
+  'inline-flex items-center gap-1 h-[21px] px-2 rounded-full ' +
+  'text-[10.5px] font-medium whitespace-nowrap ' +
+  'border bg-[hsl(var(--stage-hue)/0.08)] border-[hsl(var(--stage-hue)/0.22)] ' +
+  'text-[hsl(var(--stage-hue))]';
+
 const STORAGE_KEY = 'dealflow-pipeline';
 
 export const getPipeline = (): PipelineItem[] => {

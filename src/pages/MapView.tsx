@@ -16,10 +16,12 @@ import EmailDisplay from '@/components/EmailDisplay';
 import { getContacts, subscribeContacts } from '@/data/companyContacts';
 import { type EmailRecipient } from '@/components/RecipientPicker';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { getUserGreeting } from '@/lib/getUserGreeting';
 import { getActivities, type ActivityEntry } from '@/data/activityData';
 import { digestEvent } from '@/lib/autoDigest';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const OUTREACH_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-outreach`;
 
@@ -45,6 +47,11 @@ const MapView = () => {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
   const [stackingPlanTenants, setStackingPlanTenants] = useState<Record<string, Tenant[]>>({});
+  const [buildingNotes, setBuildingNotes] = useState<{ id: string; content: string; author_name: string; created_at: string }[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [buildingPanelTab, setBuildingPanelTab] = useState<'details' | 'notes'>('details');
+  const { profile } = useAuth();
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const googleMarkersRef = useRef<any[]>([]);
@@ -242,7 +249,42 @@ const MapView = () => {
     setGeneratedEmails({});
     setGeneratingKeys(new Set());
     setActiveEmailKey(null);
+    setBuildingPanelTab('details');
   }, [selectedBuilding?.id]);
+
+  // Fetch building notes when a building is selected
+  useEffect(() => {
+    if (!selectedBuilding) { setBuildingNotes([]); return; }
+    setNotesLoading(true);
+    supabase
+      .from('building_notes')
+      .select('id, content, author_name, created_at')
+      .eq('building_id', selectedBuilding.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setBuildingNotes(data || []);
+        setNotesLoading(false);
+      });
+  }, [selectedBuilding?.id]);
+
+  const addBuildingNote = useCallback(async () => {
+    if (!newNote.trim() || !selectedBuilding) return;
+    const authorName = profile?.full_name || 'Unknown';
+    const { data, error } = await supabase
+      .from('building_notes')
+      .insert({
+        building_id: selectedBuilding.id,
+        content: newNote.trim(),
+        author_name: authorName,
+        author_id: profile ? undefined : undefined,
+      })
+      .select('id, content, author_name, created_at')
+      .single();
+    if (error) { toast.error('Failed to save note'); return; }
+    if (data) setBuildingNotes(prev => [data, ...prev]);
+    setNewNote('');
+    toast.success('Note added');
+  }, [newNote, selectedBuilding, profile]);
 
   // Helper to create a map marker — uses red icon when tracker is on and building is stale
   const createMapMarker = useCallback((L: any, building: any, log: Record<string, number>, threshold: number, isTrackerOn: boolean, mapInstance?: any) => {
@@ -398,7 +440,7 @@ const MapView = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,
@@ -513,7 +555,7 @@ const MapView = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 top-14">
+    <div className="absolute inset-0">
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
 
       {/* Building List Panel */}
@@ -681,7 +723,7 @@ const MapView = () => {
             transition={{ type: 'spring', damping: 25 }}
             className="absolute right-4 top-4 z-[1000] w-96"
           >
-            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100vh-6rem)] overflow-y-auto relative">
+            <Card className="border-border bg-card/95 backdrop-blur-lg max-h-[calc(100%-6rem)] overflow-y-auto relative">
               {/* Always-visible close button */}
               <button
                 onClick={() => setSelectedBuilding(null)}
@@ -709,6 +751,28 @@ const MapView = () => {
                 </div>
               </div>
 
+              {/* Tab bar */}
+              <div className="flex gap-1 mb-4 rounded-lg bg-secondary/50 p-0.5">
+                <button
+                  onClick={() => setBuildingPanelTab('details')}
+                  className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all ${buildingPanelTab === 'details' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Details
+                </button>
+                <button
+                  onClick={() => setBuildingPanelTab('notes')}
+                  className={`flex-1 text-xs font-medium py-1.5 rounded-md transition-all flex items-center justify-center gap-1.5 ${buildingPanelTab === 'notes' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                >
+                  Notes
+                  {buildingNotes.length > 0 && (
+                    <span className={`text-[10px] rounded-full px-1.5 py-0 ${buildingPanelTab === 'notes' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                      {buildingNotes.length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {buildingPanelTab === 'details' && <>
               <div className="mb-4 grid grid-cols-3 gap-2 text-center">
                 <div
                   className="rounded-md bg-secondary p-2 cursor-pointer hover:ring-1 hover:ring-primary/30 transition-all group"
@@ -1002,6 +1066,58 @@ const MapView = () => {
                   );
                 })}
               </div>
+              </>}
+
+              {buildingPanelTab === 'notes' && (
+                <div className="space-y-3">
+                  {/* Add note */}
+                  <div className="flex gap-2">
+                    <Input
+                      value={newNote}
+                      onChange={(e) => setNewNote(e.target.value)}
+                      placeholder="Add a note about this building..."
+                      className="h-9 text-xs"
+                      onKeyDown={(e) => { if (e.key === 'Enter') addBuildingNote(); }}
+                    />
+                    <Button
+                      size="sm"
+                      className="h-9 px-3 text-xs shrink-0"
+                      onClick={addBuildingNote}
+                      disabled={!newNote.trim()}
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Notes list */}
+                  {notesLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : buildingNotes.length === 0 ? (
+                    <div className="text-center py-8">
+                      <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No notes yet</p>
+                      <p className="text-xs text-muted-foreground/70 mt-0.5">Add the first note about this building</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {buildingNotes.map((note) => (
+                        <div key={note.id} className="rounded-lg bg-secondary/40 p-3 border border-border/40">
+                          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/30">
+                            <span className="text-[11px] text-primary/80 font-medium">{note.author_name}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               </div>
             </Card>
           </motion.div>
@@ -1015,7 +1131,7 @@ const MapView = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 z-[2000] flex items-center justify-center bg-black/50 backdrop-blur-sm"
             onClick={() => setShowThresholdModal(false)}
           >
             <motion.div

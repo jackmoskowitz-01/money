@@ -4,6 +4,9 @@ import { buildings } from '@/data/mockData';
 import { digestEvent } from '@/lib/autoDigest';
 import { toast } from 'sonner';
 import type { PipelineStage, PipelineItem, Touchpoint } from '@/data/pipelineData';
+import { stageLabels } from '@/data/pipelineData';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 type DbRow = {
   id: string;
@@ -43,6 +46,7 @@ const rowToItem = (r: DbRow): PipelineItem => ({
 export function usePipeline() {
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchPipeline = useCallback(async () => {
     const { data, error } = await supabase
@@ -72,6 +76,7 @@ export function usePipeline() {
         last_activity: new Date().toISOString(),
         is_manual: false,
         sent_touchpoints: [] as any[],
+        ...(orgId ? { organization_id: orgId } : {}),
       }));
 
       if (seedRows.length > 0) {
@@ -106,11 +111,13 @@ export function usePipeline() {
 
   const updateStage = useCallback(async (tenantId: string, buildingId: string, stage: PipelineStage) => {
     const item = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('pipeline_deals')
       .update({ stage, last_activity: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq('tenant_id', tenantId)
-      .eq('building_id', buildingId);
+      .eq('building_id', buildingId)
+      .select('id')
+      .single();
 
     if (error) {
       toast.error('Failed to update deal stage');
@@ -121,6 +128,15 @@ export function usePipeline() {
         ? { ...p, stage, lastActivity: new Date().toISOString() }
         : p
     ));
+    toast.success(`Deal moved to ${stageLabels[stage]}`);
+    // Fire-and-forget: re-embed for RAG with updated stage (use DB id for consistent upsert)
+    if (item) {
+      embedAfterSave('deal', data?.id ?? `${tenantId}-${buildingId}`, {
+        ...item, stage, last_activity: new Date().toISOString(),
+        prospect_name: item.prospectName, prospect_company: item.prospectCompany,
+        prospect_sqft: item.prospectSqft, tenant_id: tenantId, building_id: buildingId,
+      });
+    }
     // Auto-digest: feed pipeline move to AI brain
     const name = item?.prospectName || item?.prospectCompany || tenantId;
     const prevStage = item?.stage || 'unknown';
@@ -155,6 +171,7 @@ export function usePipeline() {
         ? { ...p, notes: newNotes, lastActivity: new Date().toISOString() }
         : p
     ));
+    toast.success('Note added');
   }, [pipeline]);
 
   const addProspect = useCallback(async (prospect: {
@@ -174,6 +191,7 @@ export function usePipeline() {
       prospect_phone: prospect.phone.trim() || null,
       prospect_sqft: prospect.sqft ? parseInt(prospect.sqft) : null,
       sent_touchpoints: [] as any[],
+      ...(orgId ? { organization_id: orgId } : {}),
     };
 
     const { data, error } = await supabase
@@ -188,7 +206,10 @@ export function usePipeline() {
     }
     if (data) {
       setPipeline(prev => [...prev, rowToItem(data as unknown as DbRow)]);
+      // Fire-and-forget: embed for RAG
+      embedAfterSave('deal', data.id, data as Record<string, unknown>);
     }
+    toast.success('Prospect added to pipeline');
     return true;
   }, []);
 
@@ -222,6 +243,9 @@ export function usePipeline() {
         ? { ...p, sentTouchpoints: newSent, lastActivity: new Date().toISOString() }
         : p
     ));
+    const recipientItem = pipeline.find(p => p.tenantId === tenantId && p.buildingId === buildingId);
+    const recipientName = recipientItem?.prospectName || recipientItem?.prospectCompany || 'prospect';
+    toast.success(`Touchpoint sent to ${recipientName}`);
   }, [pipeline]);
 
   const deleteDeal = useCallback(async (tenantId: string, buildingId: string) => {
@@ -236,6 +260,7 @@ export function usePipeline() {
       return;
     }
     setPipeline(prev => prev.filter(p => !(p.tenantId === tenantId && p.buildingId === buildingId)));
+    toast('Deal removed from pipeline');
   }, []);
 
   const reorderInStage = useCallback(async (stage: PipelineStage, fromIndex: number, toIndex: number) => {

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 export interface CriticalDate {
   id: string;
@@ -61,6 +63,7 @@ export function useCriticalDates() {
   const { user } = useAuth();
   const [dates, setDates] = useState<CriticalDate[]>([]);
   const [loading, setLoading] = useState(true);
+  const orgId = useOrganizationId();
 
   const fetchDates = useCallback(async () => {
     if (!user) return;
@@ -86,6 +89,7 @@ export function useCriticalDates() {
       ...d,
       user_id: user.id,
       acknowledged: false,
+      ...(orgId ? { organization_id: orgId } : {}),
     }));
 
     const { error } = await supabase
@@ -94,6 +98,8 @@ export function useCriticalDates() {
 
     if (!error) {
       await fetchDates();
+      // Fire-and-forget: embed for RAG
+      rows.forEach(r => embedAfterSave('critical_date', r.prospect_id || `cd-${Date.now()}`, r as Record<string, unknown>));
       return true;
     }
     return false;

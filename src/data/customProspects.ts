@@ -75,7 +75,7 @@ export const getCustomProspects = (): CustomProspect[] => {
 };
 
 /** Add a prospect — saves to both DB and localStorage */
-export const addCustomProspect = (prospect: Omit<CustomProspect, 'id' | 'createdAt'>): CustomProspect => {
+export const addCustomProspect = (prospect: Omit<CustomProspect, 'id' | 'createdAt'>, organizationId?: string): CustomProspect => {
   const prospects = getCustomProspects();
   const newProspect: CustomProspect = {
     ...prospect,
@@ -92,6 +92,7 @@ export const addCustomProspect = (prospect: Omit<CustomProspect, 'id' | 'created
     address: newProspect.address || '',
     enrichment: newProspect.enrichment as unknown as Record<string, unknown> || null,
     source: 'manual',
+    ...(organizationId ? { organization_id: organizationId } : {}),
   }).then(({ error }: any) => {
     if (error) console.error('DB insert prospect error:', error);
   });

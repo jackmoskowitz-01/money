@@ -8,13 +8,18 @@ import { leaseComps } from '@/data/pipelineData';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CASHFLOW_TEMPLATE } from '@/lib/copilotTemplates';
+import { parseSSEStream } from '@/lib/parseSSEStream';
+import { getAuthToken } from '@/lib/getAuthToken';
+import { useOrganizationId } from '@/hooks/useOrganization';
+import { embedAfterSave } from '@/hooks/useAskDealflow';
 
 const COPILOT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/deal-copilot`;
 const FILE_PARSE_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-parse-file`;
 
 export type Msg = { role: 'user' | 'assistant'; content: string; fileName?: string; pinned?: boolean };
 
-export const SUGGESTIONS = [
+export const DEFAULT_SUGGESTIONS = [
   "What's my best next move with McKinsey?",
   "Draft a check-in email for Deloitte",
   "Analyze comps for McKinsey's deal",
@@ -23,303 +28,86 @@ export const SUGGESTIONS = [
   "Which deals need follow-up?",
 ];
 
+// Backward compatibility alias
+export const SUGGESTIONS = DEFAULT_SUGGESTIONS;
+
+export function getSuggestionsForPage(pathname: string): string[] {
+  return CONTEXTUAL_SUGGESTIONS[pathname] || DEFAULT_SUGGESTIONS;
+}
+
 // Page context mapping
 const PAGE_CONTEXT: Record<string, string> = {
   '/': 'User is on the Dashboard — showing overview of pipeline, tasks, and activity.',
   '/pipeline': 'User is on the Pipeline page — viewing the Kanban board of all deals.',
   '/prospects': 'User is on the Prospects page — browsing prospect lists and search.',
+  '/prospect-table': 'User is on the Prospects CRM table — full book of business view with sorting/filtering.',
   '/map': 'User is on the Map View — exploring DC buildings on an interactive map.',
   '/news': 'User is on the News/Intel page — viewing market news and company intelligence.',
   '/tasks': 'User is on the Tasks page — managing follow-ups and to-dos.',
   '/scoop': 'User is on the Scoop Board — collaborative broker intelligence sharing.',
   '/activities': 'User is on the Activity Logger — tracking calls, tours, emails, meetings.',
+  '/email-analytics': 'User is on Email Analytics — tracking email campaign performance.',
+  '/loopnet': 'User is on LoopNet Search — searching for properties and tenants.',
+  '/comp-tracker': 'User is on the Comp Tracker — monitoring competitive lease transactions.',
+  '/lease-abstracts': 'User is on Lease Abstracts — managing lease document analysis.',
+  '/alerts': 'User is on Alerts — viewing critical dates and notifications.',
+  '/analytics': 'User is on Analytics — reviewing pipeline metrics, trends, and forecasts.',
   '/settings': 'User is on Settings — managing profile and preferences.',
 };
 
+// Proactive contextual suggestions per page
+// (per Anthropic cookbook agent patterns — proactive not passive)
+const CONTEXTUAL_SUGGESTIONS: Record<string, string[]> = {
+  '/': [
+    "Give me a morning briefing — what needs my attention today?",
+    "Which deals are stale and need follow-up?",
+    "Score all my active deals",
+  ],
+  '/pipeline': [
+    "Which deal should I focus on next?",
+    "Compare my top 3 deals",
+    "Any deals stuck in the same stage too long?",
+  ],
+  '/prospect-table': [
+    "Which prospects haven't been touched in 2+ weeks?",
+    "Draft a re-engagement sequence for stale prospects",
+    "Score and rank my prospects by priority",
+  ],
+  '/news': [
+    "Any news signals matching my current prospects?",
+    "Find expansion signals for companies over 20K SF",
+    "Draft outreach based on the latest market news",
+  ],
+  '/scoop': [
+    "Summarize the latest scoops from this week",
+    "Any scoops that match my pipeline deals?",
+    "What intel should I act on first?",
+  ],
+  '/tasks': [
+    "What's overdue and what should I prioritize?",
+    "Draft follow-up emails for my overdue tasks",
+    "Create tasks for all stale deals",
+  ],
+  '/loopnet': [
+    "Search for Class A office buildings in East End",
+    "Find properties matching my 20K+ SF prospects",
+    "Compare this building's comps to market average",
+  ],
+  '/activities': [
+    "Summarize my outreach activity this week",
+    "Which prospects have I not contacted recently?",
+    "Log today's calls and meetings",
+  ],
+};
+
 // Cresa-style lease abstract template structure
-export const LEASE_ABSTRACT_TEMPLATE = `You are producing a professional Lease Summary / Abstract. Follow this EXACT structure and section order. Fill in every field from the lease document. If a field is not found in the lease, write "Silent in Lease."
 
-## FORMAT:
----
-# Lease Summary
-
-**Company Name:** [Tenant Company]
-**Building Name:** [Building/Property Name]
-**Address:** [Full Address]
-**Lease Type:** [Renewal / Expansion / New Lease]
-**Abstract Date:** [Today's Date]
-
----
-
-### Premises
-- [X] rentable square feet
-- Method of Measurement: [if stated]
-
-### Amendments
-List each amendment with page references and bullet-point summaries. If none, state "No amendments."
-
-### Landlord
-[Landlord entity name] | [City, ST]
-
-### Term
-- Duration: [X years]
-- Commencement Date: [date]
-- Expiration Date: [date]
-- Article/Section/Page reference if available
-
-### Size
-[Rentable SF and Usable SF if stated]
-
-### Rent Schedule
-
-| Period | Rent/SF | Rent/Month | Rent/Year |
-|--------|---------|------------|-----------|
-| Year 1 | $XX.XX  | $XX,XXX.XX | $XXX,XXX.XX |
-| Year 2 | ... | ... | ... |
-[Continue for all years]
-
-### Rent Payment Address
-[Address or "Silent in Lease"]
-
-### Lease Type
-[Full Service / Net / Modified Gross / etc.]
-
-### Electricity
-[Included or separately metered, details]
-
-### Abandonment
-[Terms or "Silent in Lease"]
-
-### Additional Provisions
-[Key provisions or "Silent in Lease"]
-
-### Alterations & Additions
-[Terms or "Silent in Lease"]
-
-### Landlord Services
-[Services provided or "Silent in Lease"]
-
-### Operating Expenses & Taxes
-[Base year, cap, pass-through details or "Silent in Lease"]
-
-### Exhibits
-[List all exhibits referenced]
-
-### Improvements / Tenant Improvements
-[TI allowance, details or "Silent in Lease"]
-
-### Parking
-[Ratio, cost, reserved/unreserved or "Silent in Lease"]
-
-### Right of Refusal
-[Terms or "Silent in Lease"]
-
-### Extension Option
-[Terms, notice period, rent basis or "Silent in Lease"]
-
-### Expansion Option
-[Terms or "Silent in Lease"]
-
-### Cancellation Option
-[Terms, penalty or "Silent in Lease"]
-
-### Holdover
-[Rate, terms or "Silent in Lease"]
-
-### Insurance - Landlord
-[Requirements or "Silent in Lease"]
-
-### Insurance - Tenant
-[Requirements or "Silent in Lease"]
-
-### Late Charge
-[Percentage, grace period or "Silent in Lease"]
-
-### Maintenance - Landlord
-[Responsibilities or "Silent in Lease"]
-
-### Maintenance - Tenant
-[Responsibilities or "Silent in Lease"]
-
-### Non-Disturbance
-[Terms or "Silent in Lease"]
-
-### Permitted Uses
-[Permitted uses or "Silent in Lease"]
-
-### Relocation
-[Terms or "Silent in Lease"]
-
-### Restoration
-[Terms or "Silent in Lease"]
-
-### Right to Audit
-[Terms or "Silent in Lease"]
-
-### Right to Offset
-[Terms or "Silent in Lease"]
-
-### Self-Help
-[Terms or "Silent in Lease"]
-
-### Assignment & Subletting
-[Terms, consent requirements or "Silent in Lease"]
-
-### Signage
-[Terms or "Silent in Lease"]
-
-### Security Deposit
-[Amount, terms or "Silent in Lease"]
-
-### Building Hours and Holidays
-[Hours, holiday schedule or "Silent in Lease"]
-
-### Notice to Landlord
-[Notice address or "Silent in Lease"]
-
-### Additional Lease Comments
-[Any other notable terms]
-
----
-*This document has been prepared based on available information and professional interpretation. Reasonable care has been taken to ensure its accuracy. We encourage every client to review the information prior to relying on it for action or decision-making.*
----
-
-CRITICAL INSTRUCTIONS - MAXIMUM DETAIL:
-1. Fill in EVERY section above. Do NOT skip or summarize - provide the FULL detail from the lease for each field.
-2. For rent schedules: list EVERY year of the term with Rent/SF, Rent/Month, and Rent/Year. Calculate monthly and annual amounts if only per-SF rates are given. Show escalation percentages.
-3. For each section, include the Article #, Section #, and Page # references from the lease when available.
-4. Quote exact dollar amounts, dates, percentages, and square footage numbers - never round or approximate.
-5. For options (extension, expansion, cancellation, ROFO/ROFR): include ALL details - notice periods, pricing mechanisms, number of options, option term lengths, and any conditions.
-6. For insurance: list exact coverage types and minimum amounts required.
-7. For operating expenses: include base year, cap rates, exclusions, gross-up provisions, and audit rights.
-8. For TI/improvements: include exact allowance per SF, total amount, construction timeline, and any landlord contribution details.
-9. For assignment/subletting: include consent requirements, recapture rights, profit sharing, and any pre-approved transfers.
-10. List ALL exhibits and addenda referenced in the lease with brief descriptions.
-11. Include any guarantor information, renewal rights, co-tenancy clauses, exclusive use provisions, or other non-standard terms under "Additional Lease Comments."
-12. If a clause is complex, use sub-bullets to break it down - never collapse detail into a single line.
-13. DO NOT write "See lease for details" - extract and state the actual details.`;
-
-// Deal Terms Matrix template (Summary of Proposals)
-export const MATRIX_TEMPLATE = `You are producing a professional "Summary of Proposals" deal terms matrix. Follow this EXACT structure and formatting. Extract every detail from the attached lease/proposal documents.
-
-## RULES:
-- Create ONE column per distinct offer option.
-- If a single lease document contains multiple options (e.g. Option A and Option B, or a 5-year term vs a 10-year term), each option MUST get its own column.
-- Use EXACT dollar amounts, dates, percentages, and SF numbers from the documents. Never round or approximate.
-- If a field is not stated in a document, write "Silent" or leave blank.
-- The output MUST be a clean markdown table that exports perfectly to Word.
-
-## FORMAT:
-
-# Summary of Proposals
-
-| | [Street Address, City, State] | [Street Address, City, State] | ... |
-|---|---|---|---|
-| **Lease Terms** | **Landlord Offer #1A** | **Landlord Offer #1B** | ... |
-| **Premises:** | [XX,XXX RSF] | [XX,XXX RSF] | ... |
-| **Term:** | [X years] | [X years] | ... |
-| **Lease Commencement Date:** | [Month Day, Year] | [Month Day, Year] | ... |
-| **Rental Abatement:** | [X months / None] | [X months / None] | ... |
-| **Base Rental Rate:** | [$XX.XX/NNN or FS] | [$XX.XX/NNN or FS] | ... |
-| **Average Annual Cost Over Term:** | [$XXX,XXX] | [$XXX,XXX] | ... |
-| **Escalation:** | [X.XX%] | [X.XX%] | ... |
-| **Operating Expenses & Real Estate Taxes:** | [$XX.XX PSF or included] | [$XX.XX PSF or included] | ... |
-| **Tenant Improvement Allowance:** | [$XX.XX/PSF] | [$XX.XX/PSF] | ... |
-| **Termination Option:** | [Terms / None] | [Terms / None] | ... |
-
-CRITICAL INSTRUCTIONS:
-1. Use the EXACT row labels shown above in bold. Do not rename or reorder them.
-2. Use the PHYSICAL STREET ADDRESS as column headers.
-3. If a single lease/proposal contains multiple options, create a separate column for EACH option.
-4. Calculate Average Annual Cost Over Term.
-5. Include ALL offers and ALL options from ALL attached documents.
-6. Keep the table compact and clean.
-7. After the table, optionally add a brief "Notes" section.`;
-
-// Cresa-style Comparison of Options template
-export const COMP_COMPARISON_TEMPLATE = `You are producing a professional "Comparison of Options" analysis. Follow this EXACT structure. Extract every detail from the attached lease offer documents.
-
-## RULES:
-- Create ONE column per offer/proposal. Group columns by building address.
-- If a building has multiple rounds of offers, each round gets its own column.
-- ONLY include the number of columns needed.
-- Use exact dollar amounts, dates, percentages, and SF numbers from the documents. Never round.
-
-## FORMAT:
-
-# [Client/Tenant Name]: Comparison of Options
-
-## Assumptions
-
-| | [Building 1 Address] | [Building 2 Address] | ... |
-|---|---|---|---|
-| | [Offer Label #1] | [Offer Label #1] | ... |
-| Premises Size | [X,XXX SF] | ... | ... |
-| Lease Commencement | [date] | ... | ... |
-| Lease Expiration | [date] | ... | ... |
-| Lease Term | [X Yrs X Mo] | ... | ... |
-| Base Rent | [$XX.XX PSF, FS/NNN] | ... | ... |
-| All-In Rent | [$XX.XX PSF] | ... | ... |
-| Rent Escalation | [X.XX%] | ... | ... |
-| Free Rent | [X Mos (details)] | ... | ... |
-| Improvement Allowance | [$XX.XX PSF] | ... | ... |
-
-## Full Term Totals
-
-| | [Building 1] | [Building 2] | ... |
-|---|---|---|---|
-| Cumulative Rent | [$XXX,XXX] | ... | ... |
-| Average Annual Rent | [$XXX,XXX] | ... | ... |
-| Net Present Value | [$XXX,XXX] | ... | ... |
-
-CRITICAL INSTRUCTIONS:
-1. Extract and calculate ALL numbers.
-2. Calculate cumulative rent, average annual rent, and NPV (use 8% discount rate unless specified otherwise).
-3. Show rent escalations applied year-over-year in the cash flow tables.
-4. Include ALL footnotes explaining credits, buildout assumptions, or special conditions.`;
-
-// Cash Flow Analysis template
-export const CASHFLOW_TEMPLATE = `You are producing a professional Lease Cash Flow Analysis. The user will attach a lease document and provide an Analysis Start Date. Extract ALL lease terms from the document and produce a complete monthly and annual cash flow.
-
-IMPORTANT: The Escalation Month is ALWAYS the same month as the Lease Commencement Date.
-
-## STEP 1: ASK FOR ANALYSIS START DATE
-If the user has NOT provided an analysis start date, your FIRST response must be:
-"I've reviewed the lease. Before I generate the cash flow, when should the **Analysis Start Date** be?"
-
-## STEP 2: EXTRACT THESE FIELDS FROM THE LEASE
-
-### Lease Terms
-- **Company Name:** [Tenant name from lease]
-- **Lease Commencement Date:** [from lease]
-- **Analysis Start Date:** [from user input]
-- **Lease Term (months):** [from lease]
-- **Base Rent:** [$XX.XX/SF from lease]
-- **Per Annum Escalation:** [X.XX% from lease]
-- **Square Feet Leased:** [from lease]
-
-## STEP 3: PRODUCE THE CASH FLOW OUTPUT
-
-### Format - Excel Input Fields (REQUIRED)
-First output this exact 2-column table so the Excel exporter can map values:
-
-| Field | Value |
-|---|---|
-| Lease Commencement Date | [value] |
-| Analysis Start Date | [value] |
-| Lease Term (months) | [value] |
-| Base Rent | [value] |
-| Per Annum Escalation | [value] |
-| Square Feet Leased | [value] |
-
-## CRITICAL CALCULATION INSTRUCTIONS:
-1. **Base Rent Calculation:** Monthly Base Rent = (Base Rent $/SF x Square Feet) / 12.
-2. **Escalation Month:** ALWAYS use the same month as the lease commencement date.
-3. **NPV:** Use 5% discount rate unless specified otherwise.
-4. Show ALL months for the full lease term - do not truncate or summarize.`;
+// Re-export templates for backward compatibility
+export { LEASE_ABSTRACT_TEMPLATE, MATRIX_TEMPLATE, COMP_COMPARISON_TEMPLATE, CASHFLOW_TEMPLATE } from '@/lib/copilotTemplates';
 
 export function useCopilotState() {
   const { user } = useAuth();
+  const orgId = useOrganizationId();
   const location = useLocation();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -374,6 +162,7 @@ export function useCopilotState() {
   const conversationIdRef = useRef<string | null>(null);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingTranscriptRef = useRef('');
+  const abortControllerRef = useRef<AbortController | null>(null);
   const enqueueTTSChunkRef = useRef<((text: string) => void) | null>(null);
   const { pipeline, refetch: refetchPipeline } = usePipeline();
 
@@ -453,12 +242,12 @@ export function useCopilotState() {
         .limit(1);
 
       if (data && data.length > 0) {
-        const lastMessageDate = new Date((data[0] as any).created_at);
+        const lastMessageDate = new Date(data[0].created_at);
         const today = new Date();
         const isToday = lastMessageDate.toDateString() === today.toDateString();
 
         if (isToday) {
-          const convId = (data[0] as any).conversation_id;
+          const convId = data[0].conversation_id;
           const { data: msgs } = await supabase
             .from('copilot_messages')
             .select('*')
@@ -467,7 +256,7 @@ export function useCopilotState() {
 
           if (msgs && msgs.length > 0) {
             setConversationId(convId);
-            setMessages(msgs.map((m: any) => ({ role: m.role, content: m.content })));
+            setMessages(msgs.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })));
           }
         }
       }
@@ -499,12 +288,12 @@ export function useCopilotState() {
     if (!user || !open) return;
     const loadMemoryAndSettings = async () => {
       const { data: settings } = await supabase
-        .from('user_settings' as any)
+        .from('user_settings')
         .select('copilot_memory, copilot_name, brain_enabled, ai_auto_brain_extraction, ai_email_performance_loop, ai_deal_pattern_learning, ai_activity_insights, ai_style_training, ai_scoop_synthesis, ai_contact_memory')
         .eq('user_id', user.id)
         .single();
 
-      const s = settings as any;
+      const s = settings;
       const enabled = s?.copilot_memory ?? true;
       const brainOn = s?.brain_enabled ?? false;
       setMemoryEnabled(enabled);
@@ -607,14 +396,14 @@ export function useCopilotState() {
       // Load brain context if enabled
       if (brainOn) {
         const { data: brainFacts } = await supabase
-          .from('copilot_brain' as any)
+          .from('copilot_brain')
           .select('*')
           .eq('user_id', user.id)
           .order('updated_at', { ascending: false })
           .limit(100);
 
-        if (brainFacts && (brainFacts as any[]).length > 0) {
-          const facts = brainFacts as any[];
+        if (brainFacts && brainFacts.length > 0) {
+          const facts = brainFacts;
           const categories = new Map<string, string[]>();
           facts.forEach(f => {
             const list = categories.get(f.category) || [];
@@ -649,7 +438,7 @@ export function useCopilotState() {
 
       if (!recentMsgs || recentMsgs.length === 0) { setConversationMemory(null); return; }
 
-      const msgs = recentMsgs as any[];
+      const msgs = recentMsgs;
       const entityLower = currentEntityName.toLowerCase();
 
       const conversations = new Map<string, any[]>();
@@ -716,7 +505,7 @@ export function useCopilotState() {
       conversation_id: convId,
       role: msg.role,
       content: msg.content,
-    } as any);
+    });
   }, [user]);
 
   // Proactive alerts check
@@ -758,13 +547,13 @@ export function useCopilotState() {
 
       if (user) {
         const { data: critDates } = await supabase
-          .from('critical_dates' as any)
+          .from('critical_dates')
           .select('*')
           .eq('user_id', user.id)
           .eq('acknowledged', false);
 
         if (critDates && critDates.length > 0) {
-          const urgentDates = (critDates as any[]).filter(d => {
+          const urgentDates = critDates.filter(d => {
             const target = new Date(d.date_value + 'T00:00:00');
             const daysUntil = Math.ceil((target.getTime() - now.getTime()) / 86400000);
             return daysUntil <= d.remind_days_before && daysUntil >= -7;
@@ -851,7 +640,10 @@ export function useCopilotState() {
 
   // Clear conversation
   const handleClear = async () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
     setMessages([]);
+    setIsLoading(false);
     setFileContext(null);
     if (conversationId && user) {
       await supabase.from('copilot_messages').delete().eq('conversation_id', conversationId).eq('user_id', user.id);
@@ -965,7 +757,7 @@ export function useCopilotState() {
       template_type: templateType,
       parsed_structure: structure,
       original_filename: filename,
-    } as any);
+    });
     if (error) {
       toast.error('Failed to save template');
       console.error('Template save error:', error);
@@ -985,7 +777,7 @@ export function useCopilotState() {
       .limit(10);
     if (!data || data.length === 0) return '';
     return '\n\n### User Output Templates\nThe user has saved these templates. When generating output that matches a template type, ALWAYS follow the template\'s structure and formatting exactly.\n' +
-      (data as any[]).map((t: any) => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
+      data.map(t => `\n**Template: "${t.name}"** (type: ${t.template_type}, from: ${t.original_filename})\n\`\`\`\n${t.parsed_structure}\n\`\`\``).join('\n');
   };
 
   // File handling
@@ -1032,6 +824,8 @@ export function useCopilotState() {
     const isComp = !isMatrix && !isCashflow && (/\/comp/i.test(userContent) || (/comp/i.test(userContent) && /compar/i.test(userContent)) || /compare.*offers?/i.test(userContent) || /comparison/i.test(userContent));
     const fileChips = fileNames.map(n => `**${n}**`).join('\n');
     const userMsg: Msg = { role: 'user', content: `${fileChips}\n${userContent}`, fileName: fileNames[0] };
+    // Auto-export abstracts, comps, matrices, cashflows to Word
+    pendingAutoExportRef.current = isAbstract || isComp || isMatrix || isCashflow;
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
@@ -1042,8 +836,13 @@ export function useCopilotState() {
     await persistMessage({ role: 'user', content: userContent }, convId);
 
     let assistantSoFar = '';
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
+      const authToken = await getAuthToken();
+
       const formData = new FormData();
       attachedFiles.forEach(f => formData.append('file', f));
       if (isTemplateSave) {
@@ -1064,9 +863,10 @@ export function useCopilotState() {
       const resp = await fetch(FILE_PARSE_URL, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: formData,
+        signal: controller.signal,
       });
 
       if (!resp.ok) {
@@ -1076,42 +876,31 @@ export function useCopilotState() {
 
       const contentType = resp.headers.get('content-type') || '';
       if (contentType.includes('text/event-stream') && resp.body) {
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          let idx: number;
-          while ((idx = buffer.indexOf('\n')) !== -1) {
-            let line = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 1);
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (line.startsWith(':') || line.trim() === '') continue;
-            if (!line.startsWith('data: ')) continue;
-
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') break;
-
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantSoFar += content;
-                setMessages(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === 'assistant') {
-                    return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-                  }
-                  return [...prev, { role: 'assistant', content: assistantSoFar }];
-                });
-              }
-            } catch { /* partial */ }
+        let rafPending = false;
+        await parseSSEStream(resp.body.getReader(), (content) => {
+          assistantSoFar += content;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+                }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+            });
           }
-        }
+        }, controller.signal);
+        // Final flush after stream ends
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantSoFar }];
+        });
       } else {
         const data = await resp.json();
         assistantSoFar = data.content || data.error || 'No response';
@@ -1120,6 +909,31 @@ export function useCopilotState() {
 
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
+      }
+
+      // Auto-export abstracts/comps/matrices/cashflows to Word — replace chat with short confirmation
+      if (pendingAutoExportRef.current && assistantSoFar.length > 200) {
+        pendingAutoExportRef.current = false;
+        const shortMsg = '✅ Document exported to Word.';
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: shortMsg } : m);
+          }
+          return prev;
+        });
+        setTimeout(() => handleExportWord(assistantSoFar), 300);
+      }
+
+      // Fire-and-forget: embed parsed document content for RAG search
+      if (assistantSoFar && fileNames.length > 0) {
+        for (const fileName of fileNames) {
+          embedAfterSave('document', `doc-${fileName}-${Date.now()}`, {
+            content: assistantSoFar,
+            filename: fileName,
+            title: fileName.replace(/\.[^.]+$/, ''),
+          });
+        }
       }
 
       // Auto-save template if this was a template save request
@@ -1155,7 +969,7 @@ export function useCopilotState() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({
               leaseText: assistantSoFar.slice(0, 15000),
@@ -1181,7 +995,7 @@ export function useCopilotState() {
                 lease_abstract_id: null,
                 acknowledged: false,
               }));
-              await supabase.from('critical_dates' as any).insert(rows as any);
+              await supabase.from('critical_dates').insert(rows);
               toast.success(`${extractData.dates.length} critical dates extracted and tracked`, {
                 description: 'View them on your Dashboard',
               });
@@ -1197,7 +1011,7 @@ export function useCopilotState() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+              Authorization: `Bearer ${authToken}`,
             },
             body: JSON.stringify({
               abstractText: assistantSoFar.slice(0, 15000),
@@ -1265,6 +1079,7 @@ export function useCopilotState() {
         }
       }
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       console.error('File analysis error:', e);
       toast.error(e.message || 'Failed to analyze file');
       if (!assistantSoFar) setMessages(prev => prev.slice(0, -1));
@@ -1275,6 +1090,7 @@ export function useCopilotState() {
     }
     setAttachedFiles([]);
     setIsLoading(false);
+    abortControllerRef.current = null;
   };
 
   // Market report search
@@ -1298,7 +1114,7 @@ export function useCopilotState() {
     const reportKeywords = ['market', 'report', 'analysis', 'comp', 'submarket', 'vacancy', 'lease', 'trend', 'forecast', 'overview', 'summary', 'abstract', 'cash flow', 'matrix'];
     const searchLower = query.toLowerCase();
 
-    const reports = (data as any[])
+    const reports = data
       .filter(m => {
         const content = m.content.toLowerCase();
         const isReport = content.length > 300 && (content.includes('##') || content.includes('**') || content.includes('| '));
@@ -1350,12 +1166,16 @@ export function useCopilotState() {
     }
 
     const userMsg: Msg = { role: 'user', content: text.trim() };
-    const isCompCommand = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim());
-    pendingAutoExportRef.current = isCompCommand;
+    const isAutoExport = /^\/?comp\b/i.test(text.trim()) || /^compare\s+(these\s+)?lease/i.test(text.trim()) || /financial\s+analysis/i.test(text.trim()) || /abstract/i.test(text.trim()) || /lease\s*summary/i.test(text.trim());
+    pendingAutoExportRef.current = isAutoExport;
     const updatedMessages = [...messagesRef.current, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     const convId = conversationIdRef.current || crypto.randomUUID();
     if (!conversationIdRef.current) setConversationId(convId);
@@ -1365,6 +1185,40 @@ export function useCopilotState() {
     let assistantSoFar = '';
 
     try {
+      // RAG: retrieve relevant embedded context for this question
+      let ragCtx = '';
+      if (!voiceModeRef.current && orgId) {
+        try {
+          const ragToken = await getAuthToken();
+          const ragResp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rag-ask`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${ragToken}`,
+            },
+            body: JSON.stringify({ question: text, topK: 5, threshold: 0.4, retrieveOnly: true }),
+          });
+          if (ragResp.ok) {
+            const ragData = await ragResp.json();
+            if (ragData.chunks?.length > 0) {
+              ragCtx = '\n\n### RAG Retrieved Context (relevant embedded deal data)\nUse this data to give specific, grounded answers. Reference names, numbers, and details from these records.\n' +
+                ragData.chunks.map((c: any, i: number) => {
+                  const meta = c.metadata || {};
+                  const metaParts = [
+                    meta.tenant && `Tenant: ${meta.tenant}`,
+                    meta.stage && `Stage: ${meta.stage}`,
+                    meta.sf && `SF: ${Number(meta.sf).toLocaleString()}`,
+                    meta.category && `Category: ${meta.category}`,
+                  ].filter(Boolean).join(' | ');
+                  return `[${i + 1}] [${c.type.toUpperCase()}]${metaParts ? ` (${metaParts})` : ''} (${Math.round(c.similarity * 100)}% match)\n${c.content}`;
+                }).join('\n\n');
+            }
+          }
+        } catch {
+          // RAG retrieval is best-effort — don't block the copilot
+        }
+      }
+
       const templateCtx = voiceModeRef.current ? '' : await loadTemplates();
       const memoryCtx = memoryEnabled && conversationMemory ? `\n\n${conversationMemory}` : '';
       const brainCtx = brainEnabled && brainContext ? `\n\n${brainContext}` : '';
@@ -1372,13 +1226,13 @@ export function useCopilotState() {
       let brokerProfileCtx = '';
       if (!voiceModeRef.current && user) {
         const { data: bp } = await supabase
-          .from('user_settings' as any)
+          .from('user_settings')
           .select('specialties, years_experience, deal_size_sweet_spot, asset_classes, communication_persona_enabled, writing_style_sample, jargon_level, humor_preference, followup_cadence, target_submarkets, key_competitors, buildings_repped, landlord_relationships, quarterly_focus, revenue_target, deal_count_goal, personal_pitch, brokerage')
           .eq('user_id', user.id)
           .single();
 
         if (bp) {
-          const s = bp as any;
+          const s = bp;
           const parts: string[] = [];
           if (s.specialties) parts.push(`- **Specialties:** ${s.specialties}`);
           if (s.years_experience) parts.push(`- **Experience:** ${s.years_experience} years`);
@@ -1415,15 +1269,15 @@ export function useCopilotState() {
       let liveDataCtx = '';
       if (brainEnabled && !voiceModeRef.current) {
         const { data: critDates } = await supabase
-          .from('critical_dates' as any)
+          .from('critical_dates')
           .select('*')
           .eq('user_id', user!.id)
           .eq('acknowledged', false)
           .order('date_value', { ascending: true })
           .limit(20);
 
-        if (critDates && (critDates as any[]).length > 0) {
-          const dateLines = (critDates as any[]).map(d => {
+        if (critDates && critDates.length > 0) {
+          const dateLines = critDates.map(d => {
             const target = new Date(d.date_value + 'T00:00:00');
             const days = Math.ceil((target.getTime() - Date.now()) / 86400000);
             return `- ${d.prospect_name}: ${d.date_type.replace(/_/g, ' ')} in ${days}d (${d.date_value}) - ${d.description}`;
@@ -1476,8 +1330,8 @@ export function useCopilotState() {
           const signals: string[] = [];
           let urgency = 0;
 
-          if (critDates && (critDates as any[]).length > 0) {
-            const matchingDates = (critDates as any[]).filter(d =>
+          if (critDates && critDates.length > 0) {
+            const matchingDates = critDates.filter(d =>
               (d.prospect_name && deal.prospectName && d.prospect_name.toLowerCase().includes(deal.prospectName.toLowerCase())) ||
               (d.prospect_id && d.prospect_id === deal.tenantId)
             );
@@ -1531,10 +1385,38 @@ export function useCopilotState() {
       }
 
       const intelligenceCtx = intelligenceContext ? `\n\n${intelligenceContext}` : '';
-      const fullContext = voiceModeRef.current ? '' : (buildContext() + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
+      const fullContext = voiceModeRef.current ? '' : (buildContext() + ragCtx + (fileContext ? `\n\n### Previous File Analysis\n${fileContext}` : '') + templateCtx + memoryCtx + brainCtx + liveDataCtx + brokerProfileCtx + intelligenceCtx);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const authToken = await getAuthToken();
+
+      // Context compaction: when conversation exceeds threshold, summarize older messages
+      // (per Anthropic cookbook context_compaction pattern)
+      const MAX_API_MESSAGES = 30;
+      const COMPACTION_THRESHOLD = 40;
+      let apiMessages: Msg[];
+
+      if (updatedMessages.length > COMPACTION_THRESHOLD) {
+        // Summarize older messages into a single context message
+        const olderMessages = updatedMessages.slice(0, -MAX_API_MESSAGES);
+        const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
+        const pinnedMessages = updatedMessages.filter(m => m.pinned);
+
+        const summaryParts = olderMessages
+          .filter(m => m.content.length > 20)
+          .map(m => `${m.role === 'user' ? 'Broker' : 'Copilot'}: ${m.content.slice(0, 200)}${m.content.length > 200 ? '...' : ''}`)
+          .join('\n');
+
+        const compactionMsg: Msg = {
+          role: 'user',
+          content: `[CONVERSATION HISTORY SUMMARY - Earlier in this conversation, the following was discussed:\n${summaryParts}\n\nPlease continue from where we left off.]`,
+        };
+
+        apiMessages = [compactionMsg, ...new Set([...pinnedMessages, ...recentMessages])];
+      } else {
+        const pinnedMessages = updatedMessages.filter(m => m.pinned);
+        const recentMessages = updatedMessages.slice(-MAX_API_MESSAGES);
+        apiMessages = [...new Set([...pinnedMessages, ...recentMessages])];
+      }
 
       const resp = await fetch(COPILOT_URL, {
         method: 'POST',
@@ -1543,11 +1425,12 @@ export function useCopilotState() {
           Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({
-          messages: updatedMessages,
+          messages: apiMessages,
           context: fullContext,
           mode: 'tools',
           voiceMode: voiceModeRef.current,
         }),
+        signal: controller.signal,
       });
 
       if (!resp.ok) {
@@ -1567,56 +1450,47 @@ export function useCopilotState() {
         }
       } else {
         if (!resp.body) throw new Error('No response body');
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
         let ttsBuffer = '';
+        let rafPending = false;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-
-          let idx: number;
-          while ((idx = buffer.indexOf('\n')) !== -1) {
-            let line = buffer.slice(0, idx);
-            buffer = buffer.slice(idx + 1);
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (line.startsWith(':') || line.trim() === '') continue;
-            if (!line.startsWith('data: ')) continue;
-
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') break;
-
-            try {
-              const parsed = JSON.parse(jsonStr);
-              const content = parsed.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantSoFar += content;
-                setMessages(prev => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === 'assistant') {
-                    return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
-                  }
-                  return [...prev, { role: 'assistant', content: assistantSoFar }];
-                });
-
-                // Chunked TTS: queue sentences as they complete during streaming
-                if (voiceModeRef.current && enqueueTTSChunkRef.current) {
-                  ttsBuffer += content;
-                  const sentenceMatch = ttsBuffer.match(/^(.*?[.!?])\s+(.*)$/s);
-                  if (sentenceMatch) {
-                    const completeSentence = sentenceMatch[1].trim();
-                    ttsBuffer = sentenceMatch[2];
-                    if (completeSentence.length > 10) {
-                      enqueueTTSChunkRef.current(completeSentence);
-                    }
-                  }
+        await parseSSEStream(resp.body.getReader(), (content) => {
+          assistantSoFar += content;
+          if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+              rafPending = false;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
                 }
-              }
-            } catch { /* partial */ }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+            });
           }
-        }
+
+          // Chunked TTS: queue sentences as they complete during streaming
+          if (voiceModeRef.current && enqueueTTSChunkRef.current) {
+            ttsBuffer += content;
+            const sentenceMatch = ttsBuffer.match(/^(.*?[.!?])\s+(.*)$/s);
+            if (sentenceMatch) {
+              const completeSentence = sentenceMatch[1].trim();
+              ttsBuffer = sentenceMatch[2];
+              if (completeSentence.length > 10) {
+                enqueueTTSChunkRef.current(completeSentence);
+              }
+            }
+          }
+        }, controller.signal);
+
+        // Final flush after stream ends
+        setMessages(prev => {
+          const last = prev[prev.length - 1];
+          if (last?.role === 'assistant') {
+            return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: assistantSoFar } : m);
+          }
+          return [...prev, { role: 'assistant', content: assistantSoFar }];
+        });
 
         // Flush remaining TTS buffer
         if (voiceModeRef.current && ttsBuffer.trim().length > 5 && enqueueTTSChunkRef.current) {
@@ -1627,9 +1501,18 @@ export function useCopilotState() {
       // Persist assistant message
       if (assistantSoFar) {
         await persistMessage({ role: 'assistant', content: assistantSoFar }, convId);
-        if (pendingAutoExportRef.current && isExportableReport(assistantSoFar)) {
+        if (pendingAutoExportRef.current && assistantSoFar.length > 200) {
           pendingAutoExportRef.current = false;
-          setTimeout(() => handleExportWord(assistantSoFar), 500);
+          // Replace chatbot message with a short confirmation instead of the full abstract
+          const shortMsg = '✅ Document exported to Word.';
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last?.role === 'assistant') {
+              return prev.map((m, i) => i === prev.length - 1 ? { ...m, content: shortMsg } : m);
+            }
+            return prev;
+          });
+          setTimeout(() => handleExportWord(assistantSoFar), 300);
         }
       }
 
@@ -1644,7 +1527,7 @@ export function useCopilotState() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+                Authorization: `Bearer ${authToken}`,
               },
               body: JSON.stringify({
                 messages: [
@@ -1672,8 +1555,9 @@ export function useCopilotState() {
                     context: userText.slice(0, 200),
                     source: 'conversation',
                     confidence: 0.8,
+                    ...(orgId ? { organization_id: orgId } : {}),
                   }));
-                  await supabase.from('copilot_brain' as any).insert(rows as any);
+                  await supabase.from('copilot_brain').insert(rows);
                 }
               }
             }
@@ -1685,6 +1569,7 @@ export function useCopilotState() {
 
       refetchPipeline();
     } catch (e: any) {
+      if (e.name === 'AbortError') return;
       console.error('Copilot error:', e);
       toast.error(e.message || 'Failed to get response');
       if (!assistantSoFar) {
@@ -1692,6 +1577,7 @@ export function useCopilotState() {
       }
     }
     setIsLoading(false);
+    abortControllerRef.current = null;
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

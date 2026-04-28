@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { addActivity } from '@/data/activityData';
 import { supabase } from '@/integrations/supabase/client';
+import { useOrganizationId } from '@/hooks/useOrganization';
 import RecipientPicker, { type EmailRecipient } from '@/components/RecipientPicker';
 import {
   emailTemplates,
@@ -48,6 +49,7 @@ const EmailComposer = ({
   recipients,
 }: EmailComposerProps) => {
   const { profile } = useAuth();
+  const orgId = useOrganizationId();
   const resolvedBrokerName = brokerName || profile?.full_name || '[Your Name]';
   const [isOpen, setIsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<EmailTemplateCategory | null>(null);
@@ -141,6 +143,7 @@ const EmailComposer = ({
       title: `Email sent: ${editableSubject}`,
       description: emailBody,
       timestamp: new Date().toISOString(),
+      ...(orgId ? { organization_id: orgId } : {}),
     }).then(({ error }) => {
       if (error) console.error('Mark as sent DB error:', error);
     });

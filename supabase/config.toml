@@ -1,4 +1,4 @@
-project_id = "fvdncnxgmfzxlqtqxitl"
+project_id = "bxphmuwqqiuhpefjducu"
 
 [functions.generate-outreach]
 verify_jwt = true
@@ -83,3 +83,24 @@ verify_jwt = true
 
 [functions.parse-lease-abstract]
 verify_jwt = true
+
+[functions.rag-ask]
+verify_jwt = true
+
+[functions.rag-embed]
+verify_jwt = true
+
+[functions.rag-backfill]
+verify_jwt = true
+
+[functions.batch-process]
+verify_jwt = true
+
+[functions.optimize-prompt]
+verify_jwt = true
+
+[functions.notify-task-assigned]
+verify_jwt = true
+
+[functions.task-due-reminders]
+verify_jwt = false

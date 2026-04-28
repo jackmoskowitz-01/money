@@ -16,6 +16,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useProspectLists } from '@/hooks/useProspectLists';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 type ProspectEntry = {
   tenant: Tenant;
@@ -187,7 +188,7 @@ const Prospects = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${await getAuthToken()}`,
         },
         body: JSON.stringify({
           tenantName: tenant.name,
@@ -281,7 +282,7 @@ const Prospects = () => {
   }, [customReasonText, generateEmail]);
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-4xl px-4 py-8">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <Link to="/" className="mb-3 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
@@ -799,7 +800,7 @@ const Prospects = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2"
+              className="absolute bottom-6 left-1/2 z-50 -translate-x-1/2"
             >
               <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 shadow-2xl">
                 <div className="flex items-center gap-2">

@@ -2,6 +2,14 @@ import { useParams, Link } from 'react-router-dom';
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Globe, MapPin, Plus, Send, Mail, Loader2, ChevronDown, Zap, ShieldAlert, UserCheck, UserPlus, X, Building2, Phone, Briefcase, Clock, MessageSquare, Sparkles, Newspaper, BookOpen, FileSearch, Upload, FileText, Trash2, Download, File } from 'lucide-react';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +34,7 @@ import { addActivity } from '@/data/activityData';
 import { usePipeline } from '@/hooks/usePipeline';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { getAuthToken } from '@/lib/getAuthToken';
 
 const stages: PipelineStage[] = ['meeting_set', 'meeting_held', 'moving_forward', 'won', 'closed', 'lost'];
 
@@ -68,8 +77,36 @@ const formatFileSize = (bytes: number) => {
 
 const CustomProspectDetail = () => {
   const { prospectId } = useParams();
-  const prospect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const localProspect = prospectId ? getCustomProspect(prospectId) : undefined;
+  const [dbProspect, setDbProspect] = useState<ReturnType<typeof getCustomProspect> | undefined>(undefined);
+  const [dbProspectLoading, setDbProspectLoading] = useState(!localProspect && !!prospectId);
   const { user, profile } = useAuth();
+
+  // If not found in local/custom_prospects, check the prospects table
+  useEffect(() => {
+    if (localProspect || !prospectId) return;
+    setDbProspectLoading(true);
+    supabase
+      .from('prospects')
+      .select('*')
+      .eq('id', prospectId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setDbProspect({
+            id: data.id,
+            name: data.company_name,
+            website: data.website_url || '',
+            address: data.address || '',
+            createdAt: data.created_at,
+            source: 'prospects',
+          });
+        }
+        setDbProspectLoading(false);
+      });
+  }, [prospectId, localProspect]);
+
+  const prospect = localProspect || dbProspect;
   const { pipeline, updateStage } = usePipeline();
 
   const pipelineItem = useMemo(() => pipeline.find(p => p.tenantId === prospectId), [pipeline, prospectId]);
@@ -220,8 +257,12 @@ const CustomProspectDetail = () => {
     return prospectContacts.map(c => ({ id: c.id, name: c.name, email: c.email, title: c.title }));
   }, [prospectId, prospectContacts]);
 
+  if (dbProspectLoading) {
+    return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
   if (!prospect) {
-    return <div className="flex min-h-screen items-center justify-center pt-12"><p className="text-muted-foreground">Prospect not found</p></div>;
+    return <div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Prospect not found</p></div>;
   }
 
   const handleStageChange = async (stage: PipelineStage) => {
@@ -257,7 +298,7 @@ const CustomProspectDetail = () => {
       const primaryContact = recipients[0];
       const resp = await fetch(OUTREACH_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await getAuthToken()}` },
         body: JSON.stringify({ tenantName: prospect.name, buildingName: prospect.address, contactName: primaryContact?.name || prospect.name, contactTitle: primaryContact?.title || '', industry: prospect.enrichment?.industry || '', sqft: 0, leaseExpiration: '', outreachReason: reason, vacancyRate: 0, headcount: 0, clientsInBuilding: [] }),
       });
       if (!resp.ok) { toast.error('Failed to generate email'); setGeneratingKey(null); setGeneratedEmails(prev => { const n = { ...prev }; delete n[key]; return n; }); return; }
@@ -296,11 +337,27 @@ const CustomProspectDetail = () => {
   };
 
   return (
-    <div className="min-h-screen pt-12 bg-background">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <Link to="/" className="mb-5 inline-flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Dashboard
-        </Link>
+        <Breadcrumb className="mb-5">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/">Home</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to="/prospects">Prospects</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{prospect.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
 
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
           {/* ── COMPANY HEADER CARD ── */}

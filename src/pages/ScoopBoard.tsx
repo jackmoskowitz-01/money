@@ -42,7 +42,7 @@ const ScoopBoard = () => {
 
 
   return (
-    <div className="min-h-screen pt-12">
+    <div className="min-h-screen">
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">

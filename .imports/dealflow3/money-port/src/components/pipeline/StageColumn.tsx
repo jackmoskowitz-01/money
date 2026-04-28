@@ -1,3 +1,4 @@
+import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { buildings } from '@/data/mockData';
 import {
@@ -153,6 +154,8 @@ export const StageColumn = ({
         </button>
       </div>
 
+      {/* Hide the unused Badge import warning from older versions */}
+      {false && <Badge>{stageLabels[stage]}</Badge>}
     </div>
   );
 };

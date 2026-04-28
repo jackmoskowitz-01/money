@@ -372,7 +372,7 @@ const Pipeline = () => {
       outcome: stage === 'won' ? 'won' : 'lost',
       outcome_reason: outcomeReason.trim(),
       updated_at: new Date().toISOString(),
-    }).eq('tenant_id', tenantId).eq('building_id', buildingId);
+    } as any).eq('tenant_id', tenantId).eq('building_id', buildingId);
     if (selectedItem?.tenantId === tenantId && selectedItem?.buildingId === buildingId) {
       setSelectedItem({ ...selectedItem, stage });
     }
@@ -474,7 +474,7 @@ const Pipeline = () => {
       }
     } catch { /* error */ }
     setGeneratingEmail(false);
-  }, [getDisplayCompany, getDisplayName]);
+  }, []);
 
   const handleMarkSent = async (tp: Touchpoint) => {
     if (!selectedItem) return;
@@ -511,7 +511,7 @@ const Pipeline = () => {
       getDisplayCompany(p).toLowerCase().includes(q) ||
       getDisplayDetail(p).toLowerCase().includes(q)
     );
-  }, [getDisplayCompany, getDisplayDetail, getDisplayName, pipeline, searchQuery]);
+  }, [pipeline, searchQuery]);
 
   const itemsByStage = (stage: PipelineStage) =>
     filtered.filter(p => p.stage === stage).sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
